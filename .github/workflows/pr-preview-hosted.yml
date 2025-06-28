@@ -46,6 +46,7 @@ jobs:
       - name: 🏗️ Build Application
         run: |
           cd client && npm run build && cd ..
+          # Vercel will handle the build process using vercel.json configuration
 
       # Check deployment options
       - name: 🔍 Check Deployment Options
@@ -67,8 +68,7 @@ jobs:
           # Install Vercel CLI
           npm install -g vercel
           
-          # Deploy to Vercel with auto-confirm
-          cd client
+          # Deploy full-stack app to Vercel with auto-confirm
           echo "y" | vercel --token=${{ secrets.VERCEL_TOKEN }} --prod --confirm
           
           # Get the deployment URL
