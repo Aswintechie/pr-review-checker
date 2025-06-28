@@ -141,16 +141,16 @@ jobs:
       run: |
         echo "🧪 Checking for test files..."
         
-        # Count test files in client
+        # Count test files in client (excluding node_modules)
         CLIENT_TESTS=0
         if [ -d "client/src" ]; then
-          CLIENT_TESTS=$(find client/src -name "*.test.js" -o -name "*.test.jsx" -o -name "*.spec.js" -o -name "*.spec.jsx" 2>/dev/null | wc -l | tr -d ' ')
+          CLIENT_TESTS=$(find client/src -name "*.test.js" -o -name "*.test.jsx" -o -name "*.spec.js" -o -name "*.spec.jsx" | grep -v node_modules | wc -l | tr -d ' ')
         fi
         
-        # Count test files in server
+        # Count test files in server (excluding node_modules)
         SERVER_TESTS=0
         if [ -d "server" ]; then
-          SERVER_TESTS=$(find server -name "*.test.js" -o -name "*.spec.js" 2>/dev/null | wc -l | tr -d ' ')
+          SERVER_TESTS=$(find server -name "*.test.js" -o -name "*.spec.js" | grep -v node_modules | wc -l | tr -d ' ')
         fi
         
         echo "📊 Test files found:"
