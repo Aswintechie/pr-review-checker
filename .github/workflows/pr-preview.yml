@@ -147,15 +147,37 @@ jobs:
           echo "SERVER_PORT=$SERVER_PORT" >> deployment.env
           echo "DEPLOYMENT_URL=http://your-server-domain:$CLIENT_PORT" >> deployment.env
 
+      - name: 🌐 Configure Nginx (Optional)
+        working-directory: ~/deployments/pr-${{ github.event.number }}
+        run: |
+          source deployment.env
+          
+          # Check if nginx-dynamic-config.sh exists and DOMAIN is configured
+          if [[ -f "source/scripts/nginx-dynamic-config.sh" ]] && [[ "${{ vars.PREVIEW_DOMAIN }}" != "" ]]; then
+            echo "🌐 Configuring Nginx for clean URLs..."
+            chmod +x source/scripts/nginx-dynamic-config.sh
+            source/scripts/nginx-dynamic-config.sh "${{ vars.PREVIEW_DOMAIN }}" "${{ github.event.number }}" || echo "⚠️ Nginx configuration failed, continuing with port-based URLs"
+            echo "NGINX_CONFIGURED=true" >> deployment.env
+          else
+            echo "ℹ️ Nginx configuration skipped (no domain configured or script missing)"
+            echo "NGINX_CONFIGURED=false" >> deployment.env
+          fi
+
       - name: 🔗 Get Preview URL
         id: preview-url
         working-directory: ~/deployments/pr-${{ github.event.number }}
         run: |
           source deployment.env
           
-          # Replace with your actual server domain/IP
-          PREVIEW_URL="http://your-server-domain:$CLIENT_PORT"
-          API_URL="http://your-server-domain:$SERVER_PORT"
+          if [[ "$NGINX_CONFIGURED" == "true" ]] && [[ "${{ vars.PREVIEW_DOMAIN }}" != "" ]]; then
+            # Use clean subdomain URLs
+            PREVIEW_URL="http://pr-${{ github.event.number }}.${{ vars.PREVIEW_DOMAIN }}"
+            API_URL="http://pr-${{ github.event.number }}.${{ vars.PREVIEW_DOMAIN }}/api"
+          else
+            # Fallback to port-based URLs
+            PREVIEW_URL="http://your-server-domain:$CLIENT_PORT"
+            API_URL="http://your-server-domain:$SERVER_PORT"
+          fi
           
           echo "preview_url=$PREVIEW_URL" >> $GITHUB_OUTPUT
           echo "api_url=$API_URL" >> $GITHUB_OUTPUT
@@ -245,6 +267,13 @@ jobs:
           pm2 delete pr-$PR_NUMBER-server || true
           pm2 delete pr-$PR_NUMBER-client || true
           pm2 save
+          
+          # Clean up Nginx configuration if it exists
+          if [[ -f ~/deployments/pr-$PR_NUMBER/source/scripts/nginx-cleanup.sh ]]; then
+            echo "🌐 Cleaning up Nginx configuration..."
+            chmod +x ~/deployments/pr-$PR_NUMBER/source/scripts/nginx-cleanup.sh
+            ~/deployments/pr-$PR_NUMBER/source/scripts/nginx-cleanup.sh $PR_NUMBER || echo "⚠️ Nginx cleanup failed"
+          fi
           
           # Remove deployment directory
           rm -rf ~/deployments/pr-$PR_NUMBER || true
