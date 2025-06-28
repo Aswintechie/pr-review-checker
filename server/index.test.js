@@ -79,7 +79,9 @@ describe('PR Approval Server', () => {
       ];
 
       const mockCodeownersData = {
-        data: Buffer.from('# CODEOWNERS\n* @owner1 @owner2\nsrc/ @dev-team\n').toString('base64'),
+        data: {
+          content: Buffer.from('# CODEOWNERS\n* @owner1 @owner2\nsrc/ @dev-team\n').toString('base64'),
+        },
       };
 
       const mockUserData = {
@@ -182,7 +184,9 @@ describe('PR Approval Server', () => {
       const mockFilesData = [{ filename: 'test.js' }];
       const mockReviewsData = [];
       const mockCodeownersData = {
-        data: Buffer.from('* @owner1\n').toString('base64'),
+        data: {
+          content: Buffer.from('* @owner1\n').toString('base64'),
+        },
       };
       const mockUserData = { name: 'Owner 1', avatar_url: 'https://github.com/avatar.jpg' };
 
