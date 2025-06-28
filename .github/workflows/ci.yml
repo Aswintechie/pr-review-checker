@@ -322,13 +322,17 @@ jobs:
 
     - name: 🚀 Trigger Preview Deployment
       if: steps.status-check.outputs.all_passed == 'true' && github.event_name == 'pull_request'
-      uses: peter-evans/repository-dispatch@v3
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        event-type: ci-success
-        client-payload: |
-          {
-            "pr_number": "${{ github.event.number }}",
-            "head_ref": "${{ github.head_ref }}",
-            "head_sha": "${{ github.event.pull_request.head.sha }}"
-          } 
+      run: |
+        echo "All CI checks passed! Triggering preview deployment..."
+        echo "PR Number: ${{ github.event.number }}"
+        echo "Head Ref: ${{ github.head_ref }}"
+        echo "Head SHA: ${{ github.event.pull_request.head.sha }}"
+        
+        # Use GitHub CLI to trigger the preview workflow
+        gh workflow run "🚀 PR Preview (GitHub-Hosted)" \
+          -f pr_number="${{ github.event.number }}" \
+          -f head_ref="${{ github.head_ref }}" \
+          -f head_sha="${{ github.event.pull_request.head.sha }}" \
+          -f trigger_source="ci-success"
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

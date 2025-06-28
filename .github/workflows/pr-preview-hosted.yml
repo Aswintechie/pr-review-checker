@@ -1,8 +1,25 @@
 name: 🚀 PR Preview (GitHub-Hosted)
 
 on:
-  repository_dispatch:
-    types: [ci-success]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number'
+        required: true
+        type: string
+      head_ref:
+        description: 'Head branch reference'
+        required: true
+        type: string
+      head_sha:
+        description: 'Head commit SHA'
+        required: true
+        type: string
+      trigger_source:
+        description: 'Source that triggered this workflow'
+        required: false
+        type: string
+        default: 'manual'
   pull_request:
     types: [closed]
     branches: [main, develop]
@@ -12,7 +29,7 @@ jobs:
   deploy-preview:
     name: 🌐 Deploy PR Preview
     runs-on: ubuntu-latest
-    if: github.event_name == 'repository_dispatch' || github.event.action == 'closed'
+    if: github.event_name == 'workflow_dispatch' || github.event.action == 'closed'
     permissions:
       contents: write
       pages: write
@@ -24,17 +41,19 @@ jobs:
       - name: 🔍 Get PR Information
         id: pr-info
         run: |
-          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
-            echo "Repository dispatch triggered with type: ${{ github.event.action }}"
-            echo "Client payload: ${{ toJson(github.event.client_payload) }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Workflow dispatch triggered by: ${{ inputs.trigger_source }}"
+            echo "PR Number: ${{ inputs.pr_number }}"
+            echo "Head Ref: ${{ inputs.head_ref }}"
+            echo "Head SHA: ${{ inputs.head_sha }}"
             
-            # Get PR info from the dispatch payload
-            PR_NUMBER="${{ github.event.client_payload.pr_number }}"
-            HEAD_REF="${{ github.event.client_payload.head_ref }}"
-            HEAD_SHA="${{ github.event.client_payload.head_sha }}"
+            # Get PR info from the workflow inputs
+            PR_NUMBER="${{ inputs.pr_number }}"
+            HEAD_REF="${{ inputs.head_ref }}"
+            HEAD_SHA="${{ inputs.head_sha }}"
             
             if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ]; then
-              echo "No PR number in payload, skipping"
+              echo "No PR number provided, skipping"
               echo "should_deploy=false" >> $GITHUB_OUTPUT
               exit 0
             fi
