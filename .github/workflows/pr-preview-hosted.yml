@@ -1,6 +1,7 @@
 name: 🚀 PR Preview (GitHub-Hosted)
 
 on:
+  status:
   workflow_dispatch:
     inputs:
       pr_number:
@@ -29,7 +30,7 @@ jobs:
   deploy-preview:
     name: 🌐 Deploy PR Preview
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || github.event.action == 'closed'
+    if: (github.event_name == 'status' && github.event.state == 'success' && github.event.context == 'ci/preview-ready') || github.event_name == 'workflow_dispatch' || github.event.action == 'closed'
     permissions:
       contents: write
       pages: write
@@ -41,7 +42,34 @@ jobs:
       - name: 🔍 Get PR Information
         id: pr-info
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ "${{ github.event_name }}" = "status" ]; then
+            echo "Status event triggered - CI success detected!"
+            echo "Status context: ${{ github.event.context }}"
+            echo "Status state: ${{ github.event.state }}"
+            echo "Commit SHA: ${{ github.event.sha }}"
+            
+            # Find the PR associated with this commit
+            PRS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/search/issues?q=repo:${{ github.repository }}+type:pr+state:open+sha:${{ github.event.sha }}")
+            
+            PR_NUMBER=$(echo "$PRS" | jq -r '.items[0].number // empty')
+            
+            if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ]; then
+              echo "No open PR found for commit ${{ github.event.sha }}, skipping"
+              echo "should_deploy=false" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+            
+            # Get PR details
+            PR_DATA=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER")
+            
+            echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+            echo "head_ref=$(echo "$PR_DATA" | jq -r '.head.ref')" >> $GITHUB_OUTPUT
+            echo "head_sha=${{ github.event.sha }}" >> $GITHUB_OUTPUT
+            echo "action=deploy" >> $GITHUB_OUTPUT
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "Workflow dispatch triggered by: ${{ inputs.trigger_source }}"
             echo "PR Number: ${{ inputs.pr_number }}"
             echo "Head Ref: ${{ inputs.head_ref }}"

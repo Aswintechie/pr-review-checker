@@ -324,19 +324,22 @@ jobs:
           exit 1
         fi
 
-    - name: 🚀 Trigger Preview Deployment
+    - name: 🚀 Create CI Success Marker
       if: steps.status-check.outputs.all_passed == 'true' && github.event_name == 'pull_request'
       run: |
-        echo "All CI checks passed! Triggering preview deployment..."
+        echo "All CI checks passed! Creating success marker..."
         echo "PR Number: ${{ github.event.number }}"
         echo "Head Ref: ${{ github.head_ref }}"
         echo "Head SHA: ${{ github.event.pull_request.head.sha }}"
         
-        # Use GitHub CLI to trigger the preview workflow
-        gh workflow run "🚀 PR Preview (GitHub-Hosted)" \
-          -f pr_number="${{ github.event.number }}" \
-          -f head_ref="${{ github.head_ref }}" \
-          -f head_sha="${{ github.event.pull_request.head.sha }}" \
-          -f trigger_source="ci-success"
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+        # Create a commit status to indicate CI success
+        curl -X POST \
+          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}" \
+          -d '{
+            "state": "success",
+            "target_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+            "description": "All CI checks passed - ready for preview deployment",
+            "context": "ci/preview-ready"
+          }' 
