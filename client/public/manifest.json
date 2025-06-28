@@ -1,0 +1,21 @@
+{
+  "short_name": "PR Approval",
+  "name": "PR Approval Finder",
+  "description": "Find minimum persons approval required for PR merging",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#4f46e5",
+  "background_color": "#ffffff"
+} 

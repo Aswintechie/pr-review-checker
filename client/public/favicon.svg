@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Background circle -->
+  <circle cx="16" cy="16" r="15" fill="#4f46e5" stroke="#3730a3" stroke-width="2"/>
+  
+  <!-- Checkmark -->
+  <path d="M9 16l3 3 8-8" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  
+  <!-- Small code brackets to represent PR/code review -->
+  <text x="6" y="10" font-family="monospace" font-size="6" fill="#e0e7ff" opacity="0.8">&lt;</text>
+  <text x="24" y="10" font-family="monospace" font-size="6" fill="#e0e7ff" opacity="0.8">&gt;</text>
+</svg> 
