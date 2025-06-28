@@ -68,12 +68,34 @@ jobs:
           # Install Vercel CLI
           npm install -g vercel
           
-          # Deploy full-stack app to Vercel with auto-confirm
-          echo "y" | vercel --token=${{ secrets.VERCEL_TOKEN }} --prod --yes
+          # Deploy full-stack app to Vercel with auto-confirm and capture output
+          echo "y" | vercel --token=${{ secrets.VERCEL_TOKEN }} --prod --yes > deployment.log 2>&1
           
-          # Get the deployment URL
-          DEPLOYMENT_URL=$(vercel ls --token=${{ secrets.VERCEL_TOKEN }} | head -2 | tail -1 | awk '{print $2}')
-          echo "preview-url=https://$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
+          # Extract the deployment URL from the output
+          DEPLOYMENT_URL=$(grep -o 'https://[^[:space:]]*\.vercel\.app' deployment.log | head -1)
+          
+          # If no URL found in output, try getting from vercel ls
+          if [ -z "$DEPLOYMENT_URL" ]; then
+            DEPLOYMENT_URL=$(vercel ls --token=${{ secrets.VERCEL_TOKEN }} | grep -E "pr-review-checker|$(echo ${{ github.repository }} | cut -d'/' -f2)" | head -1 | awk '{print $2}')
+            if [ ! -z "$DEPLOYMENT_URL" ] && [[ ! "$DEPLOYMENT_URL" =~ ^https:// ]]; then
+              DEPLOYMENT_URL="https://$DEPLOYMENT_URL"
+            fi
+          fi
+          
+          # Fallback: construct URL from repository name
+          if [ -z "$DEPLOYMENT_URL" ]; then
+            REPO_NAME=$(echo ${{ github.repository }} | cut -d'/' -f2)
+            BRANCH_NAME=$(echo ${{ github.head_ref }} | sed 's/[^a-zA-Z0-9-]/-/g')
+            USERNAME=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')
+            DEPLOYMENT_URL="https://${REPO_NAME}-git-${BRANCH_NAME}-${USERNAME}.vercel.app"
+          fi
+          
+          echo "Deployment URL: $DEPLOYMENT_URL"
+          echo "preview-url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
+          
+          # Show deployment log for debugging
+          echo "=== Deployment Log ==="
+          cat deployment.log
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
@@ -138,6 +160,15 @@ jobs:
           if [ "${{ steps.deployment-check.outputs.has_vercel }}" = "true" ]; then
             # Use the actual Vercel deployment URL
             PREVIEW_URL="${{ steps.vercel-deployment.outputs.preview-url }}"
+            
+            # If URL is empty or just "https://", construct fallback URL
+            if [ -z "$PREVIEW_URL" ] || [ "$PREVIEW_URL" = "https://" ]; then
+              REPO_NAME=$(echo ${{ github.repository }} | cut -d'/' -f2)
+              BRANCH_NAME=$(echo ${{ github.head_ref }} | sed 's/[^a-zA-Z0-9-]/-/g')
+              USERNAME=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')
+              PREVIEW_URL="https://${REPO_NAME}-git-${BRANCH_NAME}-${USERNAME}.vercel.app"
+              echo "Using fallback Vercel URL: $PREVIEW_URL"
+            fi
           elif [ "${{ steps.deployment-check.outputs.has_netlify }}" = "true" ]; then
             PREVIEW_URL="https://pr-${{ github.event.number }}-${{ github.event.repository.name }}--${{ vars.NETLIFY_SITE_NAME }}.netlify.app"
           elif [ "${{ steps.deployment-check.outputs.has_aws }}" = "true" ]; then
