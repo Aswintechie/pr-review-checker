@@ -30,5 +30,8 @@
     "concurrently": "^8.2.2",
     "husky": "^9.1.7",
     "lint-staged": "^16.1.2"
+  },
+  "dependencies": {
+    "axios": "^1.10.0"
   }
 }
