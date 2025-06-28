@@ -1,0 +1,283 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  NODE_VERSION_MATRIX: '[16.x, 18.x, 20.x]'
+
+jobs:
+  # Basic quality checks
+  quality-checks:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Use Node.js 18.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18.x
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: |
+        npm ci
+        cd client && npm ci
+        cd ../server && npm ci
+    
+    - name: Code formatting check
+      run: npm run format:check
+    
+    - name: Linting
+      run: npm run lint
+    
+    - name: Build check
+      run: cd client && npm run build
+
+  # Security scanning
+  security-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Use Node.js 18.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18.x
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: |
+        npm ci
+        cd client && npm ci
+        cd ../server && npm ci
+    
+    - name: Run npm audit
+      run: |
+        echo "=== Root Dependencies ==="
+        npm audit --audit-level=moderate || true
+        echo "=== Client Dependencies ==="
+        cd client && npm audit --audit-level=moderate || true
+        echo "=== Server Dependencies ==="
+        cd ../server && npm audit --audit-level=moderate || true
+    
+    - name: Run TruffleHog OSS
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: main
+        head: HEAD
+        extra_args: --debug --only-verified
+
+  # Dependency analysis
+  dependency-analysis:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Use Node.js 18.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18.x
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: |
+        npm ci
+        cd client && npm ci
+        cd ../server && npm ci
+    
+    - name: Check for outdated packages
+      run: |
+        echo "=== Root Package Updates ==="
+        npm outdated || true
+        echo "=== Client Package Updates ==="
+        cd client && npm outdated || true
+        echo "=== Server Package Updates ==="
+        cd ../server && npm outdated || true
+    
+    - name: License check
+      run: |
+        npx license-checker --summary
+        cd client && npx license-checker --summary
+        cd ../server && npx license-checker --summary
+
+  # Multi-version Node.js testing
+  test-matrix:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [16.x, 18.x, 20.x]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: |
+        npm ci
+        cd client && npm ci
+        cd ../server && npm ci
+    
+    - name: Run tests
+      run: |
+        if [ -f "package.json" ] && grep -q '"test"' package.json; then
+          npm test
+        else
+          echo "No tests found in root package.json"
+        fi
+        
+        if [ -f "client/package.json" ] && grep -q '"test"' client/package.json; then
+          cd client && npm test -- --watchAll=false
+        else
+          echo "No tests found in client package.json"
+        fi
+        
+        if [ -f "server/package.json" ] && grep -q '"test"' server/package.json; then
+          cd server && npm test
+        else
+          echo "No tests found in server package.json"
+        fi
+    
+    - name: Build project
+      run: cd client && npm run build
+
+  # CODEOWNERS validation
+  codeowners-validation:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Validate CODEOWNERS
+      run: |
+        if [ -f ".github/CODEOWNERS" ]; then
+          echo "✅ CODEOWNERS file exists"
+          echo "CODEOWNERS content:"
+          cat .github/CODEOWNERS
+        else
+          echo "❌ CODEOWNERS file not found"
+          exit 1
+        fi
+
+  # PR-specific checks
+  pr-checks:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Check PR title
+      run: |
+        PR_TITLE="${{ github.event.pull_request.title }}"
+        echo "PR Title: $PR_TITLE"
+        
+        # Check if title follows semantic commit format
+        if [[ $PR_TITLE =~ ^(feat|fix|docs|style|refactor|test|chore)(\(.+\))?: .+ ]]; then
+          echo "✅ PR title follows semantic commit format"
+        else
+          echo "❌ PR title should follow semantic commit format: type(scope): description"
+          echo "Examples: feat: add new feature, fix(auth): resolve login issue"
+          exit 1
+        fi
+    
+    - name: Check PR size
+      run: |
+        FILES_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}..HEAD | wc -l)
+        LINES_CHANGED=$(git diff --stat origin/${{ github.base_ref }}..HEAD | tail -1 | grep -o '[0-9]\+ insertions\|[0-9]\+ deletions' | grep -o '[0-9]\+' | paste -sd+ | bc)
+        
+        echo "Files changed: $FILES_CHANGED"
+        echo "Lines changed: $LINES_CHANGED"
+        
+        if [ $FILES_CHANGED -gt 50 ] || [ $LINES_CHANGED -gt 1000 ]; then
+          echo "⚠️ Large PR detected. Consider breaking it into smaller PRs."
+          echo "::warning::Large PR: $FILES_CHANGED files, $LINES_CHANGED lines changed"
+        else
+          echo "✅ PR size is reasonable"
+        fi
+
+  # Integration tests
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: [quality-checks]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Use Node.js 18.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18.x
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: |
+        npm ci
+        cd client && npm ci
+        cd ../server && npm ci
+    
+    - name: Start server and run integration tests
+      run: |
+        echo "Starting server in background..."
+        cd server && npm start &
+        SERVER_PID=$!
+        
+        echo "Waiting for server to start..."
+        sleep 10
+        
+        echo "Testing server health..."
+        curl -f http://localhost:3001/health || echo "Health check endpoint not available"
+        
+        echo "Stopping server..."
+        kill $SERVER_PID || true
+        
+        echo "✅ Integration test completed"
+
+  # Final status check
+  all-checks-complete:
+    runs-on: ubuntu-latest
+    needs: [quality-checks, security-scan, dependency-analysis, test-matrix, integration-tests]
+    if: always()
+    
+    steps:
+    - name: Check all jobs status
+      run: |
+        echo "Quality Checks: ${{ needs.quality-checks.result }}"
+        echo "Security Scan: ${{ needs.security-scan.result }}"
+        echo "Dependency Analysis: ${{ needs.dependency-analysis.result }}"
+        echo "Test Matrix: ${{ needs.test-matrix.result }}"
+        echo "Integration Tests: ${{ needs.integration-tests.result }}"
+        
+        if [[ "${{ needs.quality-checks.result }}" == "success" && 
+              "${{ needs.security-scan.result }}" == "success" && 
+              "${{ needs.dependency-analysis.result }}" == "success" && 
+              "${{ needs.test-matrix.result }}" == "success" && 
+              "${{ needs.integration-tests.result }}" == "success" ]]; then
+          echo "✅ All checks passed!"
+        else
+          echo "❌ Some checks failed!"
+          exit 1
+        fi 

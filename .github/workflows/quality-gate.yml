@@ -1,0 +1,69 @@
+name: Quality Gate
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: Install root dependencies
+      run: npm ci
+    
+    - name: Install client dependencies
+      run: cd client && npm ci
+    
+    - name: Install server dependencies
+      run: cd server && npm ci
+    
+    - name: Check code formatting
+      run: npm run format:check
+    
+    - name: Run linting
+      run: npm run lint
+    
+    - name: Build client
+      run: cd client && npm run build
+    
+    - name: Run tests (if available)
+      run: |
+        if [ -f "package.json" ] && grep -q '"test"' package.json; then
+          npm test
+        else
+          echo "No tests found in root package.json"
+        fi
+        
+        if [ -f "client/package.json" ] && grep -q '"test"' client/package.json; then
+          cd client && npm test -- --watchAll=false
+        else
+          echo "No tests found in client package.json"
+        fi
+        
+        if [ -f "server/package.json" ] && grep -q '"test"' server/package.json; then
+          cd server && npm test
+        else
+          echo "No tests found in server package.json"
+        fi
+    
+    - name: Check for security vulnerabilities
+      run: |
+        npm audit --audit-level=moderate
+        cd client && npm audit --audit-level=moderate
+        cd ../server && npm audit --audit-level=moderate 
