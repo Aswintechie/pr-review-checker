@@ -28,8 +28,6 @@ jobs:
 
       - name: 📥 Checkout Code
         uses: actions/checkout@v4
-        with:
-          path: ~/deployments/pr-${{ github.event.number }}/source
 
       - name: 📦 Setup Node.js
         uses: actions/setup-node@v4
@@ -37,12 +35,11 @@ jobs:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: |
-            ~/deployments/pr-${{ github.event.number }}/source/package-lock.json
-            ~/deployments/pr-${{ github.event.number }}/source/client/package-lock.json
-            ~/deployments/pr-${{ github.event.number }}/source/server/package-lock.json
+            package-lock.json
+            client/package-lock.json
+            server/package-lock.json
 
       - name: 🔧 Install Dependencies
-        working-directory: ~/deployments/pr-${{ github.event.number }}/source
         run: |
           # Install root dependencies
           npm ci
@@ -54,7 +51,6 @@ jobs:
           cd server && npm ci && cd ..
 
       - name: 🧪 Run Tests
-        working-directory: ~/deployments/pr-${{ github.event.number }}/source
         run: |
           # Run client tests
           cd client && npm test -- --watchAll=false --coverage=false && cd ..
@@ -63,10 +59,12 @@ jobs:
           cd server && npm test && cd ..
 
       - name: 🏗️ Build Application
-        working-directory: ~/deployments/pr-${{ github.event.number }}/source
         run: |
           # Build client for production
           cd client && npm run build && cd ..
+          
+          # Copy source to deployment directory
+          cp -r . ~/deployments/pr-${{ github.event.number }}/source
           
           # Copy built files to deployment directory
           cp -r client/build ~/deployments/pr-${{ github.event.number }}/public
