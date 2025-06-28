@@ -1260,7 +1260,6 @@ section h2 {
   align-items: center;
   gap: 0.5rem;
 }
-
 .copyright:hover {
   color: white;
   transform: translateY(-1px);
@@ -1277,14 +1276,6 @@ section h2 {
 .copyright:hover::before {
   opacity: 1;
   transform: scale(1);
-}
-
-.author-name {
-  font-weight: 600;
-  background: linear-gradient(45deg, #fff, #667eea);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
 }
 
 .cloudflare-badge {
