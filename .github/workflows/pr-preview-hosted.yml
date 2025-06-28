@@ -11,6 +11,12 @@ jobs:
     name: 🌐 Deploy PR Preview
     runs-on: ubuntu-latest
     if: github.event.action != 'closed'
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+      pull-requests: write
+      issues: write
     
     steps:
       - name: 📥 Checkout Code
@@ -67,9 +73,9 @@ jobs:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
 
-      # Option 3: Deploy to GitHub Pages (Static only)
+      # Option 3: Deploy to GitHub Pages (Default fallback)
       - name: 🚀 Deploy to GitHub Pages
-        if: vars.USE_GITHUB_PAGES == 'true'
+        if: vars.VERCEL_TOKEN == '' && vars.NETLIFY_AUTH_TOKEN == '' && vars.AWS_S3_BUCKET == '' && vars.FIREBASE_PROJECT_ID == ''
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -115,7 +121,7 @@ jobs:
             PREVIEW_URL="https://pr-${{ github.event.number }}-${{ github.event.repository.name }}.vercel.app"
           elif [ "${{ vars.NETLIFY_AUTH_TOKEN }}" != "" ]; then
             PREVIEW_URL="https://pr-${{ github.event.number }}-${{ github.event.repository.name }}--${{ vars.NETLIFY_SITE_NAME }}.netlify.app"
-          elif [ "${{ vars.USE_GITHUB_PAGES }}" == "true" ]; then
+          elif [ "${{ vars.VERCEL_TOKEN }}" == "" ] && [ "${{ vars.NETLIFY_AUTH_TOKEN }}" == "" ] && [ "${{ vars.AWS_S3_BUCKET }}" == "" ] && [ "${{ vars.FIREBASE_PROJECT_ID }}" == "" ]; then
             PREVIEW_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/pr-${{ github.event.number }}"
           elif [ "${{ vars.AWS_S3_BUCKET }}" != "" ]; then
             if [ "${{ vars.AWS_CLOUDFRONT_DOMAIN }}" != "" ]; then
@@ -196,6 +202,11 @@ jobs:
     name: 🧹 Cleanup Preview
     runs-on: ubuntu-latest
     if: github.event.action == 'closed'
+    permissions:
+      contents: write
+      pages: write
+      pull-requests: write
+      issues: write
     
     steps:
       - name: 🧹 Cleanup Vercel Deployment
