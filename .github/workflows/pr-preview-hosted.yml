@@ -1,11 +1,8 @@
 name: 🚀 PR Preview (GitHub-Hosted)
 
 on:
-  workflow_run:
-    workflows: ["CI/CD Pipeline"]
-    types: [completed]
   pull_request:
-    types: [closed]
+    types: [opened, synchronize, reopened, closed]
     branches: [main, develop]
 
 jobs:
@@ -13,7 +10,7 @@ jobs:
   deploy-preview:
     name: 🌐 Deploy PR Preview
     runs-on: ubuntu-latest
-    if: github.event.workflow_run.conclusion == 'success' || github.event.action == 'closed'
+    if: github.event.action != 'closed'
     permissions:
       contents: write
       pages: write
@@ -22,44 +19,68 @@ jobs:
       issues: write
     
     steps:
-      - name: 🔍 Get PR Information
-        id: pr-info
+      - name: 🔍 Wait for CI to Complete and Check Status
+        id: ci-check
         run: |
-          if [ "${{ github.event_name }}" = "workflow_run" ]; then
-            # Get PR number from the triggering workflow
-            PR_NUMBER=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}" | \
-              jq -r '.pull_requests[0].number // empty')
+          echo "Waiting for CI pipeline to complete..."
+          
+          # Wait for a bit to ensure CI has started
+          sleep 30
+          
+          # Check CI status for this commit
+          COMMIT_SHA="${{ github.event.pull_request.head.sha }}"
+          CI_STATUS=""
+          MAX_ATTEMPTS=60  # Wait up to 30 minutes (60 * 30s)
+          ATTEMPT=0
+          
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            echo "Checking CI status (attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS)..."
             
-            if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ]; then
-              echo "No PR associated with this workflow run, skipping deployment"
+            # Get check runs for this commit
+            CHECK_RUNS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/${{ github.repository }}/commits/$COMMIT_SHA/check-runs")
+            
+            # Look for CI/CD Pipeline workflow
+            CI_CONCLUSION=$(echo "$CHECK_RUNS" | jq -r '.check_runs[] | select(.name == "all-checks-complete") | .conclusion')
+            
+            if [ "$CI_CONCLUSION" = "success" ]; then
+              echo "✅ CI pipeline completed successfully!"
+              echo "ci_passed=true" >> $GITHUB_OUTPUT
+              break
+            elif [ "$CI_CONCLUSION" = "failure" ] || [ "$CI_CONCLUSION" = "cancelled" ]; then
+              echo "❌ CI pipeline failed or was cancelled. Skipping deployment."
+              echo "ci_passed=false" >> $GITHUB_OUTPUT
               exit 0
+            else
+              echo "CI still running or not found. Waiting..."
+              sleep 30
+              ATTEMPT=$((ATTEMPT + 1))
             fi
-            
-            # Get PR details
-            PR_DATA=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER")
-            
-            echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
-            echo "head_ref=$(echo "$PR_DATA" | jq -r '.head.ref')" >> $GITHUB_OUTPUT
-            echo "head_sha=$(echo "$PR_DATA" | jq -r '.head.sha')" >> $GITHUB_OUTPUT
-            echo "action=deploy" >> $GITHUB_OUTPUT
-          else
-            # Regular PR event (for cleanup)
-            echo "pr_number=${{ github.event.number }}" >> $GITHUB_OUTPUT
-            echo "head_ref=${{ github.head_ref }}" >> $GITHUB_OUTPUT
-            echo "head_sha=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
-            echo "action=${{ github.event.action }}" >> $GITHUB_OUTPUT
+          done
+          
+          if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+            echo "⏰ Timeout waiting for CI. Skipping deployment."
+            echo "ci_passed=false" >> $GITHUB_OUTPUT
+            exit 0
           fi
 
+      - name: 🔍 Get PR Information
+        if: steps.ci-check.outputs.ci_passed == 'true'
+        id: pr-info
+        run: |
+          echo "pr_number=${{ github.event.number }}" >> $GITHUB_OUTPUT
+          echo "head_ref=${{ github.head_ref }}" >> $GITHUB_OUTPUT
+          echo "head_sha=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+          echo "action=deploy" >> $GITHUB_OUTPUT
+
       - name: 📥 Checkout Code
-        if: steps.pr-info.outputs.action != 'closed'
+        if: steps.ci-check.outputs.ci_passed == 'true'
         uses: actions/checkout@v4
         with:
           ref: ${{ steps.pr-info.outputs.head_sha }}
 
       - name: 📦 Setup Node.js
-        if: steps.pr-info.outputs.action != 'closed'
+        if: steps.ci-check.outputs.ci_passed == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -70,21 +91,21 @@ jobs:
             server/package-lock.json
 
       - name: 🔧 Install Dependencies
-        if: steps.pr-info.outputs.action != 'closed'
+        if: steps.ci-check.outputs.ci_passed == 'true'
         run: |
           npm ci
           cd client && npm ci && cd ..
           cd server && npm ci && cd ..
 
       - name: 🏗️ Build Application
-        if: steps.pr-info.outputs.action != 'closed'
+        if: steps.ci-check.outputs.ci_passed == 'true'
         run: |
           cd client && npm run build && cd ..
           # Tests already passed in CI pipeline - skipping test re-run
 
       # Check deployment options
       - name: 🔍 Check Deployment Options
-        if: steps.pr-info.outputs.action != 'closed'
+        if: steps.ci-check.outputs.ci_passed == 'true'
         id: deployment-check
         run: |
           echo "has_vercel=${{ secrets.VERCEL_TOKEN != '' }}" >> $GITHUB_OUTPUT
@@ -97,7 +118,7 @@ jobs:
 
       # Option 1: Deploy to Vercel (Primary)
       - name: 🚀 Deploy to Vercel
-        if: steps.pr-info.outputs.action != 'closed' && steps.deployment-check.outputs.has_vercel == 'true'
+        if: steps.ci-check.outputs.ci_passed == 'true' && steps.deployment-check.outputs.has_vercel == 'true'
         id: vercel-deployment
         run: |
           # Install Vercel CLI
@@ -136,7 +157,7 @@ jobs:
 
       # Option 2: Deploy to Netlify
       - name: 🚀 Deploy to Netlify
-        if: steps.pr-info.outputs.action != 'closed' && steps.deployment-check.outputs.has_netlify == 'true'
+        if: steps.ci-check.outputs.ci_passed == 'true' && steps.deployment-check.outputs.has_netlify == 'true'
         uses: nwtgck/actions-netlify@v3.0
         with:
           publish-dir: './client/build'
@@ -150,7 +171,7 @@ jobs:
 
       # Option 3: Deploy to GitHub Pages (Fallback)
       - name: 🚀 Deploy to GitHub Pages
-        if: steps.pr-info.outputs.action != 'closed' && steps.deployment-check.outputs.has_vercel == 'false' && steps.deployment-check.outputs.has_netlify == 'false' && steps.deployment-check.outputs.has_aws == 'false' && steps.deployment-check.outputs.has_firebase == 'false'
+        if: steps.ci-check.outputs.ci_passed == 'true' && steps.deployment-check.outputs.has_vercel == 'false' && steps.deployment-check.outputs.has_netlify == 'false' && steps.deployment-check.outputs.has_aws == 'false' && steps.deployment-check.outputs.has_firebase == 'false'
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -159,7 +180,7 @@ jobs:
 
       # Option 4: Deploy to AWS S3 + CloudFront
       - name: 🚀 Deploy to AWS S3
-        if: steps.pr-info.outputs.action != 'closed' && steps.deployment-check.outputs.has_aws == 'true'
+        if: steps.ci-check.outputs.ci_passed == 'true' && steps.deployment-check.outputs.has_aws == 'true'
         run: |
           # Install AWS CLI
           curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
@@ -180,7 +201,7 @@ jobs:
 
       # Option 5: Deploy to Firebase Hosting
       - name: 🚀 Deploy to Firebase
-        if: steps.pr-info.outputs.action != 'closed' && steps.deployment-check.outputs.has_firebase == 'true'
+        if: steps.ci-check.outputs.ci_passed == 'true' && steps.deployment-check.outputs.has_firebase == 'true'
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
@@ -189,7 +210,7 @@ jobs:
           channelId: pr-${{ steps.pr-info.outputs.pr_number }}
 
       - name: 🔗 Get Preview URL
-        if: steps.pr-info.outputs.action != 'closed'
+        if: steps.ci-check.outputs.ci_passed == 'true'
         id: preview-url
         run: |
           # Determine preview URL based on deployment method
@@ -223,7 +244,7 @@ jobs:
           echo "preview_url=$PREVIEW_URL" >> $GITHUB_OUTPUT
 
       - name: 💬 Comment on PR
-        if: steps.pr-info.outputs.action != 'closed'
+        if: steps.ci-check.outputs.ci_passed == 'true'
         uses: actions/github-script@v7
         with:
           script: |
