@@ -211,9 +211,7 @@ jobs:
       run: |
         PR_TITLE="${{ github.event.pull_request.title }}"
         echo "PR Title: $PR_TITLE"
-        
-        # Check if title follows semantic commit format
-        if [[ $PR_TITLE =~ ^(feat|fix|docs|style|refactor|test|chore)(\(.+\))?: .+ ]]; then
+        if [[ "$PR_TITLE" =~ ^(feat|fix|docs|style|refactor|test|chore)(\([a-zA-Z0-9_-]+\))?:\ .+ ]]; then
           echo "✅ PR title follows semantic commit format"
         else
           echo "❌ PR title should follow semantic commit format: type(scope): description"
