@@ -1252,16 +1252,28 @@ section h2 {
 }
 
 .copyright {
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.8);
   font-size: 0.875rem;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
 }
-
-.author-name {
-  font-weight: 600;
+.copyright:hover {
   color: white;
+  transform: translateY(-1px);
+}
+
+.copyright::before {
+  content: '⚡';
+  font-size: 1rem;
+  opacity: 0;
+  transform: scale(0);
+  transition: all 0.3s ease;
+}
+
+.copyright:hover::before {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .cloudflare-badge {
