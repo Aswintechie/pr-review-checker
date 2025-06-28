@@ -298,6 +298,10 @@ jobs:
     if: always()
     
     steps:
+    - name: Checkout code
+      if: github.event_name == 'pull_request'
+      uses: actions/checkout@v4
+
     - name: Check all jobs status
       id: status-check
       run: |
