@@ -1,0 +1,274 @@
+name: 🚀 PR Preview Deployment
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main, develop]
+
+jobs:
+  deploy-preview:
+    name: 🌐 Deploy PR Preview
+    runs-on: self-hosted
+    
+    # Only run if PR is not from a fork (security)
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    
+    steps:
+      - name: 🛑 Cleanup Previous Deployments
+        run: |
+          # Kill any existing processes for this PR
+          PR_NUMBER=${{ github.event.number }}
+          pkill -f "pr-$PR_NUMBER" || true
+          
+          # Remove previous deployment directory
+          rm -rf ~/deployments/pr-$PR_NUMBER || true
+          
+          # Create deployment directory
+          mkdir -p ~/deployments/pr-$PR_NUMBER
+
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          path: ~/deployments/pr-${{ github.event.number }}/source
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            ~/deployments/pr-${{ github.event.number }}/source/package-lock.json
+            ~/deployments/pr-${{ github.event.number }}/source/client/package-lock.json
+            ~/deployments/pr-${{ github.event.number }}/source/server/package-lock.json
+
+      - name: 🔧 Install Dependencies
+        working-directory: ~/deployments/pr-${{ github.event.number }}/source
+        run: |
+          # Install root dependencies
+          npm ci
+          
+          # Install client dependencies
+          cd client && npm ci && cd ..
+          
+          # Install server dependencies  
+          cd server && npm ci && cd ..
+
+      - name: 🧪 Run Tests
+        working-directory: ~/deployments/pr-${{ github.event.number }}/source
+        run: |
+          # Run client tests
+          cd client && npm test -- --watchAll=false --coverage=false && cd ..
+          
+          # Run server tests
+          cd server && npm test && cd ..
+
+      - name: 🏗️ Build Application
+        working-directory: ~/deployments/pr-${{ github.event.number }}/source
+        run: |
+          # Build client for production
+          cd client && npm run build && cd ..
+          
+          # Copy built files to deployment directory
+          cp -r client/build ~/deployments/pr-${{ github.event.number }}/public
+          
+          # Copy server files
+          cp -r server ~/deployments/pr-${{ github.event.number }}/
+          cp package.json ~/deployments/pr-${{ github.event.number }}/
+
+      - name: 🚀 Deploy to Preview Environment
+        working-directory: ~/deployments/pr-${{ github.event.number }}
+        run: |
+          PR_NUMBER=${{ github.event.number }}
+          
+          # Calculate unique ports for this PR
+          CLIENT_PORT=$((3000 + $PR_NUMBER))
+          SERVER_PORT=$((3001 + $PR_NUMBER))
+          
+          # Create environment file
+          cat > server/.env << EOF
+          PORT=$SERVER_PORT
+          NODE_ENV=production
+          GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
+          EOF
+          
+          # Create PM2 ecosystem file
+          cat > ecosystem.config.js << EOF
+          module.exports = {
+            apps: [
+              {
+                name: 'pr-$PR_NUMBER-server',
+                script: 'server/index.js',
+                cwd: '~/deployments/pr-$PR_NUMBER',
+                env: {
+                  NODE_ENV: 'production',
+                  PORT: $SERVER_PORT
+                },
+                log_file: '~/deployments/pr-$PR_NUMBER/logs/server.log',
+                error_file: '~/deployments/pr-$PR_NUMBER/logs/server-error.log',
+                out_file: '~/deployments/pr-$PR_NUMBER/logs/server-out.log'
+              },
+              {
+                name: 'pr-$PR_NUMBER-client',
+                script: 'npx',
+                args: 'serve -s public -p $CLIENT_PORT',
+                cwd: '~/deployments/pr-$PR_NUMBER',
+                env: {
+                  NODE_ENV: 'production'
+                },
+                log_file: '~/deployments/pr-$PR_NUMBER/logs/client.log',
+                error_file: '~/deployments/pr-$PR_NUMBER/logs/client-error.log',
+                out_file: '~/deployments/pr-$PR_NUMBER/logs/client-out.log'
+              }
+            ]
+          };
+          EOF
+          
+          # Create logs directory
+          mkdir -p logs
+          
+          # Install serve globally if not present
+          npm install -g serve || true
+          
+          # Start applications with PM2
+          pm2 start ecosystem.config.js
+          
+          # Save PM2 configuration
+          pm2 save
+          
+          # Wait for services to start
+          sleep 10
+          
+          # Test if services are running
+          curl -f http://localhost:$SERVER_PORT/health || exit 1
+          curl -f http://localhost:$CLIENT_PORT || exit 1
+          
+          # Store deployment info
+          echo "CLIENT_PORT=$CLIENT_PORT" > deployment.env
+          echo "SERVER_PORT=$SERVER_PORT" >> deployment.env
+          echo "DEPLOYMENT_URL=http://your-server-domain:$CLIENT_PORT" >> deployment.env
+
+      - name: 🔗 Get Preview URL
+        id: preview-url
+        working-directory: ~/deployments/pr-${{ github.event.number }}
+        run: |
+          source deployment.env
+          
+          # Replace with your actual server domain/IP
+          PREVIEW_URL="http://your-server-domain:$CLIENT_PORT"
+          API_URL="http://your-server-domain:$SERVER_PORT"
+          
+          echo "preview_url=$PREVIEW_URL" >> $GITHUB_OUTPUT
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+          echo "client_port=$CLIENT_PORT" >> $GITHUB_OUTPUT
+          echo "server_port=$SERVER_PORT" >> $GITHUB_OUTPUT
+
+      - name: 💬 Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { preview_url, api_url, client_port, server_port } = process.env;
+            
+            const comment = `## 🚀 Preview Deployment Ready!
+            
+            Your PR has been successfully deployed and is ready for testing:
+            
+            ### 🌐 Preview Links
+            - **Frontend**: [${preview_url}](${preview_url})
+            - **API**: [${api_url}/health](${api_url}/health)
+            
+            ### 📊 Deployment Details
+            - **PR Number**: #${{ github.event.number }}
+            - **Branch**: \`${{ github.head_ref }}\`
+            - **Commit**: \`${{ github.event.pull_request.head.sha }}\`
+            - **Client Port**: ${client_port}
+            - **Server Port**: ${server_port}
+            
+            ### 🧪 Test Your Changes
+            You can now test the PR approval finder with your changes:
+            1. Visit the preview URL above
+            2. Enter a GitHub PR URL to test functionality
+            3. Verify all features work as expected
+            
+            ### 📝 Notes
+            - This preview will be automatically updated when you push new commits
+            - The deployment will be cleaned up when the PR is closed
+            - If you encounter issues, check the [workflow logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            
+            ---
+            *Deployed by GitHub Actions • [View Workflow](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})*`;
+            
+            // Find existing preview comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const existingComment = comments.find(comment => 
+              comment.body.includes('🚀 Preview Deployment Ready!')
+            );
+            
+            if (existingComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: comment
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+            }
+        env:
+          preview_url: ${{ steps.preview-url.outputs.preview_url }}
+          api_url: ${{ steps.preview-url.outputs.api_url }}
+          client_port: ${{ steps.preview-url.outputs.client_port }}
+          server_port: ${{ steps.preview-url.outputs.server_port }}
+
+  cleanup-on-close:
+    name: 🧹 Cleanup on PR Close
+    runs-on: self-hosted
+    if: github.event.action == 'closed'
+    
+    steps:
+      - name: 🛑 Stop and Remove Deployment
+        run: |
+          PR_NUMBER=${{ github.event.number }}
+          
+          # Stop PM2 processes
+          pm2 delete pr-$PR_NUMBER-server || true
+          pm2 delete pr-$PR_NUMBER-client || true
+          pm2 save
+          
+          # Remove deployment directory
+          rm -rf ~/deployments/pr-$PR_NUMBER || true
+          
+          echo "✅ Cleaned up deployment for PR #$PR_NUMBER"
+
+      - name: 💬 Comment Cleanup Complete
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = `## 🧹 Preview Deployment Cleaned Up
+            
+            The preview deployment for this PR has been automatically cleaned up since the PR was closed.
+            
+            - **Stopped services**: Frontend and API servers
+            - **Removed files**: Deployment directory and logs
+            - **Freed resources**: Ports and PM2 processes
+            
+            ---
+            *Cleanup completed by GitHub Actions*`;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            }); 
