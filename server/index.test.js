@@ -80,7 +80,9 @@ describe('PR Approval Server', () => {
 
       const mockCodeownersData = {
         data: {
-          content: Buffer.from('# CODEOWNERS\n* @owner1 @owner2\nsrc/ @dev-team\n').toString('base64'),
+          content: Buffer.from('# CODEOWNERS\n* @owner1 @owner2\nsrc/ @dev-team\n').toString(
+            'base64'
+          ),
         },
       };
 
