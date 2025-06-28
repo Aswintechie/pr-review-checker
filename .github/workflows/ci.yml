@@ -324,32 +324,24 @@ jobs:
           exit 1
         fi
 
-    - name: 🚀 Trigger Preview Deployment
+    - name: 🚀 Create CI Success Status
       if: steps.status-check.outputs.all_passed == 'true' && github.event_name == 'pull_request'
-      uses: actions/github-script@v7
-      with:
-        script: |
-          console.log('✅ All CI checks passed!');
-          console.log('PR Number:', context.payload.pull_request.number);
-          console.log('Head Ref:', context.payload.pull_request.head.ref);
-          console.log('Head SHA:', context.payload.pull_request.head.sha);
-          
-          // Trigger the preview deployment workflow
-          try {
-            const result = await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'pr-preview-hosted.yml',
-              ref: 'main',
-              inputs: {
-                pr_number: context.payload.pull_request.number.toString(),
-                head_ref: context.payload.pull_request.head.ref,
-                head_sha: context.payload.pull_request.head.sha,
-                trigger_source: 'ci_success'
-              }
-            });
-            console.log('🚀 Preview deployment triggered successfully!');
-          } catch (error) {
-            console.log('❌ Failed to trigger preview deployment:', error.message);
-            // Don't fail the CI if preview deployment trigger fails
-          } 
+      run: |
+        echo "✅ All CI checks passed!"
+        echo "PR Number: ${{ github.event.number }}"
+        echo "Head Ref: ${{ github.head_ref }}"
+        echo "Head SHA: ${{ github.event.pull_request.head.sha }}"
+        
+        # Create a commit status to signal CI completion
+        curl -X POST \
+          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}" \
+          -d '{
+            "state": "success",
+            "target_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+            "description": "All CI checks passed - ready for preview deployment",
+            "context": "ci/preview-ready"
+          }'
+        
+        echo "🚀 Status created - preview deployment should trigger automatically" 
