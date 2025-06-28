@@ -30,6 +30,14 @@
     "prettier": "^3.6.2",
     "supertest": "^7.1.1"
   },
+  "jest": {
+    "testEnvironment": "node",
+    "maxWorkers": 1,
+    "collectCoverageFrom": [
+      "*.js",
+      "!node_modules/**"
+    ]
+  },
   "author": "Aswin",
   "license": "MIT"
 }

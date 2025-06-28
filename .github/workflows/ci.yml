@@ -7,7 +7,7 @@ on:
     branches: [main, develop]
 
 env:
-  NODE_VERSION_MATRIX: '[16.x, 18.x, 20.x]'
+  NODE_VERSION_MATRIX: '[18.x, 20.x, 22.x]'
 
 jobs:
   # Basic quality checks
@@ -119,7 +119,7 @@ jobs:
     
     strategy:
       matrix:
-        node-version: [16.x, 18.x, 20.x]
+        node-version: [18.x, 20.x, 22.x]
     
     steps:
     - name: Checkout code
