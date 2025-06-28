@@ -702,8 +702,15 @@ function App() {
       {/* Copyright Footer */}
       <footer className="app-footer">
         <div className="footer-content">
-          <div className="copyright" title="Assisted with Cursor AI">
-            © 2025 <span className="author-name">Aswin</span>
+          <div className="footer-left">
+            <div className="copyright" title="Assisted with Cursor AI">
+              © 2025 <span className="author-name">Aswin</span>
+            </div>
+          </div>
+          <div className="footer-right">
+            <div className="cloudflare-badge" title="Secured and accelerated by Cloudflare">
+              🛡️ Protected by Cloudflare
+            </div>
           </div>
         </div>
       </footer>
