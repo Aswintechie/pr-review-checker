@@ -329,6 +329,39 @@ app.post('/api/pr-approvers', async (req, res) => {
       ownerDetails: group.owners.map(owner => userDetails.get(owner) || { username: owner, name: owner, type: 'user' })
     }));
 
+    // Extract rate limit information from the last response headers
+    const lastResponseHeaders = reviewsResponse.headers;
+    let rateLimitInfo = null;
+    
+    if (lastResponseHeaders['x-ratelimit-remaining'] !== undefined) {
+      const remaining = lastResponseHeaders['x-ratelimit-remaining'];
+      const resetTimestamp = lastResponseHeaders['x-ratelimit-reset'];
+      const limit = lastResponseHeaders['x-ratelimit-limit'];
+      
+      if (remaining !== undefined && resetTimestamp) {
+        const resetTime = new Date(parseInt(resetTimestamp) * 1000);
+        const now = new Date();
+        const minutesUntilReset = Math.ceil((resetTime - now) / (1000 * 60));
+        
+        rateLimitInfo = {
+          remaining: parseInt(remaining),
+          limit: parseInt(limit),
+          resetTime: resetTime.toISOString(),
+          resetTimestamp: parseInt(resetTimestamp),
+          minutesUntilReset: Math.max(0, minutesUntilReset),
+          resetTimeFormatted: resetTime.toLocaleString('en-US', {
+            weekday: 'short',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZoneName: 'short'
+          })
+        };
+      }
+    }
+
     const result = {
       prInfo: {
         title: pr.title,
@@ -350,7 +383,8 @@ app.post('/api/pr-approvers', async (req, res) => {
       stillNeedApproval: stillNeedApproval,
       requestedReviewers: requestedReviewers,
       requestedTeams: requestedTeams,
-      isReadyToMerge: totalGroupsNeedingApproval === 0 && minRequiredApprovals.length > 0
+      isReadyToMerge: totalGroupsNeedingApproval === 0 && minRequiredApprovals.length > 0,
+      rateLimitInfo: rateLimitInfo
     };
 
     res.json(result);

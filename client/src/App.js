@@ -127,6 +127,7 @@ function App() {
       });
 
       setResult(response.data);
+      setRateLimitInfo(response.data.rateLimitInfo || null);
       addToRecentPRs(response.data);
     } catch (err) {
       setError(err.response?.data?.error || 'An error occurred');
@@ -523,6 +524,20 @@ function App() {
                 </a>
               </div>
             </div>
+
+            {/* Rate Limit Warning for successful requests */}
+            {rateLimitInfo && rateLimitInfo.remaining <= (githubToken ? 100 : 20) && (
+              <div className="rate-limit-warning-standalone">
+                <div className="rate-limit-warning">
+                  ⚠️ <strong>Low Rate Limit Warning:</strong> You have {rateLimitInfo.remaining} requests remaining. 
+                  {githubToken ? (
+                    `Wait ${rateLimitInfo.minutesUntilReset} minute${rateLimitInfo.minutesUntilReset !== 1 ? 's' : ''} for reset or consider using a fresh token.`
+                  ) : (
+                    `Consider using a GitHub token for higher limits or wait ${rateLimitInfo.minutesUntilReset} minute${rateLimitInfo.minutesUntilReset !== 1 ? 's' : ''} for reset.`
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* View Toggle */}
             <div className="view-toggle">

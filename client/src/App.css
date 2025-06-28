@@ -669,6 +669,35 @@ body {
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
 }
 
+.rate-limit-warning {
+  padding: 0.75rem;
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #d97706;
+  border-left: 3px solid #f59e0b;
+  margin-bottom: 0.75rem;
+  animation: pulse-warning 2s infinite;
+}
+
+.theme-dark .rate-limit-warning {
+  background: rgba(255, 193, 7, 0.15);
+  border-color: rgba(255, 193, 7, 0.4);
+  color: #fbbf24;
+}
+
+@keyframes pulse-warning {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+.rate-limit-warning-standalone {
+  padding: 1rem 2rem;
+  border-bottom: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+}
+
 .rate-limit-tip {
   padding: 0.75rem;
   background: rgba(255, 255, 255, 0.08);
