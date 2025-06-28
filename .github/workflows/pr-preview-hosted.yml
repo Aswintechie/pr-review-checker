@@ -47,9 +47,9 @@ jobs:
         run: |
           cd client && npm run build && cd ..
 
-      # Option 1: Deploy to Vercel
+      # Option 1: Deploy to Vercel (Primary)
       - name: 🚀 Deploy to Vercel
-        if: vars.VERCEL_TOKEN != ''
+        if: secrets.VERCEL_TOKEN != ''
         uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
@@ -58,6 +58,7 @@ jobs:
           working-directory: ./client
           alias-domains: |
             pr-${{ github.event.number }}-${{ github.event.repository.name }}.vercel.app
+          scope: ${{ secrets.VERCEL_ORG_ID }}
 
       # Option 2: Deploy to Netlify
       - name: 🚀 Deploy to Netlify
@@ -73,9 +74,9 @@ jobs:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
 
-      # Option 3: Deploy to GitHub Pages (Default fallback)
+      # Option 3: Deploy to GitHub Pages (Fallback)
       - name: 🚀 Deploy to GitHub Pages
-        if: vars.VERCEL_TOKEN == '' && vars.NETLIFY_AUTH_TOKEN == '' && vars.AWS_S3_BUCKET == '' && vars.FIREBASE_PROJECT_ID == ''
+        if: secrets.VERCEL_TOKEN == '' && secrets.NETLIFY_AUTH_TOKEN == '' && vars.AWS_S3_BUCKET == '' && vars.FIREBASE_PROJECT_ID == ''
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -117,12 +118,10 @@ jobs:
         id: preview-url
         run: |
           # Determine preview URL based on deployment method
-          if [ "${{ vars.VERCEL_TOKEN }}" != "" ]; then
+          if [ "${{ secrets.VERCEL_TOKEN }}" != "" ]; then
             PREVIEW_URL="https://pr-${{ github.event.number }}-${{ github.event.repository.name }}.vercel.app"
-          elif [ "${{ vars.NETLIFY_AUTH_TOKEN }}" != "" ]; then
+          elif [ "${{ secrets.NETLIFY_AUTH_TOKEN }}" != "" ]; then
             PREVIEW_URL="https://pr-${{ github.event.number }}-${{ github.event.repository.name }}--${{ vars.NETLIFY_SITE_NAME }}.netlify.app"
-          elif [ "${{ vars.VERCEL_TOKEN }}" == "" ] && [ "${{ vars.NETLIFY_AUTH_TOKEN }}" == "" ] && [ "${{ vars.AWS_S3_BUCKET }}" == "" ] && [ "${{ vars.FIREBASE_PROJECT_ID }}" == "" ]; then
-            PREVIEW_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/pr-${{ github.event.number }}"
           elif [ "${{ vars.AWS_S3_BUCKET }}" != "" ]; then
             if [ "${{ vars.AWS_CLOUDFRONT_DOMAIN }}" != "" ]; then
               PREVIEW_URL="https://${{ vars.AWS_CLOUDFRONT_DOMAIN }}/pr-${{ github.event.number }}"
@@ -132,7 +131,8 @@ jobs:
           elif [ "${{ vars.FIREBASE_PROJECT_ID }}" != "" ]; then
             PREVIEW_URL="https://${{ vars.FIREBASE_PROJECT_ID }}--pr-${{ github.event.number }}.web.app"
           else
-            PREVIEW_URL="No deployment service configured"
+            # Fallback to GitHub Pages
+            PREVIEW_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/pr-${{ github.event.number }}"
           fi
           
           echo "preview_url=$PREVIEW_URL" >> $GITHUB_OUTPUT
@@ -210,7 +210,7 @@ jobs:
     
     steps:
       - name: 🧹 Cleanup Vercel Deployment
-        if: vars.VERCEL_TOKEN != ''
+        if: secrets.VERCEL_TOKEN != ''
         run: |
           # Install Vercel CLI
           npm install -g vercel
