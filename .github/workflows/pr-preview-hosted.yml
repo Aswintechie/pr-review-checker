@@ -69,7 +69,7 @@ jobs:
           npm install -g vercel
           
           # Deploy full-stack app to Vercel with auto-confirm
-          echo "y" | vercel --token=${{ secrets.VERCEL_TOKEN }} --prod --confirm
+          echo "y" | vercel --token=${{ secrets.VERCEL_TOKEN }} --prod --yes
           
           # Get the deployment URL
           DEPLOYMENT_URL=$(vercel ls --token=${{ secrets.VERCEL_TOKEN }} | head -2 | tail -1 | awk '{print $2}')
