@@ -480,4 +480,4 @@ if (require.main === module) {
 }
 
 module.exports = app;
-// Test comment with bad formatting
+// This comment has trailing spaces    
