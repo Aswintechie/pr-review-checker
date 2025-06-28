@@ -317,6 +317,12 @@ app.post('/api/pr-approvers', async (req, res) => {
      console.log('Requested reviewers:', requestedReviewers);
      console.log('========================');
     
+    // Add user details to each approval group for the new UI
+    const enhancedMinRequiredApprovals = minRequiredApprovals.map(group => ({
+      ...group,
+      ownerDetails: group.owners.map(owner => userDetails.get(owner) || { username: owner, name: owner, type: 'user' })
+    }));
+
     const result = {
       prInfo: {
         title: pr.title,
@@ -327,10 +333,13 @@ app.post('/api/pr-approvers', async (req, res) => {
       },
       changedFiles: changedFiles,
       fileApprovalDetails: fileApprovalDetails,
-      minRequiredApprovals: minRequiredApprovals,
+      minRequiredApprovals: enhancedMinRequiredApprovals,
+      totalGroupsNeedingApproval: totalGroupsNeedingApproval,
       minApprovalsNeeded: totalGroupsNeedingApproval,
       requiredApprovers: Array.from(requiredApprovers),
+      allUserDetails: userDetailsArray,
       userDetails: Object.fromEntries(userDetails),
+      approvals: approvals,
       currentApprovals: approvals,
       stillNeedApproval: stillNeedApproval,
       requestedReviewers: requestedReviewers,
