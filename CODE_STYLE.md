@@ -78,10 +78,54 @@ Add to VS Code settings:
 ### Other IDEs
 Most modern IDEs support Prettier and ESLint through plugins.
 
+## Automated Pre-commit Hooks
+
+The project includes automated pre-commit hooks that run before each commit:
+
+### What Gets Checked
+- **Formatting**: All code must pass Prettier formatting checks
+- **Linting**: All code must pass ESLint validation
+- **Both client and server**: Checks run on React and Node.js code
+
+### How It Works
+1. **Automatic**: Runs every time you `git commit`
+2. **Blocking**: Commit fails if formatting or linting errors exist
+3. **Fast**: Only checks staged files for efficiency
+
+### Setup (Already Done)
+The pre-commit hooks are already configured using Husky:
+- `.husky/pre-commit` - Git hook script
+- `package.json` - Pre-commit script configuration
+- ESLint configs updated with Jest environment support
+
+### Manual Testing
+```bash
+# Test pre-commit hook manually
+npm run pre-commit
+```
+
+### Troubleshooting
+If a commit fails:
+```bash
+# Fix formatting issues
+npm run format
+
+# Fix linting issues  
+npm run lint:fix
+
+# Or fix both at once
+npm run code:fix
+
+# Then commit again
+git add .
+git commit -m "your message"
+```
+
 ## Benefits
 
 ✅ **Consistent Code Style**: All team members write code in the same format  
 ✅ **Automatic Fixes**: Many issues are fixed automatically  
 ✅ **Better Code Quality**: ESLint catches common mistakes and anti-patterns  
 ✅ **Faster Reviews**: Less time spent on style discussions  
-✅ **Modern Standards**: Enforces ES6+ best practices 
+✅ **Modern Standards**: Enforces ES6+ best practices  
+✅ **Pre-commit Validation**: Code quality enforced automatically before commits 
