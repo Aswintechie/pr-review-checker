@@ -62,15 +62,14 @@ jobs:
       # Option 1: Deploy to Vercel (Primary)
       - name: 🚀 Deploy to Vercel
         if: steps.deployment-check.outputs.has_vercel == 'true'
+        id: vercel-deployment
         uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           working-directory: ./client
-          alias-domains: |
-            pr-${{ github.event.number }}-${{ github.event.repository.name }}.vercel.app
-          scope: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-args: '--prod'
+          github-comment: false
 
       # Option 2: Deploy to Netlify
       - name: 🚀 Deploy to Netlify
@@ -131,7 +130,8 @@ jobs:
         run: |
           # Determine preview URL based on deployment method
           if [ "${{ steps.deployment-check.outputs.has_vercel }}" = "true" ]; then
-            PREVIEW_URL="https://pr-${{ github.event.number }}-${{ github.event.repository.name }}.vercel.app"
+            # Use the actual Vercel deployment URL
+            PREVIEW_URL="${{ steps.vercel-deployment.outputs.preview-url }}"
           elif [ "${{ steps.deployment-check.outputs.has_netlify }}" = "true" ]; then
             PREVIEW_URL="https://pr-${{ github.event.number }}-${{ github.event.repository.name }}--${{ vars.NETLIFY_SITE_NAME }}.netlify.app"
           elif [ "${{ steps.deployment-check.outputs.has_aws }}" = "true" ]; then
@@ -236,8 +236,8 @@ jobs:
           # Install Vercel CLI
           npm install -g vercel
           
-          # List and delete deployment
-          vercel list --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }} | grep "pr-${{ github.event.number }}" | awk '{print $1}' | xargs -I {} vercel remove {} --yes --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }}
+          # List and delete deployment (more robust cleanup)
+          vercel list --token=${{ secrets.VERCEL_TOKEN }} | grep "pr-${{ github.event.number }}" | awk '{print $1}' | xargs -I {} vercel remove {} --yes --token=${{ secrets.VERCEL_TOKEN }} || echo "No deployments found to clean up"
 
       - name: 🧹 Cleanup AWS S3 Deployment
         if: steps.cleanup-check.outputs.has_aws == 'true'
