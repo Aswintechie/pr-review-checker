@@ -299,6 +299,7 @@ jobs:
     
     steps:
     - name: Check all jobs status
+      id: status-check
       run: |
         echo "Quality Checks: ${{ needs.quality-checks.result }}"
         echo "Security Scan: ${{ needs.security-scan.result }}"
@@ -312,7 +313,22 @@ jobs:
               "${{ needs.test-matrix.result }}" == "success" && 
               "${{ needs.integration-tests.result }}" == "success" ]]; then
           echo "✅ All checks passed!"
+          echo "all_passed=true" >> $GITHUB_OUTPUT
         else
           echo "❌ Some checks failed!"
+          echo "all_passed=false" >> $GITHUB_OUTPUT
           exit 1
-        fi 
+        fi
+
+    - name: 🚀 Trigger Preview Deployment
+      if: steps.status-check.outputs.all_passed == 'true' && github.event_name == 'pull_request'
+      uses: peter-evans/repository-dispatch@v3
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        event-type: ci-success
+        client-payload: |
+          {
+            "pr_number": "${{ github.event.number }}",
+            "head_ref": "${{ github.head_ref }}",
+            "head_sha": "${{ github.event.pull_request.head.sha }}"
+          } 
