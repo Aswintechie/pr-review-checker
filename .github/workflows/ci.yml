@@ -141,23 +141,25 @@ jobs:
       run: |
         echo "Checking for tests..."
         
-        # Check if test files exist in client
-        if [ -d "client/src" ] && find client/src -name "*.test.js" -o -name "*.test.jsx" -o -name "*.spec.js" -o -name "*.spec.jsx" | grep -q .; then
-          echo "Running client tests..."
+        # Check for client test files
+        CLIENT_TESTS=$(find client/src -name "*.test.js" -o -name "*.test.jsx" -o -name "*.spec.js" -o -name "*.spec.jsx" 2>/dev/null | wc -l)
+        if [ "$CLIENT_TESTS" -gt 0 ]; then
+          echo "Found $CLIENT_TESTS test files in client, running tests..."
           cd client && npm test -- --watchAll=false --passWithNoTests
         else
           echo "No test files found in client/src"
         fi
         
-        # Check if test files exist in server
-        if [ -d "server" ] && find server -name "*.test.js" -o -name "*.spec.js" | grep -q .; then
-          echo "Running server tests..."
+        # Check for server test files
+        SERVER_TESTS=$(find server -name "*.test.js" -o -name "*.spec.js" 2>/dev/null | wc -l)
+        if [ "$SERVER_TESTS" -gt 0 ]; then
+          echo "Found $SERVER_TESTS test files in server, running tests..."
           cd server && npm test
         else
           echo "No test files found in server"
         fi
         
-        echo "Test check completed successfully"
+        echo "✅ Test check completed successfully"
     
     - name: Build project
       run: cd client && CI=false npm run build
