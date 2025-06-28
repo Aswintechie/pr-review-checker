@@ -1,19 +1,24 @@
 {
   "name": "pr-approval-finder",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "description": "Find minimum required approvals for GitHub Pull Requests",
-  "main": "server/index.js",
-  "author": "Aswin",
-  "license": "MIT",
+  "main": "index.js",
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "cd server && npm run dev",
     "client": "cd client && npm start",
-    "build": "cd client && npm run build",
-    "start": "cd server && npm start"
+    "install-all": "npm install && cd client && npm install && cd ../server && npm install"
   },
-  "keywords": ["github", "pr", "approval", "codeowners"],
+  "keywords": [
+    "github",
+    "pull-request",
+    "approval",
+    "codeowners",
+    "review"
+  ],
+  "author": "Aswin",
+  "license": "MIT",
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^9.1.0"
   }
 } 

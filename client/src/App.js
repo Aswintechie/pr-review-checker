@@ -1,5 +1,5 @@
 /**
- * PR Approval Finder v3.0
+ * PR Approval Finder v4.0
  * Copyright (c) 2025 Aswin
  * Licensed under MIT License
  */
@@ -16,19 +16,81 @@ function App() {
   const [error, setError] = useState('');
   const [viewMode, setViewMode] = useState('basic'); // 'basic' or 'advanced'
   const [darkMode, setDarkMode] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [recentPRs, setRecentPRs] = useState([]);
 
-  // Load dark mode preference from localStorage
+  // Load dark mode preference and recent PRs from localStorage
   useEffect(() => {
     const savedDarkMode = localStorage.getItem('darkMode') === 'true';
     setDarkMode(savedDarkMode);
     document.body.classList.toggle('dark-mode', savedDarkMode);
+
+    // Load recent PRs from localStorage
+    const savedPRs = localStorage.getItem('recentPRs');
+    if (savedPRs) {
+      try {
+        setRecentPRs(JSON.parse(savedPRs));
+      } catch (e) {
+        console.warn('Failed to parse recent PRs from localStorage');
+      }
+    }
   }, []);
+
+  // Close history dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showHistory && !event.target.closest('.history-container')) {
+        setShowHistory(false);
+      }
+    };
+
+    if (showHistory) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showHistory]);
 
   const toggleDarkMode = () => {
     const newDarkMode = !darkMode;
     setDarkMode(newDarkMode);
     localStorage.setItem('darkMode', newDarkMode.toString());
     document.body.classList.toggle('dark-mode', newDarkMode);
+  };
+
+  const toggleHistory = () => {
+    setShowHistory(!showHistory);
+  };
+
+  const addToRecentPRs = (prData) => {
+    const newPR = {
+      url: prData.prInfo.url,
+      title: prData.prInfo.title,
+      number: prData.prInfo.number,
+      author: prData.prInfo.author,
+      analyzedAt: new Date().toISOString(),
+      totalGroups: prData.minRequiredApprovals.length,
+      needsApproval: prData.totalGroupsNeedingApproval
+    };
+
+    setRecentPRs(prev => {
+      // Remove if already exists (to avoid duplicates)
+      const filtered = prev.filter(pr => pr.url !== newPR.url);
+      // Add to beginning and keep only last 10
+      const updated = [newPR, ...filtered].slice(0, 10);
+      localStorage.setItem('recentPRs', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const loadFromHistory = (prUrl) => {
+    setPrUrl(prUrl);
+    setShowHistory(false);
+  };
+
+  const clearHistory = () => {
+    setRecentPRs([]);
+    localStorage.removeItem('recentPRs');
+    setShowHistory(false);
   };
 
   const handleSubmit = async (e) => {
@@ -44,6 +106,7 @@ function App() {
       });
 
       setResult(response.data);
+      addToRecentPRs(response.data);
     } catch (err) {
       setError(err.response?.data?.error || 'An error occurred');
     } finally {
@@ -102,6 +165,127 @@ function App() {
     );
   };
 
+  const renderHistoryDropdown = () => {
+    if (!showHistory) return null;
+
+    return (
+      <div className="history-dropdown">
+        <div className="history-header">
+          <h3>Recent PRs</h3>
+          {recentPRs.length > 0 && (
+            <button className="clear-history-btn" onClick={clearHistory} title="Clear history">
+              🗑️
+            </button>
+          )}
+        </div>
+        <div className="history-content">
+          {recentPRs.length === 0 ? (
+            <div className="no-history">
+              <span className="no-history-icon">📋</span>
+              <p>No recent PRs analyzed</p>
+            </div>
+          ) : (
+            <div className="history-list">
+              {recentPRs.map((pr, index) => (
+                <div key={index} className="history-item" onClick={() => loadFromHistory(pr.url)}>
+                  <div className="history-item-main">
+                    <div className="history-title">{pr.title}</div>
+                    <div className="history-meta">
+                      <span className="history-number">#{pr.number}</span>
+                      <span className="history-author">by @{pr.author}</span>
+                    </div>
+                  </div>
+                  <div className="history-status">
+                    {pr.needsApproval === 0 ? (
+                      <span className="history-badge approved">✅ Ready</span>
+                    ) : (
+                      <span className="history-badge pending">{pr.needsApproval} needed</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderSkeletonLoader = () => {
+    return (
+      <div className="skeleton-container">
+        {/* View Toggle Skeleton */}
+        <div className="skeleton-view-toggle">
+          <div className="skeleton-toggle-btn"></div>
+          <div className="skeleton-toggle-btn"></div>
+        </div>
+
+        {/* Progress Section Skeleton */}
+        <div className="skeleton-progress-section">
+          <div className="skeleton-progress-overview">
+            <div className="skeleton-progress-ring"></div>
+            <div className="skeleton-progress-info">
+              <div className="skeleton-title"></div>
+              <div className="skeleton-stats">
+                <div className="skeleton-stat">
+                  <div className="skeleton-stat-number"></div>
+                  <div className="skeleton-stat-label"></div>
+                </div>
+                <div className="skeleton-stat">
+                  <div className="skeleton-stat-number"></div>
+                  <div className="skeleton-stat-label"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Approval Groups Skeleton */}
+        <div className="skeleton-approval-section">
+          <div className="skeleton-section-title"></div>
+          {[1, 2, 3].map(i => (
+            <div key={i} className="skeleton-approval-group">
+              <div className="skeleton-group-header">
+                <div className="skeleton-group-title"></div>
+                <div className="skeleton-approved-by"></div>
+              </div>
+              <div className="skeleton-group-content">
+                <div className="skeleton-group-text"></div>
+                <div className="skeleton-users-grid">
+                  {[1, 2, 3, 4].map(j => (
+                    <div key={j} className="skeleton-user-card">
+                      <div className="skeleton-user-avatar"></div>
+                      <div className="skeleton-user-info">
+                        <div className="skeleton-user-name"></div>
+                        <div className="skeleton-user-username"></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Reviewers Section Skeleton */}
+        <div className="skeleton-reviewers-section">
+          <div className="skeleton-section-title"></div>
+          <div className="skeleton-users-grid">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="skeleton-user-card">
+                <div className="skeleton-user-avatar"></div>
+                <div className="skeleton-user-info">
+                  <div className="skeleton-user-name"></div>
+                  <div className="skeleton-user-username"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderUserCard = (user, isApproved = false) => {
     if (user.type === 'team') {
       return (
@@ -139,12 +323,21 @@ function App() {
       <header className="App-header">
         <div className="header-content">
           <div>
-            <h1>🔍 PR Approval Finder v3.0</h1>
+            <h1>🔍 PR Approval Finder v4.0</h1>
             <p>Find minimum required approvals for your Pull Request</p>
           </div>
-          <button className="theme-toggle" onClick={toggleDarkMode} title="Toggle theme">
-            {darkMode ? '☀️' : '🌙'}
-          </button>
+          <div className="header-controls">
+            <div className="history-container">
+              <button className="history-btn" onClick={toggleHistory} title="Recent PRs">
+                📋
+                {recentPRs.length > 0 && <span className="history-count">{recentPRs.length}</span>}
+              </button>
+              {renderHistoryDropdown()}
+            </div>
+            <button className="theme-toggle" onClick={toggleDarkMode} title="Toggle theme">
+              {darkMode ? '☀️' : '🌙'}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -197,8 +390,33 @@ function App() {
           </div>
         )}
 
-        {result && (
+        {loading && renderSkeletonLoader()}
+
+        {result && !loading && (
           <div className="results">
+            {/* PR Title Section */}
+            <div className="pr-title-section">
+              <div className="pr-title-container">
+                <div className="pr-title-main">
+                  <h2 className="pr-title">{result.prInfo.title}</h2>
+                  <div className="pr-meta">
+                    <span className="pr-number">#{result.prInfo.number}</span>
+                    <span className="pr-author">by @{result.prInfo.author}</span>
+                    <span className="pr-state" data-state={result.prInfo.state.toLowerCase()}>{result.prInfo.state}</span>
+                  </div>
+                </div>
+                <a 
+                  href={result.prInfo.url} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="pr-link-btn"
+                  title="Open PR in GitHub"
+                >
+                  🔗 View PR
+                </a>
+              </div>
+            </div>
+
             {/* View Toggle */}
             <div className="view-toggle">
               <button 
