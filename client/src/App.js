@@ -782,7 +782,7 @@ function App() {
         <div className='footer-content'>
           <div className='footer-left'>
             <div className='copyright' title='Assisted with Cursor AI'>
-              © 2025 <span className='author-name'>Aswin</span>
+              © 2025 Aswin
             </div>
           </div>
           <div className='footer-right'>
