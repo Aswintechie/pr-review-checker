@@ -139,27 +139,41 @@ jobs:
     
     - name: Run tests
       run: |
-        echo "Checking for tests..."
+        echo "🧪 Checking for test files..."
         
-        # Check for client test files
-        CLIENT_TESTS=$(find client/src -name "*.test.js" -o -name "*.test.jsx" -o -name "*.spec.js" -o -name "*.spec.jsx" 2>/dev/null | wc -l)
+        # Count test files in client
+        CLIENT_TESTS=0
+        if [ -d "client/src" ]; then
+          CLIENT_TESTS=$(find client/src -name "*.test.js" -o -name "*.test.jsx" -o -name "*.spec.js" -o -name "*.spec.jsx" 2>/dev/null | wc -l | tr -d ' ')
+        fi
+        
+        # Count test files in server
+        SERVER_TESTS=0
+        if [ -d "server" ]; then
+          SERVER_TESTS=$(find server -name "*.test.js" -o -name "*.spec.js" 2>/dev/null | wc -l | tr -d ' ')
+        fi
+        
+        echo "📊 Test files found:"
+        echo "  - Client: $CLIENT_TESTS test files"
+        echo "  - Server: $SERVER_TESTS test files"
+        
         if [ "$CLIENT_TESTS" -gt 0 ]; then
-          echo "Found $CLIENT_TESTS test files in client, running tests..."
+          echo "🏃 Running client tests..."
           cd client && npm test -- --watchAll=false --passWithNoTests
-        else
-          echo "No test files found in client/src"
+          cd ..
         fi
         
-        # Check for server test files
-        SERVER_TESTS=$(find server -name "*.test.js" -o -name "*.spec.js" 2>/dev/null | wc -l)
         if [ "$SERVER_TESTS" -gt 0 ]; then
-          echo "Found $SERVER_TESTS test files in server, running tests..."
+          echo "🏃 Running server tests..."
           cd server && npm test
-        else
-          echo "No test files found in server"
+          cd ..
         fi
         
-        echo "✅ Test check completed successfully"
+        if [ "$CLIENT_TESTS" -eq 0 ] && [ "$SERVER_TESTS" -eq 0 ]; then
+          echo "ℹ️ No test files found - this is expected for this project"
+        fi
+        
+        echo "✅ Test phase completed successfully"
     
     - name: Build project
       run: cd client && CI=false npm run build
