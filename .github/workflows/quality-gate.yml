@@ -1,0 +1,87 @@
+name: Quality Gate
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: Install root dependencies
+      run: npm ci
+    
+    - name: Install client dependencies
+      run: cd client && npm ci
+    
+    - name: Install server dependencies
+      run: cd server && npm ci
+    
+    - name: Check code formatting
+      run: npm run format:check
+    
+    - name: Run linting
+      run: npm run lint
+    
+    - name: Build client
+      run: cd client && CI=false npm run build
+    
+    - name: Run tests (if available)
+      run: |
+        echo "🧪 Checking for test files..."
+        
+        # Count test files in client
+        CLIENT_TESTS=0
+        if [ -d "client/src" ]; then
+          CLIENT_TESTS=$(find client/src -name "*.test.js" -o -name "*.test.jsx" -o -name "*.spec.js" -o -name "*.spec.jsx" 2>/dev/null | wc -l | tr -d ' ')
+        fi
+        
+        # Count test files in server
+        SERVER_TESTS=0
+        if [ -d "server" ]; then
+          SERVER_TESTS=$(find server -name "*.test.js" -o -name "*.spec.js" 2>/dev/null | wc -l | tr -d ' ')
+        fi
+        
+        echo "📊 Test files found:"
+        echo "  - Client: $CLIENT_TESTS test files"
+        echo "  - Server: $SERVER_TESTS test files"
+        
+        if [ "$CLIENT_TESTS" -gt 0 ]; then
+          echo "🏃 Running client tests..."
+          cd client && npm test -- --watchAll=false --passWithNoTests
+          cd ..
+        fi
+        
+        if [ "$SERVER_TESTS" -gt 0 ]; then
+          echo "🏃 Running server tests..."
+          cd server && npm test
+          cd ..
+        fi
+        
+        if [ "$CLIENT_TESTS" -eq 0 ] && [ "$SERVER_TESTS" -eq 0 ]; then
+          echo "ℹ️ No test files found - this is expected for this project"
+        fi
+        
+        echo "✅ Test phase completed successfully"
+    
+    - name: Check for security vulnerabilities
+      run: |
+        npm audit --audit-level=moderate
+        cd client && npm audit --audit-level=moderate
+        cd ../server && npm audit --audit-level=moderate 
