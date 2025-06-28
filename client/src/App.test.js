@@ -24,12 +24,12 @@ describe('App Component', () => {
 
   test('renders form elements', () => {
     render(<App />);
-    
+
     // Check for form inputs
     const urlInput = screen.getByLabelText(/GitHub PR URL/i);
     const tokenInput = screen.getByLabelText(/GitHub Token/i);
     const submitButton = screen.getByRole('button', { name: /Analyze PR/i });
-    
+
     expect(urlInput).toBeInTheDocument();
     expect(tokenInput).toBeInTheDocument();
     expect(submitButton).toBeInTheDocument();
@@ -37,7 +37,7 @@ describe('App Component', () => {
 
   test('form validation requires URL input', () => {
     render(<App />);
-    
+
     const urlInput = screen.getByLabelText(/GitHub PR URL/i);
     expect(urlInput).toHaveAttribute('required');
     expect(urlInput).toHaveAttribute('type', 'url');
@@ -45,37 +45,37 @@ describe('App Component', () => {
 
   test('theme toggle button is present', () => {
     render(<App />);
-    
+
     const themeButton = screen.getByTitle(/Choose theme/i);
     expect(themeButton).toBeInTheDocument();
   });
 
   test('history button is present', () => {
     render(<App />);
-    
+
     const historyButton = screen.getByTitle(/Recent PRs/i);
     expect(historyButton).toBeInTheDocument();
   });
 
   test('can type in URL input', () => {
     render(<App />);
-    
+
     const urlInput = screen.getByLabelText(/GitHub PR URL/i);
-    fireEvent.change(urlInput, { 
-      target: { value: 'https://github.com/owner/repo/pull/123' } 
+    fireEvent.change(urlInput, {
+      target: { value: 'https://github.com/owner/repo/pull/123' },
     });
-    
+
     expect(urlInput.value).toBe('https://github.com/owner/repo/pull/123');
   });
 
   test('can type in token input', () => {
     render(<App />);
-    
+
     const tokenInput = screen.getByLabelText(/GitHub Token/i);
-    fireEvent.change(tokenInput, { 
-      target: { value: 'ghp_test_token' } 
+    fireEvent.change(tokenInput, {
+      target: { value: 'ghp_test_token' },
     });
-    
+
     expect(tokenInput.value).toBe('ghp_test_token');
   });
 
@@ -83,34 +83,34 @@ describe('App Component', () => {
     const axios = require('axios');
     // Mock axios to return a promise that doesn't resolve immediately
     axios.post.mockImplementation(() => new Promise(() => {}));
-    
+
     render(<App />);
-    
+
     const urlInput = screen.getByLabelText(/GitHub PR URL/i);
     const submitButton = screen.getByRole('button', { name: /Analyze PR/i });
-    
+
     // Fill in required URL
-    fireEvent.change(urlInput, { 
-      target: { value: 'https://github.com/owner/repo/pull/123' } 
+    fireEvent.change(urlInput, {
+      target: { value: 'https://github.com/owner/repo/pull/123' },
     });
-    
+
     // Click submit
     fireEvent.click(submitButton);
-    
+
     // Check loading state
     await waitFor(() => {
       expect(screen.getByText(/Analyzing.../i)).toBeInTheDocument();
     });
-    
+
     expect(submitButton).toBeDisabled();
   });
 
   test('theme persistence works', () => {
     // Set a theme in localStorage
     localStorage.setItem('currentTheme', '3');
-    
+
     render(<App />);
-    
+
     // Check if body has the theme class
     expect(document.body.className).toContain('theme-3');
   });
@@ -127,16 +127,16 @@ describe('App Component', () => {
         needsApproval: 1,
       },
     ];
-    
+
     localStorage.setItem('recentPRs', JSON.stringify(mockPRs));
-    
+
     render(<App />);
-    
+
     const historyButton = screen.getByTitle(/Recent PRs/i);
     expect(historyButton).toBeInTheDocument();
-    
+
     // Check if history count is shown
     const historyCount = screen.getByText('1');
     expect(historyCount).toBeInTheDocument();
   });
-}); 
+});

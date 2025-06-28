@@ -32,10 +32,8 @@ describe('PR Approval Server', () => {
 
   describe('POST /api/pr-approvers', () => {
     test('should return 400 for missing PR URL', async () => {
-      const response = await request(app)
-        .post('/api/pr-approvers')
-        .send({});
-      
+      const response = await request(app).post('/api/pr-approvers').send({});
+
       expect(response.status).toBe(400);
       expect(response.body.error).toContain('PR URL is required');
     });
@@ -44,7 +42,7 @@ describe('PR Approval Server', () => {
       const response = await request(app)
         .post('/api/pr-approvers')
         .send({ prUrl: 'not-a-valid-url' });
-      
+
       expect(response.status).toBe(400);
       expect(response.body.error).toContain('Invalid GitHub PR URL format');
     });
@@ -53,7 +51,7 @@ describe('PR Approval Server', () => {
       const response = await request(app)
         .post('/api/pr-approvers')
         .send({ prUrl: 'https://gitlab.com/owner/repo/merge_requests/123' });
-      
+
       expect(response.status).toBe(400);
       expect(response.body.error).toContain('Invalid GitHub PR URL format');
     });
@@ -71,10 +69,7 @@ describe('PR Approval Server', () => {
         requested_teams: [],
       };
 
-      const mockFilesData = [
-        { filename: 'src/test.js' },
-        { filename: 'README.md' },
-      ];
+      const mockFilesData = [{ filename: 'src/test.js' }, { filename: 'README.md' }];
 
       const mockReviewsData = [
         {
@@ -93,30 +88,30 @@ describe('PR Approval Server', () => {
       };
 
       axios.get
-        .mockResolvedValueOnce({ 
+        .mockResolvedValueOnce({
           data: mockPRData,
           headers: {
             'x-ratelimit-limit': '5000',
             'x-ratelimit-remaining': '4999',
             'x-ratelimit-reset': '1640995200',
-          }
+          },
         }) // PR info
-        .mockResolvedValueOnce({ 
+        .mockResolvedValueOnce({
           data: mockFilesData,
           headers: {
             'x-ratelimit-limit': '5000',
             'x-ratelimit-remaining': '4998',
             'x-ratelimit-reset': '1640995200',
-          }
+          },
         }) // Files
         .mockResolvedValueOnce(mockCodeownersData) // CODEOWNERS
-        .mockResolvedValueOnce({ 
+        .mockResolvedValueOnce({
           data: mockReviewsData,
           headers: {
             'x-ratelimit-limit': '5000',
             'x-ratelimit-remaining': '4997',
             'x-ratelimit-reset': '1640995200',
-          }
+          },
         }) // Reviews
         .mockResolvedValue({ data: mockUserData }); // User details
 
@@ -138,7 +133,7 @@ describe('PR Approval Server', () => {
         status: 404,
         data: { message: 'Not Found' },
       };
-      
+
       axios.get.mockRejectedValueOnce(error);
 
       const response = await request(app)
@@ -160,7 +155,7 @@ describe('PR Approval Server', () => {
           'x-ratelimit-reset': '1640995200',
         },
       };
-      
+
       axios.get.mockRejectedValueOnce(error);
 
       const response = await request(app)
@@ -220,12 +215,10 @@ describe('PR Approval Server', () => {
         })
         .mockResolvedValue({ data: mockUserData });
 
-      const response = await request(app)
-        .post('/api/pr-approvers')
-        .send({ 
-          prUrl: 'https://github.com/owner/repo/pull/123',
-          githubToken: 'test-token'
-        });
+      const response = await request(app).post('/api/pr-approvers').send({
+        prUrl: 'https://github.com/owner/repo/pull/123',
+        githubToken: 'test-token',
+      });
 
       expect(response.body).toHaveProperty('rateLimitInfo');
       expect(response.body.rateLimitInfo.limit).toBe(5000);
@@ -243,13 +236,11 @@ describe('PR Approval Server', () => {
       ];
 
       for (const url of urls) {
-        const response = await request(app)
-          .post('/api/pr-approvers')
-          .send({ prUrl: url });
-        
+        const response = await request(app).post('/api/pr-approvers').send({ prUrl: url });
+
         // Should not return URL format error
         expect(response.body.error).not.toContain('Invalid GitHub PR URL format');
       }
     });
   });
-}); 
+});
