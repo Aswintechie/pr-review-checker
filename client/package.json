@@ -1,7 +1,9 @@
 {
   "name": "pr-approval-client",
-  "version": "4.0.0",
+  "version": "5.0.0",
   "private": true,
+  "author": "Aswin",
+  "license": "MIT",
   "dependencies": {
     "@testing-library/jest-dom": "^5.16.4",
     "@testing-library/react": "^13.3.0",
@@ -36,7 +38,5 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://localhost:3001",
-  "author": "Aswin",
-  "license": "MIT"
+  "proxy": "http://localhost:3001"
 } 

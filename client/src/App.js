@@ -1,5 +1,5 @@
 /**
- * PR Approval Finder v4.0
+ * PR Approval Finder v5.0
  * Copyright (c) 2025 Aswin
  * Licensed under MIT License
  */
@@ -15,15 +15,27 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [viewMode, setViewMode] = useState('basic'); // 'basic' or 'advanced'
-  const [darkMode, setDarkMode] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [recentPRs, setRecentPRs] = useState([]);
+  const [currentTheme, setCurrentTheme] = useState('light');
+  const [showThemeDropdown, setShowThemeDropdown] = useState(false);
 
-  // Load dark mode preference and recent PRs from localStorage
+  const themes = [
+    { id: 'light', name: '☀️ Light', description: 'Clean and bright' },
+    { id: 'dark', name: '🌙 Dark', description: 'Easy on the eyes' },
+    { id: 'ocean', name: '🌊 Ocean', description: 'Deep blue vibes' },
+    { id: 'forest', name: '🌲 Forest', description: 'Natural green tones' },
+    { id: 'sunset', name: '🌅 Sunset', description: 'Warm orange hues' },
+    { id: 'midnight', name: '🌌 Midnight', description: 'Deep purple night' },
+    { id: 'arctic', name: '❄️ Arctic', description: 'Cool blue-white' },
+    { id: 'cherry', name: '🌸 Cherry', description: 'Soft pink accents' }
+  ];
+
+  // Load theme preference and recent PRs from localStorage
   useEffect(() => {
-    const savedDarkMode = localStorage.getItem('darkMode') === 'true';
-    setDarkMode(savedDarkMode);
-    document.body.classList.toggle('dark-mode', savedDarkMode);
+    const savedTheme = localStorage.getItem('currentTheme') || 'light';
+    setCurrentTheme(savedTheme);
+    document.body.className = `theme-${savedTheme}`;
 
     // Load recent PRs from localStorage
     const savedPRs = localStorage.getItem('recentPRs');
@@ -36,25 +48,32 @@ function App() {
     }
   }, []);
 
-  // Close history dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (showHistory && !event.target.closest('.history-container')) {
         setShowHistory(false);
       }
+      if (showThemeDropdown && !event.target.closest('.theme-container')) {
+        setShowThemeDropdown(false);
+      }
     };
 
-    if (showHistory) {
+    if (showHistory || showThemeDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showHistory]);
+  }, [showHistory, showThemeDropdown]);
 
-  const toggleDarkMode = () => {
-    const newDarkMode = !darkMode;
-    setDarkMode(newDarkMode);
-    localStorage.setItem('darkMode', newDarkMode.toString());
-    document.body.classList.toggle('dark-mode', newDarkMode);
+  const changeTheme = (themeId) => {
+    setCurrentTheme(themeId);
+    localStorage.setItem('currentTheme', themeId);
+    document.body.className = `theme-${themeId}`;
+    setShowThemeDropdown(false);
+  };
+
+  const toggleThemeDropdown = () => {
+    setShowThemeDropdown(!showThemeDropdown);
   };
 
   const toggleHistory = () => {
@@ -325,12 +344,42 @@ function App() {
     );
   };
 
+  const renderThemeDropdown = () => {
+    if (!showThemeDropdown) return null;
+
+    return (
+      <div className="theme-dropdown">
+        <div className="theme-header">
+          <h3>🎨 Choose Theme</h3>
+        </div>
+        <div className="theme-content">
+          <div className="theme-grid">
+            {themes.map((theme) => (
+              <div 
+                key={theme.id} 
+                className={`theme-option ${currentTheme === theme.id ? 'active' : ''}`}
+                onClick={() => changeTheme(theme.id)}
+              >
+                <div className={`theme-preview theme-${theme.id}`}></div>
+                <div className="theme-info">
+                  <div className="theme-name">{theme.name}</div>
+                  <div className="theme-description">{theme.description}</div>
+                </div>
+                {currentTheme === theme.id && <div className="theme-check">✓</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className={`App ${darkMode ? 'dark' : 'light'}`}>
+    <div className={`App theme-${currentTheme}`}>
       <header className="App-header">
         <div className="header-content">
           <div>
-            <h1>🔍 PR Approval Finder v4.0</h1>
+            <h1>🔍 PR Approval Finder v5.0</h1>
             <p>Find minimum required approvals for your Pull Request</p>
           </div>
           <div className="header-controls">
@@ -348,16 +397,19 @@ function App() {
               </button>
               {renderHistoryDropdown()}
             </div>
-            <button 
-              className="theme-toggle" 
-              onClick={toggleDarkMode} 
-              title="Toggle theme"
-              type="button"
-              data-1p-ignore
-              autoComplete="off"
-            >
-              {darkMode ? '☀️' : '🌙'}
-            </button>
+            <div className="theme-container">
+              <button 
+                className="theme-toggle" 
+                onClick={toggleThemeDropdown} 
+                title="Choose theme"
+                type="button"
+                data-1p-ignore
+                autoComplete="off"
+              >
+                🎨
+              </button>
+              {renderThemeDropdown()}
+            </div>
           </div>
         </div>
       </header>

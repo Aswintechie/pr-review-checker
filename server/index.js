@@ -1,5 +1,5 @@
 /**
- * PR Approval Finder v4.0 - Server
+ * PR Approval Finder v5.0 - Server
  * Copyright (c) 2025 Aswin
  * Licensed under MIT License
  */
