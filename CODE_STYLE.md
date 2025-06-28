@@ -88,9 +88,10 @@ The project includes automated pre-commit hooks that run before each commit:
 - **Both client and server**: Checks run on React and Node.js code
 
 ### How It Works
-1. **Automatic**: Runs every time you `git commit`
-2. **Blocking**: Commit fails if formatting or linting errors exist
-3. **Fast**: Only checks staged files for efficiency
+1. **Auto-format**: Automatically formats code with Prettier
+2. **Lint check**: Validates code quality with ESLint
+3. **Smart blocking**: Only blocks commits with unfixable issues
+4. **Fast**: Efficient processing of staged files
 
 ### Setup (Already Done)
 The pre-commit hooks are already configured using Husky:
@@ -104,21 +105,36 @@ The pre-commit hooks are already configured using Husky:
 npm run pre-commit
 ```
 
-### Troubleshooting
-If a commit fails:
-```bash
-# Fix formatting issues
-npm run format
+### What Gets Auto-Fixed
+✅ **Formatting issues**: Prettier automatically fixes all formatting  
+✅ **Auto-fixable lint issues**: ESLint fixes simple problems  
+❌ **Unfixable lint issues**: Manual intervention required  
 
-# Fix linting issues  
+### Troubleshooting
+Pre-commit hooks automatically fix most issues, but if a commit still fails:
+```bash
+# Check what issues remain
+npm run lint
+
+# Fix remaining linting issues manually
 npm run lint:fix
 
-# Or fix both at once
-npm run code:fix
-
-# Then commit again
+# Then commit again (formatting is already fixed)
 git add .
 git commit -m "your message"
+```
+
+### Example Workflow
+```bash
+# 1. Make changes with poor formatting
+echo "const x={a:1,b:2};" >> file.js
+
+# 2. Commit - auto-formatting happens automatically
+git add .
+git commit -m "Add feature"
+
+# 3. Code is automatically formatted and committed!
+# Result: const x = { a: 1, b: 2 };
 ```
 
 ## Benefits
