@@ -68,8 +68,10 @@ jobs:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           working-directory: ./client
-          vercel-args: '--prod --yes'
+          vercel-args: '--prod'
           github-comment: false
+        env:
+          VERCEL_NON_INTERACTIVE: 1
 
       # Option 2: Deploy to Netlify
       - name: 🚀 Deploy to Netlify
