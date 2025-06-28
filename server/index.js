@@ -1,3 +1,9 @@
+/**
+ * PR Approval Finder v3.0 - Server
+ * Copyright (c) 2025 Aswin
+ * Licensed under MIT License
+ */
+
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');

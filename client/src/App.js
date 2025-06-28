@@ -1,3 +1,9 @@
+/**
+ * PR Approval Finder v3.0
+ * Copyright (c) 2025 Aswin
+ * Licensed under MIT License
+ */
+
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
@@ -395,6 +401,15 @@ function App() {
           </div>
         )}
       </main>
+
+      {/* Copyright Footer */}
+      <footer className="app-footer">
+        <div className="footer-content">
+          <div className="copyright" title="Assisted with Cursor AI">
+            © 2025 <span className="author-name">Aswin</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
