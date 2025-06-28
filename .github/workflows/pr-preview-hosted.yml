@@ -1,9 +1,11 @@
 name: 🚀 PR Preview (GitHub-Hosted)
 
 on:
-  status:
+  workflow_run:
+    workflows: ["CI/CD Pipeline"]
+    types: [completed]
   pull_request:
-    types: [opened, synchronize, reopened, closed]
+    types: [closed]
     branches: [main, develop]
   workflow_dispatch:
     inputs:
@@ -30,7 +32,7 @@ jobs:
   deploy-preview:
     name: 🌐 Deploy PR Preview
     runs-on: ubuntu-latest
-    if: github.event_name == 'status' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
+    if: (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || github.event_name == 'workflow_dispatch' || github.event.action == 'closed'
     permissions:
       contents: write
       pages: write
@@ -39,30 +41,23 @@ jobs:
       issues: write
     
     steps:
-      - name: 🔍 Check CI Status and Get PR Information
+      - name: 🔍 Get PR Information
         id: pr-info
         run: |
-          if [ "${{ github.event_name }}" = "status" ]; then
-            echo "Status event triggered!"
-            echo "Status context: ${{ github.event.context }}"
-            echo "Status state: ${{ github.event.state }}"
-            echo "Commit SHA: ${{ github.event.sha }}"
-            
-            # Only proceed for our CI success status
-            if [ "${{ github.event.context }}" != "ci/preview-ready" ] || [ "${{ github.event.state }}" != "success" ]; then
-              echo "Not our CI success status, skipping"
-              echo "should_deploy=false" >> $GITHUB_OUTPUT
-              exit 0
-            fi
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            echo "✅ CI workflow completed successfully!"
+            echo "Workflow: ${{ github.event.workflow_run.name }}"
+            echo "Conclusion: ${{ github.event.workflow_run.conclusion }}"
+            echo "Head SHA: ${{ github.event.workflow_run.head_sha }}"
             
             # Find the PR associated with this commit
             PRS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              "https://api.github.com/search/issues?q=repo:${{ github.repository }}+type:pr+state:open+sha:${{ github.event.sha }}")
+              "https://api.github.com/search/issues?q=repo:${{ github.repository }}+type:pr+state:open+sha:${{ github.event.workflow_run.head_sha }}")
             
             PR_NUMBER=$(echo "$PRS" | jq -r '.items[0].number // empty')
             
             if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ]; then
-              echo "No open PR found for commit ${{ github.event.sha }}, skipping"
+              echo "No open PR found for commit ${{ github.event.workflow_run.head_sha }}, skipping"
               echo "should_deploy=false" >> $GITHUB_OUTPUT
               exit 0
             fi
@@ -73,43 +68,7 @@ jobs:
             
             echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
             echo "head_ref=$(echo "$PR_DATA" | jq -r '.head.ref')" >> $GITHUB_OUTPUT
-            echo "head_sha=${{ github.event.sha }}" >> $GITHUB_OUTPUT
-            echo "action=deploy" >> $GITHUB_OUTPUT
-            echo "should_deploy=true" >> $GITHUB_OUTPUT
-          elif [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "Pull request event: ${{ github.event.action }}"
-            
-            if [ "${{ github.event.action }}" = "closed" ]; then
-              echo "pr_number=${{ github.event.number }}" >> $GITHUB_OUTPUT
-              echo "head_ref=${{ github.head_ref }}" >> $GITHUB_OUTPUT
-              echo "head_sha=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
-              echo "action=${{ github.event.action }}" >> $GITHUB_OUTPUT
-              echo "should_deploy=false" >> $GITHUB_OUTPUT
-              exit 0
-            fi
-            
-            # For PR events, check if CI has completed successfully
-            echo "Checking CI status for commit: ${{ github.event.pull_request.head.sha }}"
-            
-            # Wait a bit for CI to potentially complete
-            sleep 60
-            
-            # Check for our CI success status
-            STATUSES=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              "https://api.github.com/repos/${{ github.repository }}/commits/${{ github.event.pull_request.head.sha }}/statuses")
-            
-            CI_SUCCESS=$(echo "$STATUSES" | jq -r '.[] | select(.context == "ci/preview-ready" and .state == "success") | .state')
-            
-            if [ "$CI_SUCCESS" != "success" ]; then
-              echo "CI has not completed successfully yet, skipping deployment"
-              echo "should_deploy=false" >> $GITHUB_OUTPUT
-              exit 0
-            fi
-            
-            echo "✅ CI success status found! Proceeding with deployment..."
-            echo "pr_number=${{ github.event.number }}" >> $GITHUB_OUTPUT
-            echo "head_ref=${{ github.head_ref }}" >> $GITHUB_OUTPUT
-            echo "head_sha=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+            echo "head_sha=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
             echo "action=deploy" >> $GITHUB_OUTPUT
             echo "should_deploy=true" >> $GITHUB_OUTPUT
           elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
@@ -134,6 +93,13 @@ jobs:
             echo "head_sha=$HEAD_SHA" >> $GITHUB_OUTPUT
             echo "action=deploy" >> $GITHUB_OUTPUT
             echo "should_deploy=true" >> $GITHUB_OUTPUT
+          else
+            # PR closed event
+            echo "pr_number=${{ github.event.number }}" >> $GITHUB_OUTPUT
+            echo "head_ref=${{ github.head_ref }}" >> $GITHUB_OUTPUT
+            echo "head_sha=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+            echo "action=${{ github.event.action }}" >> $GITHUB_OUTPUT
+            echo "should_deploy=false" >> $GITHUB_OUTPUT
           fi
 
       - name: 📥 Checkout Code
