@@ -14,6 +14,7 @@ function App() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [rateLimitInfo, setRateLimitInfo] = useState(null);
   const [viewMode, setViewMode] = useState('basic'); // 'basic' or 'advanced'
   const [showHistory, setShowHistory] = useState(false);
   const [recentPRs, setRecentPRs] = useState([]);
@@ -116,6 +117,7 @@ function App() {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setRateLimitInfo(null);
     setResult(null);
 
     try {
@@ -128,6 +130,7 @@ function App() {
       addToRecentPRs(response.data);
     } catch (err) {
       setError(err.response?.data?.error || 'An error occurred');
+      setRateLimitInfo(err.response?.data?.rateLimitInfo || null);
     } finally {
       setLoading(false);
     }
@@ -458,8 +461,39 @@ function App() {
 
         {error && (
           <div className="error-message">
-            <span className="error-icon">⚠️</span>
-            <strong>Error:</strong> {error}
+            <div className="error-content">
+              <span className="error-icon">⚠️</span>
+              <div className="error-text">
+                <strong>Error:</strong> {error}
+              </div>
+            </div>
+            {rateLimitInfo && (
+              <div className="rate-limit-info">
+                <div className="rate-limit-header">
+                  <span className="rate-limit-icon">⏱️</span>
+                  <strong>Rate Limit Details:</strong>
+                </div>
+                <div className="rate-limit-details">
+                  <div className="rate-limit-item">
+                    <span className="rate-limit-label">Remaining:</span>
+                    <span className="rate-limit-value">{rateLimitInfo.remaining}/{rateLimitInfo.limit}</span>
+                  </div>
+                  <div className="rate-limit-item">
+                    <span className="rate-limit-label">Resets in:</span>
+                    <span className="rate-limit-value">
+                      {rateLimitInfo.minutesUntilReset} minute{rateLimitInfo.minutesUntilReset !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <div className="rate-limit-item">
+                    <span className="rate-limit-label">Reset time:</span>
+                    <span className="rate-limit-value">{rateLimitInfo.resetTimeFormatted}</span>
+                  </div>
+                </div>
+                <div className="rate-limit-tip">
+                  💡 <strong>Tip:</strong> Add a GitHub token above for 5,000 requests/hour instead of 60/hour
+                </div>
+              </div>
+            )}
           </div>
         )}
 

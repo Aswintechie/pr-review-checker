@@ -371,11 +371,47 @@ app.post('/api/pr-approvers', async (req, res) => {
     console.error('Error details:', errorDetails);
     
     let userFriendlyError = 'Failed to fetch PR information';
+    let rateLimitInfo = null;
     
     if (error.response?.status === 401) {
       userFriendlyError = 'GitHub authentication failed. Please check your token.';
     } else if (error.response?.status === 403) {
-      userFriendlyError = 'GitHub API rate limit exceeded or insufficient permissions. Try adding a GitHub token.';
+      // Extract rate limit information from headers
+      const headers = error.response.headers;
+      const remaining = headers['x-ratelimit-remaining'];
+      const resetTimestamp = headers['x-ratelimit-reset'];
+      const limit = headers['x-ratelimit-limit'];
+      
+      if (remaining !== undefined && resetTimestamp) {
+        const resetTime = new Date(parseInt(resetTimestamp) * 1000);
+        const now = new Date();
+        const minutesUntilReset = Math.ceil((resetTime - now) / (1000 * 60));
+        
+        rateLimitInfo = {
+          remaining: parseInt(remaining),
+          limit: parseInt(limit),
+          resetTime: resetTime.toISOString(),
+          resetTimestamp: parseInt(resetTimestamp),
+          minutesUntilReset: Math.max(0, minutesUntilReset),
+          resetTimeFormatted: resetTime.toLocaleString('en-US', {
+            weekday: 'short',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZoneName: 'short'
+          })
+        };
+        
+        if (minutesUntilReset > 0) {
+          userFriendlyError = `GitHub API rate limit exceeded (${remaining}/${limit} remaining). Rate limit resets in ${minutesUntilReset} minute${minutesUntilReset !== 1 ? 's' : ''} at ${rateLimitInfo.resetTimeFormatted}. Try adding a GitHub token for higher limits.`;
+        } else {
+          userFriendlyError = 'GitHub API rate limit exceeded. Try adding a GitHub token for higher limits.';
+        }
+      } else {
+        userFriendlyError = 'GitHub API rate limit exceeded or insufficient permissions. Try adding a GitHub token.';
+      }
     } else if (error.response?.status === 404) {
       userFriendlyError = 'PR not found. Please check the URL and ensure the repository is accessible.';
     } else if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
@@ -385,6 +421,7 @@ app.post('/api/pr-approvers', async (req, res) => {
     res.status(500).json({ 
       error: userFriendlyError,
       details: error.response?.data?.message || error.message,
+      rateLimitInfo: rateLimitInfo,
       debug: errorDetails
     });
   }

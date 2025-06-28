@@ -608,10 +608,73 @@ body {
   border-radius: 12px;
   border: 1px solid var(--error);
   margin-bottom: 2rem;
+  animation: slideIn 0.3s ease-out;
+}
+
+.error-content {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  animation: slideIn 0.3s ease-out;
+  margin-bottom: 0.5rem;
+}
+
+.error-text {
+  flex: 1;
+}
+
+.rate-limit-info {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.rate-limit-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.rate-limit-icon {
+  font-size: 1.1rem;
+}
+
+.rate-limit-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.rate-limit-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.rate-limit-label {
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.rate-limit-value {
+  font-weight: 600;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.rate-limit-tip {
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  border-left: 3px solid var(--warning);
 }
 
 @keyframes slideIn {
@@ -1395,6 +1458,17 @@ section h2 {
   .cloudflare-badge {
     font-size: 0.75rem;
     padding: 0.2rem 0.6rem;
+  }
+  
+  .rate-limit-details {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  
+  .rate-limit-item {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.25rem;
   }
 }
 
