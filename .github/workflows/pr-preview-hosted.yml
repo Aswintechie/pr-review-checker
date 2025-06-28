@@ -49,7 +49,7 @@ jobs:
 
       # Option 1: Deploy to Vercel (Primary)
       - name: 🚀 Deploy to Vercel
-        if: secrets.VERCEL_TOKEN != ''
+        if: ${{ secrets.VERCEL_TOKEN != '' }}
         uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
@@ -62,7 +62,7 @@ jobs:
 
       # Option 2: Deploy to Netlify
       - name: 🚀 Deploy to Netlify
-        if: vars.NETLIFY_AUTH_TOKEN != ''
+        if: ${{ secrets.NETLIFY_AUTH_TOKEN != '' }}
         uses: nwtgck/actions-netlify@v3.0
         with:
           publish-dir: './client/build'
@@ -76,7 +76,7 @@ jobs:
 
       # Option 3: Deploy to GitHub Pages (Fallback)
       - name: 🚀 Deploy to GitHub Pages
-        if: secrets.VERCEL_TOKEN == '' && secrets.NETLIFY_AUTH_TOKEN == '' && vars.AWS_S3_BUCKET == '' && vars.FIREBASE_PROJECT_ID == ''
+        if: ${{ secrets.VERCEL_TOKEN == '' && secrets.NETLIFY_AUTH_TOKEN == '' && vars.AWS_S3_BUCKET == '' && vars.FIREBASE_PROJECT_ID == '' }}
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -85,7 +85,7 @@ jobs:
 
       # Option 4: Deploy to AWS S3 + CloudFront
       - name: 🚀 Deploy to AWS S3
-        if: vars.AWS_S3_BUCKET != ''
+        if: ${{ vars.AWS_S3_BUCKET != '' }}
         run: |
           # Install AWS CLI
           curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
@@ -106,7 +106,7 @@ jobs:
 
       # Option 5: Deploy to Firebase Hosting
       - name: 🚀 Deploy to Firebase
-        if: vars.FIREBASE_PROJECT_ID != ''
+        if: ${{ vars.FIREBASE_PROJECT_ID != '' }}
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
@@ -210,7 +210,7 @@ jobs:
     
     steps:
       - name: 🧹 Cleanup Vercel Deployment
-        if: secrets.VERCEL_TOKEN != ''
+        if: ${{ secrets.VERCEL_TOKEN != '' }}
         run: |
           # Install Vercel CLI
           npm install -g vercel
@@ -219,7 +219,7 @@ jobs:
           vercel list --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }} | grep "pr-${{ github.event.number }}" | awk '{print $1}' | xargs -I {} vercel remove {} --yes --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: 🧹 Cleanup AWS S3 Deployment
-        if: vars.AWS_S3_BUCKET != ''
+        if: ${{ vars.AWS_S3_BUCKET != '' }}
         run: |
           curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
           unzip awscliv2.zip
