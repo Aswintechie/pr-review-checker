@@ -150,7 +150,12 @@ jobs:
             echo "head_sha=$HEAD_SHA" >> $GITHUB_OUTPUT
             echo "action=deploy" >> $GITHUB_OUTPUT
             echo "should_deploy=true" >> $GITHUB_OUTPUT
-            echo "trigger_source=manual" >> $GITHUB_OUTPUT
+            TRIGGER_SOURCE="${{ inputs.trigger_source }}"
+            if [ "$TRIGGER_SOURCE" = "ci_success" ]; then
+              echo "trigger_source=ci_triggered" >> $GITHUB_OUTPUT
+            else
+              echo "trigger_source=manual" >> $GITHUB_OUTPUT
+            fi
           fi
 
       - name: 📥 Checkout Code
@@ -335,9 +340,11 @@ jobs:
             
             const triggerSource = '${{ steps.pr-info.outputs.trigger_source }}';
             const triggerEmoji = triggerSource === 'workflow_run' ? '⚡' : 
-                               triggerSource === 'pr_ci_success' ? '🔄' : '🚀';
+                               triggerSource === 'pr_ci_success' ? '🔄' : 
+                               triggerSource === 'ci_triggered' ? '🎯' : '🚀';
             const triggerText = triggerSource === 'workflow_run' ? 'Triggered instantly after CI completion' :
-                              triggerSource === 'pr_ci_success' ? 'Triggered after CI status verification' : 'Manual trigger';
+                              triggerSource === 'pr_ci_success' ? 'Triggered after CI status verification' : 
+                              triggerSource === 'ci_triggered' ? 'Triggered directly by CI workflow completion' : 'Manual trigger';
             
             const comment = `## 🚀 Preview Deployment Ready!
             
