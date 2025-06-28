@@ -273,8 +273,20 @@ jobs:
           # Install Vercel CLI
           npm install -g vercel
           
-          # List and delete deployment (more robust cleanup)
-          vercel list --token=${{ secrets.VERCEL_TOKEN }} | grep "pr-${{ github.event.number }}" | awk '{print $1}' | xargs -I {} vercel remove {} --yes --token=${{ secrets.VERCEL_TOKEN }} || echo "No deployments found to clean up"
+          # Get branch name and construct deployment URL pattern
+          BRANCH_NAME=$(echo ${{ github.head_ref }} | sed 's/[^a-zA-Z0-9-]/-/g')
+          REPO_NAME=$(echo ${{ github.repository }} | cut -d'/' -f2)
+          
+          # List deployments and find ones matching this branch
+          echo "Looking for deployments matching branch: $BRANCH_NAME"
+          vercel list --token=${{ secrets.VERCEL_TOKEN }} | grep -E "${REPO_NAME}.*${BRANCH_NAME}" | awk '{print $1}' | while read deployment; do
+            if [ ! -z "$deployment" ]; then
+              echo "Removing deployment: $deployment"
+              vercel remove "$deployment" --yes --token=${{ secrets.VERCEL_TOKEN }} || echo "Failed to remove $deployment"
+            fi
+          done
+          
+          echo "Vercel cleanup completed"
 
       - name: 🧹 Cleanup AWS S3 Deployment
         if: steps.cleanup-check.outputs.has_aws == 'true'
