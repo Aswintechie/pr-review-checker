@@ -1254,6 +1254,8 @@ section h2 {
 .copyright {
   color: rgba(255, 255, 255, 0.8);
   font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
