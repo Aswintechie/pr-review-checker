@@ -4,8 +4,9 @@ on:
   workflow_run:
     workflows: ["CI/CD Pipeline"]
     types: [completed]
+    branches: [main, develop]
   pull_request:
-    types: [closed]
+    types: [opened, synchronize, reopened, closed]
     branches: [main, develop]
   workflow_dispatch:
     inputs:
@@ -32,7 +33,7 @@ jobs:
   deploy-preview:
     name: 🌐 Deploy PR Preview
     runs-on: ubuntu-latest
-    if: (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || github.event_name == 'workflow_dispatch' || github.event.action == 'closed'
+    if: github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
     permissions:
       contents: write
       pages: write
@@ -41,14 +42,24 @@ jobs:
       issues: write
     
     steps:
-      - name: 🔍 Get PR Information
+      - name: 🔍 Get PR Information and Check CI Status
         id: pr-info
         run: |
           if [ "${{ github.event_name }}" = "workflow_run" ]; then
-            echo "✅ CI workflow completed successfully!"
+            echo "🔄 Workflow run event triggered!"
             echo "Workflow: ${{ github.event.workflow_run.name }}"
             echo "Conclusion: ${{ github.event.workflow_run.conclusion }}"
             echo "Head SHA: ${{ github.event.workflow_run.head_sha }}"
+            echo "Head Branch: ${{ github.event.workflow_run.head_branch }}"
+            
+            # Only proceed if CI completed successfully
+            if [ "${{ github.event.workflow_run.conclusion }}" != "success" ]; then
+              echo "❌ CI workflow did not complete successfully, skipping deployment"
+              echo "should_deploy=false" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+            
+            echo "✅ CI workflow completed successfully!"
             
             # Find the PR associated with this commit
             PRS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
@@ -71,6 +82,52 @@ jobs:
             echo "head_sha=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
             echo "action=deploy" >> $GITHUB_OUTPUT
             echo "should_deploy=true" >> $GITHUB_OUTPUT
+            echo "trigger_source=workflow_run" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "🔄 Pull request event: ${{ github.event.action }}"
+            
+            if [ "${{ github.event.action }}" = "closed" ]; then
+              echo "pr_number=${{ github.event.number }}" >> $GITHUB_OUTPUT
+              echo "head_ref=${{ github.head_ref }}" >> $GITHUB_OUTPUT
+              echo "head_sha=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+              echo "action=${{ github.event.action }}" >> $GITHUB_OUTPUT
+              echo "should_deploy=false" >> $GITHUB_OUTPUT
+              echo "trigger_source=pr_closed" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+            
+            # For open/sync/reopen PR events, check if CI has completed successfully
+            echo "🔍 Checking CI status for commit: ${{ github.event.pull_request.head.sha }}"
+            
+            # Check CI workflow runs for this commit
+            RUNS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/${{ github.repository }}/actions/runs?head_sha=${{ github.event.pull_request.head.sha }}&workflow_id=ci.yml&per_page=1")
+            
+            CI_CONCLUSION=$(echo "$RUNS" | jq -r '.workflow_runs[0].conclusion // empty')
+            CI_STATUS=$(echo "$RUNS" | jq -r '.workflow_runs[0].status // empty')
+            
+            echo "CI Status: $CI_STATUS"
+            echo "CI Conclusion: $CI_CONCLUSION"
+            
+            if [ "$CI_STATUS" = "in_progress" ] || [ "$CI_STATUS" = "queued" ]; then
+              echo "⏳ CI is still running, skipping deployment for now"
+              echo "should_deploy=false" >> $GITHUB_OUTPUT
+              echo "trigger_source=pr_ci_pending" >> $GITHUB_OUTPUT
+              exit 0
+            elif [ "$CI_CONCLUSION" != "success" ]; then
+              echo "❌ CI has not completed successfully, skipping deployment"
+              echo "should_deploy=false" >> $GITHUB_OUTPUT
+              echo "trigger_source=pr_ci_failed" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+            
+            echo "✅ CI completed successfully! Proceeding with deployment..."
+            echo "pr_number=${{ github.event.number }}" >> $GITHUB_OUTPUT
+            echo "head_ref=${{ github.head_ref }}" >> $GITHUB_OUTPUT
+            echo "head_sha=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+            echo "action=deploy" >> $GITHUB_OUTPUT
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+            echo "trigger_source=pr_ci_success" >> $GITHUB_OUTPUT
           elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "Workflow dispatch triggered by: ${{ inputs.trigger_source }}"
             echo "PR Number: ${{ inputs.pr_number }}"
@@ -93,13 +150,7 @@ jobs:
             echo "head_sha=$HEAD_SHA" >> $GITHUB_OUTPUT
             echo "action=deploy" >> $GITHUB_OUTPUT
             echo "should_deploy=true" >> $GITHUB_OUTPUT
-          else
-            # PR closed event
-            echo "pr_number=${{ github.event.number }}" >> $GITHUB_OUTPUT
-            echo "head_ref=${{ github.head_ref }}" >> $GITHUB_OUTPUT
-            echo "head_sha=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
-            echo "action=${{ github.event.action }}" >> $GITHUB_OUTPUT
-            echo "should_deploy=false" >> $GITHUB_OUTPUT
+            echo "trigger_source=manual" >> $GITHUB_OUTPUT
           fi
 
       - name: 📥 Checkout Code
@@ -282,6 +333,12 @@ jobs:
             const headRef = '${{ steps.pr-info.outputs.head_ref }}';
             const headSha = '${{ steps.pr-info.outputs.head_sha }}';
             
+            const triggerSource = '${{ steps.pr-info.outputs.trigger_source }}';
+            const triggerEmoji = triggerSource === 'workflow_run' ? '⚡' : 
+                               triggerSource === 'pr_ci_success' ? '🔄' : '🚀';
+            const triggerText = triggerSource === 'workflow_run' ? 'Triggered instantly after CI completion' :
+                              triggerSource === 'pr_ci_success' ? 'Triggered after CI status verification' : 'Manual trigger';
+            
             const comment = `## 🚀 Preview Deployment Ready!
             
             ✅ **CI Tests Passed** - Your PR has been successfully deployed after passing all integration tests!
@@ -293,6 +350,7 @@ jobs:
             - **PR Number**: #${prNumber}
             - **Branch**: \`${headRef}\`
             - **Commit**: \`${headSha}\`
+            - **Trigger**: ${triggerEmoji} ${triggerText}
             - **Deployment**: GitHub-hosted runner (after CI success)
             
             ### 🧪 Test Your Changes
