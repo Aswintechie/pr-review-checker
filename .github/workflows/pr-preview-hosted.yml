@@ -63,15 +63,19 @@ jobs:
       - name: 🚀 Deploy to Vercel
         if: steps.deployment-check.outputs.has_vercel == 'true'
         id: vercel-deployment
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          working-directory: ./client
-          vercel-args: '--prod'
-          github-comment: false
+        run: |
+          # Install Vercel CLI
+          npm install -g vercel
+          
+          # Deploy to Vercel with auto-confirm
+          cd client
+          echo "y" | vercel --token=${{ secrets.VERCEL_TOKEN }} --prod --confirm
+          
+          # Get the deployment URL
+          DEPLOYMENT_URL=$(vercel ls --token=${{ secrets.VERCEL_TOKEN }} | head -2 | tail -1 | awk '{print $2}')
+          echo "preview-url=https://$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
         env:
-          VERCEL_NON_INTERACTIVE: 1
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
       # Option 2: Deploy to Netlify
       - name: 🚀 Deploy to Netlify
