@@ -47,9 +47,21 @@ jobs:
         run: |
           cd client && npm run build && cd ..
 
+      # Check deployment options
+      - name: 🔍 Check Deployment Options
+        id: deployment-check
+        run: |
+          echo "has_vercel=${{ secrets.VERCEL_TOKEN != '' }}" >> $GITHUB_OUTPUT
+          echo "has_netlify=${{ secrets.NETLIFY_AUTH_TOKEN != '' }}" >> $GITHUB_OUTPUT
+          echo "has_aws=${{ vars.AWS_S3_BUCKET != '' }}" >> $GITHUB_OUTPUT
+          echo "has_firebase=${{ vars.FIREBASE_PROJECT_ID != '' }}" >> $GITHUB_OUTPUT
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+
       # Option 1: Deploy to Vercel (Primary)
       - name: 🚀 Deploy to Vercel
-        if: ${{ secrets.VERCEL_TOKEN }}
+        if: steps.deployment-check.outputs.has_vercel == 'true'
         uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
@@ -62,7 +74,7 @@ jobs:
 
       # Option 2: Deploy to Netlify
       - name: 🚀 Deploy to Netlify
-        if: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        if: steps.deployment-check.outputs.has_netlify == 'true'
         uses: nwtgck/actions-netlify@v3.0
         with:
           publish-dir: './client/build'
@@ -76,7 +88,7 @@ jobs:
 
       # Option 3: Deploy to GitHub Pages (Fallback)
       - name: 🚀 Deploy to GitHub Pages
-        if: ${{ !secrets.VERCEL_TOKEN && !secrets.NETLIFY_AUTH_TOKEN && !vars.AWS_S3_BUCKET && !vars.FIREBASE_PROJECT_ID }}
+        if: steps.deployment-check.outputs.has_vercel == 'false' && steps.deployment-check.outputs.has_netlify == 'false' && steps.deployment-check.outputs.has_aws == 'false' && steps.deployment-check.outputs.has_firebase == 'false'
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -85,7 +97,7 @@ jobs:
 
       # Option 4: Deploy to AWS S3 + CloudFront
       - name: 🚀 Deploy to AWS S3
-        if: ${{ vars.AWS_S3_BUCKET }}
+        if: steps.deployment-check.outputs.has_aws == 'true'
         run: |
           # Install AWS CLI
           curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
@@ -106,7 +118,7 @@ jobs:
 
       # Option 5: Deploy to Firebase Hosting
       - name: 🚀 Deploy to Firebase
-        if: ${{ vars.FIREBASE_PROJECT_ID }}
+        if: steps.deployment-check.outputs.has_firebase == 'true'
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
@@ -118,17 +130,17 @@ jobs:
         id: preview-url
         run: |
           # Determine preview URL based on deployment method
-          if [ -n "${{ secrets.VERCEL_TOKEN }}" ]; then
+          if [ "${{ steps.deployment-check.outputs.has_vercel }}" = "true" ]; then
             PREVIEW_URL="https://pr-${{ github.event.number }}-${{ github.event.repository.name }}.vercel.app"
-          elif [ -n "${{ secrets.NETLIFY_AUTH_TOKEN }}" ]; then
+          elif [ "${{ steps.deployment-check.outputs.has_netlify }}" = "true" ]; then
             PREVIEW_URL="https://pr-${{ github.event.number }}-${{ github.event.repository.name }}--${{ vars.NETLIFY_SITE_NAME }}.netlify.app"
-          elif [ -n "${{ vars.AWS_S3_BUCKET }}" ]; then
+          elif [ "${{ steps.deployment-check.outputs.has_aws }}" = "true" ]; then
             if [ -n "${{ vars.AWS_CLOUDFRONT_DOMAIN }}" ]; then
               PREVIEW_URL="https://${{ vars.AWS_CLOUDFRONT_DOMAIN }}/pr-${{ github.event.number }}"
             else
               PREVIEW_URL="http://${{ vars.AWS_S3_BUCKET }}.s3-website-${{ vars.AWS_DEFAULT_REGION || 'us-east-1' }}.amazonaws.com/pr-${{ github.event.number }}"
             fi
-          elif [ -n "${{ vars.FIREBASE_PROJECT_ID }}" ]; then
+          elif [ "${{ steps.deployment-check.outputs.has_firebase }}" = "true" ]; then
             PREVIEW_URL="https://${{ vars.FIREBASE_PROJECT_ID }}--pr-${{ github.event.number }}.web.app"
           else
             # Fallback to GitHub Pages
@@ -209,8 +221,17 @@ jobs:
       issues: write
     
     steps:
+      # Check what needs cleanup
+      - name: 🔍 Check Cleanup Options
+        id: cleanup-check
+        run: |
+          echo "has_vercel=${{ secrets.VERCEL_TOKEN != '' }}" >> $GITHUB_OUTPUT
+          echo "has_aws=${{ vars.AWS_S3_BUCKET != '' }}" >> $GITHUB_OUTPUT
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
       - name: 🧹 Cleanup Vercel Deployment
-        if: ${{ secrets.VERCEL_TOKEN }}
+        if: steps.cleanup-check.outputs.has_vercel == 'true'
         run: |
           # Install Vercel CLI
           npm install -g vercel
@@ -219,7 +240,7 @@ jobs:
           vercel list --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }} | grep "pr-${{ github.event.number }}" | awk '{print $1}' | xargs -I {} vercel remove {} --yes --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: 🧹 Cleanup AWS S3 Deployment
-        if: ${{ vars.AWS_S3_BUCKET }}
+        if: steps.cleanup-check.outputs.has_aws == 'true'
         run: |
           curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
           unzip awscliv2.zip
