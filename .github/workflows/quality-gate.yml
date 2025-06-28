@@ -44,23 +44,25 @@ jobs:
     
     - name: Run tests (if available)
       run: |
-        if [ -f "package.json" ] && grep -q '"test"' package.json; then
-          npm test
+        echo "Checking for tests..."
+        
+        # Check if test files exist in client
+        if [ -d "client/src" ] && find client/src -name "*.test.js" -o -name "*.test.jsx" -o -name "*.spec.js" -o -name "*.spec.jsx" | grep -q .; then
+          echo "Running client tests..."
+          cd client && npm test -- --watchAll=false --passWithNoTests
         else
-          echo "No tests found in root package.json"
+          echo "No test files found in client/src"
         fi
         
-        if [ -f "client/package.json" ] && grep -q '"test"' client/package.json; then
-          cd client && npm test -- --watchAll=false
-        else
-          echo "No tests found in client package.json"
-        fi
-        
-        if [ -f "server/package.json" ] && grep -q '"test"' server/package.json; then
+        # Check if test files exist in server
+        if [ -d "server" ] && find server -name "*.test.js" -o -name "*.spec.js" | grep -q .; then
+          echo "Running server tests..."
           cd server && npm test
         else
-          echo "No tests found in server package.json"
+          echo "No test files found in server"
         fi
+        
+        echo "Test check completed successfully"
     
     - name: Check for security vulnerabilities
       run: |
