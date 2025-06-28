@@ -14,6 +14,7 @@
     "format": "concurrently \"cd client && npm run format\" \"cd server && npm run format\"",
     "format:check": "concurrently \"cd client && npm run format:check\" \"cd server && npm run format:check\"",
     "code:fix": "concurrently \"cd client && npm run code:fix\" \"cd server && npm run code:fix\"",
+    "test": "concurrently \"cd client && npm test\" \"cd server && npm test\"",
     "pre-commit": "npm run format && npm run lint"
   },
   "keywords": [
