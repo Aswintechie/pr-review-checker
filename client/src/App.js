@@ -173,7 +173,14 @@ function App() {
         <div className="history-header">
           <h3>Recent PRs</h3>
           {recentPRs.length > 0 && (
-            <button className="clear-history-btn" onClick={clearHistory} title="Clear history">
+            <button 
+              className="clear-history-btn" 
+              onClick={clearHistory} 
+              title="Clear history"
+              type="button"
+              data-1p-ignore
+              autoComplete="off"
+            >
               🗑️
             </button>
           )}
@@ -328,13 +335,27 @@ function App() {
           </div>
           <div className="header-controls">
             <div className="history-container">
-              <button className="history-btn" onClick={toggleHistory} title="Recent PRs">
+              <button 
+                className="history-btn" 
+                onClick={toggleHistory} 
+                title="Recent PRs"
+                type="button"
+                data-1p-ignore
+                autoComplete="off"
+              >
                 📋
                 {recentPRs.length > 0 && <span className="history-count">{recentPRs.length}</span>}
               </button>
               {renderHistoryDropdown()}
             </div>
-            <button className="theme-toggle" onClick={toggleDarkMode} title="Toggle theme">
+            <button 
+              className="theme-toggle" 
+              onClick={toggleDarkMode} 
+              title="Toggle theme"
+              type="button"
+              data-1p-ignore
+              autoComplete="off"
+            >
               {darkMode ? '☀️' : '🌙'}
             </button>
           </div>
@@ -422,12 +443,18 @@ function App() {
               <button 
                 className={`toggle-btn ${viewMode === 'basic' ? 'active' : ''}`}
                 onClick={() => setViewMode('basic')}
+                type="button"
+                data-1p-ignore
+                autoComplete="off"
               >
                 📊 Basic View
               </button>
               <button 
                 className={`toggle-btn ${viewMode === 'advanced' ? 'active' : ''}`}
                 onClick={() => setViewMode('advanced')}
+                type="button"
+                data-1p-ignore
+                autoComplete="off"
               >
                 🔬 Advanced View
               </button>
@@ -632,4 +659,4 @@ function App() {
   );
 }
 
-export default App; 
+export default App;
