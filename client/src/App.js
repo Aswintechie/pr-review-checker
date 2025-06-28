@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
 
@@ -9,6 +9,21 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [viewMode, setViewMode] = useState('basic'); // 'basic' or 'advanced'
+  const [darkMode, setDarkMode] = useState(false);
+
+  // Load dark mode preference from localStorage
+  useEffect(() => {
+    const savedDarkMode = localStorage.getItem('darkMode') === 'true';
+    setDarkMode(savedDarkMode);
+    document.body.classList.toggle('dark-mode', savedDarkMode);
+  }, []);
+
+  const toggleDarkMode = () => {
+    const newDarkMode = !darkMode;
+    setDarkMode(newDarkMode);
+    localStorage.setItem('darkMode', newDarkMode.toString());
+    document.body.classList.toggle('dark-mode', newDarkMode);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -28,6 +43,57 @@ function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const calculateProgress = () => {
+    if (!result?.minRequiredApprovals) return { completed: 0, total: 0, percentage: 0 };
+    
+    const total = result.minRequiredApprovals.length;
+    const completed = result.minRequiredApprovals.filter(group => !group.needsApproval).length;
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+    
+    return { completed, total, percentage };
+  };
+
+  const renderProgressRing = () => {
+    const { completed, total, percentage } = calculateProgress();
+    const radius = 45;
+    const circumference = 2 * Math.PI * radius;
+    const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+    return (
+      <div className="progress-ring-container">
+        <svg className="progress-ring" width="120" height="120">
+          <defs>
+            <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#667eea" />
+              <stop offset="100%" stopColor="#764ba2" />
+            </linearGradient>
+          </defs>
+          <circle
+            className="progress-ring-bg"
+            cx="60"
+            cy="60"
+            r={radius}
+            strokeWidth="8"
+          />
+          <circle
+            className="progress-ring-fill"
+            cx="60"
+            cy="60"
+            r={radius}
+            strokeWidth="8"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            transform="rotate(-90 60 60)"
+          />
+        </svg>
+        <div className="progress-ring-text">
+          <div className="progress-percentage">{percentage}%</div>
+          <div className="progress-label">{completed}/{total}</div>
+        </div>
+      </div>
+    );
   };
 
   const renderUserCard = (user, isApproved = false) => {
@@ -63,10 +129,17 @@ function App() {
   };
 
   return (
-    <div className="App">
+    <div className={`App ${darkMode ? 'dark' : 'light'}`}>
       <header className="App-header">
-        <h1>🔍 PR Approval Finder v2.0</h1>
-        <p>Find minimum required approvals for your Pull Request</p>
+        <div className="header-content">
+          <div>
+            <h1>🔍 PR Approval Finder v3.0</h1>
+            <p>Find minimum required approvals for your Pull Request</p>
+          </div>
+          <button className="theme-toggle" onClick={toggleDarkMode} title="Toggle theme">
+            {darkMode ? '☀️' : '🌙'}
+          </button>
+        </div>
       </header>
 
       <main className="main-content">
@@ -96,13 +169,24 @@ function App() {
             />
           </div>
 
-          <button type="submit" disabled={loading}>
-            {loading ? 'Analyzing...' : 'Analyze PR'}
+          <button type="submit" disabled={loading} className="analyze-btn">
+            {loading ? (
+              <>
+                <span className="spinner"></span>
+                Analyzing...
+              </>
+            ) : (
+              <>
+                <span className="btn-icon">🚀</span>
+                Analyze PR
+              </>
+            )}
           </button>
         </form>
 
         {error && (
           <div className="error-message">
+            <span className="error-icon">⚠️</span>
             <strong>Error:</strong> {error}
           </div>
         )}
@@ -125,18 +209,32 @@ function App() {
               </button>
             </div>
 
+            {/* Progress Overview */}
+            <section className="progress-section">
+              <div className="progress-overview">
+                {renderProgressRing()}
+                <div className="progress-info">
+                  <h2>Approval Progress</h2>
+                  <div className="progress-stats">
+                    <div className="stat">
+                      <span className="stat-number">{result.totalGroupsNeedingApproval}</span>
+                      <span className="stat-label">more approval{result.totalGroupsNeedingApproval !== 1 ? 's' : ''} needed</span>
+                    </div>
+                    <div className="stat">
+                      <span className="stat-number">{calculateProgress().completed}</span>
+                      <span className="stat-label">group{calculateProgress().completed !== 1 ? 's' : ''} satisfied</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
             {/* Basic View */}
             {viewMode === 'basic' && (
               <>
                 {/* Minimum Required Approvals */}
                 <section className="approval-section">
-                  <h2>🎯 Minimum Required Approvals</h2>
-                  <div className="approval-summary">
-                    <div className="approval-count">
-                      <span className="count-number">{result.totalGroupsNeedingApproval}</span>
-                      <span className="count-label">more approval{result.totalGroupsNeedingApproval !== 1 ? 's' : ''} needed</span>
-                    </div>
-                  </div>
+                  <h2>🎯 Required Approvals</h2>
                   
                   {result.minRequiredApprovals.map((group, index) => (
                     <div key={index} className={`approval-group ${group.needsApproval ? 'needs-approval' : 'approved'}`}>
@@ -153,7 +251,10 @@ function App() {
                       <div className="group-options">
                         <p><strong>Need approval from ANY ONE of:</strong></p>
                         <div className="users-grid">
-                          {group.ownerDetails.map(user => renderUserCard(user, !group.needsApproval && user.username === group.approvedBy))}
+                          {group.ownerDetails.map(user => {
+                            const isApproved = !group.needsApproval && user.username === group.approvedBy;
+                            return renderUserCard(user, isApproved);
+                          })}
                         </div>
                       </div>
                     </div>
@@ -166,7 +267,26 @@ function App() {
                   <div className="users-grid">
                     {result.allUserDetails.map(user => {
                       const isApproved = result.approvals.includes(user.username);
-                      return renderUserCard(user, isApproved);
+                      const isRequested = result.requestedReviewers.includes(user.username);
+                      return (
+                        <div key={user.username} className={`user-card ${isApproved ? 'approved' : ''} ${isRequested ? 'requested' : ''}`}>
+                          <div className="user-avatar">
+                            {user.avatar_url ? (
+                              <img src={user.avatar_url} alt={user.username} />
+                            ) : user.type === 'team' ? (
+                              <div className="team-avatar">👥</div>
+                            ) : (
+                              <div className="avatar-placeholder">👤</div>
+                            )}
+                          </div>
+                          <div className="user-info">
+                            <div className="user-name">{user.name}</div>
+                            <div className="user-username">@{user.username}</div>
+                            {isRequested && <div className="user-status">Requested</div>}
+                          </div>
+                          {isApproved && <div className="approval-badge">✅</div>}
+                        </div>
+                      );
                     })}
                   </div>
                 </section>
@@ -178,13 +298,7 @@ function App() {
               <>
                 {/* Minimum Required Approvals */}
                 <section className="approval-section">
-                  <h2>🎯 Minimum Required Approvals</h2>
-                  <div className="approval-summary">
-                    <div className="approval-count">
-                      <span className="count-number">{result.totalGroupsNeedingApproval}</span>
-                      <span className="count-label">more approval{result.totalGroupsNeedingApproval !== 1 ? 's' : ''} needed</span>
-                    </div>
-                  </div>
+                  <h2>🎯 Required Approvals</h2>
                   
                   {result.minRequiredApprovals.map((group, index) => (
                     <div key={index} className={`approval-group ${group.needsApproval ? 'needs-approval' : 'approved'}`}>
@@ -214,7 +328,10 @@ function App() {
                       <div className="group-options">
                         <p><strong>Need approval from ANY ONE of:</strong></p>
                         <div className="users-grid">
-                          {group.ownerDetails.map(user => renderUserCard(user, !group.needsApproval && user.username === group.approvedBy))}
+                          {group.ownerDetails.map(user => {
+                            const isApproved = !group.needsApproval && user.username === group.approvedBy;
+                            return renderUserCard(user, isApproved);
+                          })}
                         </div>
                       </div>
                     </div>
