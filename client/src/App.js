@@ -29,7 +29,7 @@ function App() {
     { id: 'sunset', name: '🌅 Sunset', description: 'Warm orange hues' },
     { id: 'midnight', name: '🌌 Midnight', description: 'Deep purple night' },
     { id: 'arctic', name: '❄️ Arctic', description: 'Cool blue-white' },
-    { id: 'cherry', name: '🌸 Cherry', description: 'Soft pink accents' }
+    { id: 'cherry', name: '🌸 Cherry', description: 'Soft pink accents' },
   ];
 
   // Load theme preference and recent PRs from localStorage
@@ -51,7 +51,7 @@ function App() {
 
   // Close dropdowns when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
+    const handleClickOutside = event => {
       if (showHistory && !event.target.closest('.history-container')) {
         setShowHistory(false);
       }
@@ -66,7 +66,7 @@ function App() {
     }
   }, [showHistory, showThemeDropdown]);
 
-  const changeTheme = (themeId) => {
+  const changeTheme = themeId => {
     setCurrentTheme(themeId);
     localStorage.setItem('currentTheme', themeId);
     document.body.className = `theme-${themeId}`;
@@ -81,7 +81,7 @@ function App() {
     setShowHistory(!showHistory);
   };
 
-  const addToRecentPRs = (prData) => {
+  const addToRecentPRs = prData => {
     const newPR = {
       url: prData.prInfo.url,
       title: prData.prInfo.title,
@@ -89,7 +89,7 @@ function App() {
       author: prData.prInfo.author,
       analyzedAt: new Date().toISOString(),
       totalGroups: prData.minRequiredApprovals.length,
-      needsApproval: prData.totalGroupsNeedingApproval
+      needsApproval: prData.totalGroupsNeedingApproval,
     };
 
     setRecentPRs(prev => {
@@ -102,7 +102,7 @@ function App() {
     });
   };
 
-  const loadFromHistory = (prUrl) => {
+  const loadFromHistory = prUrl => {
     setPrUrl(prUrl);
     setShowHistory(false);
   };
@@ -113,7 +113,7 @@ function App() {
     setShowHistory(false);
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
     setLoading(true);
     setError('');
@@ -123,7 +123,7 @@ function App() {
     try {
       const response = await axios.post('/api/pr-approvers', {
         prUrl,
-        githubToken: githubToken || undefined
+        githubToken: githubToken || undefined,
       });
 
       setResult(response.data);
@@ -139,11 +139,11 @@ function App() {
 
   const calculateProgress = () => {
     if (!result?.minRequiredApprovals) return { completed: 0, total: 0, percentage: 0 };
-    
+
     const total = result.minRequiredApprovals.length;
     const completed = result.minRequiredApprovals.filter(group => !group.needsApproval).length;
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
-    
+
     return { completed, total, percentage };
   };
 
@@ -154,35 +154,31 @@ function App() {
     const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
     return (
-      <div className="progress-ring-container">
-        <svg className="progress-ring" width="120" height="120">
+      <div className='progress-ring-container'>
+        <svg className='progress-ring' width='120' height='120'>
           <defs>
-            <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#667eea" />
-              <stop offset="100%" stopColor="#764ba2" />
+            <linearGradient id='progressGradient' x1='0%' y1='0%' x2='100%' y2='0%'>
+              <stop offset='0%' stopColor='#667eea' />
+              <stop offset='100%' stopColor='#764ba2' />
             </linearGradient>
           </defs>
+          <circle className='progress-ring-bg' cx='60' cy='60' r={radius} strokeWidth='8' />
           <circle
-            className="progress-ring-bg"
-            cx="60"
-            cy="60"
+            className='progress-ring-fill'
+            cx='60'
+            cy='60'
             r={radius}
-            strokeWidth="8"
-          />
-          <circle
-            className="progress-ring-fill"
-            cx="60"
-            cy="60"
-            r={radius}
-            strokeWidth="8"
+            strokeWidth='8'
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
-            transform="rotate(-90 60 60)"
+            transform='rotate(-90 60 60)'
           />
         </svg>
-        <div className="progress-ring-text">
-          <div className="progress-percentage">{percentage}%</div>
-          <div className="progress-label">{completed}/{total}</div>
+        <div className='progress-ring-text'>
+          <div className='progress-percentage'>{percentage}%</div>
+          <div className='progress-label'>
+            {completed}/{total}
+          </div>
         </div>
       </div>
     );
@@ -192,44 +188,44 @@ function App() {
     if (!showHistory) return null;
 
     return (
-      <div className="history-dropdown">
-        <div className="history-header">
+      <div className='history-dropdown'>
+        <div className='history-header'>
           <h3>Recent PRs</h3>
           {recentPRs.length > 0 && (
-            <button 
-              className="clear-history-btn" 
-              onClick={clearHistory} 
-              title="Clear history"
-              type="button"
+            <button
+              className='clear-history-btn'
+              onClick={clearHistory}
+              title='Clear history'
+              type='button'
               data-1p-ignore
-              autoComplete="off"
+              autoComplete='off'
             >
               🗑️
             </button>
           )}
         </div>
-        <div className="history-content">
+        <div className='history-content'>
           {recentPRs.length === 0 ? (
-            <div className="no-history">
-              <span className="no-history-icon">📋</span>
+            <div className='no-history'>
+              <span className='no-history-icon'>📋</span>
               <p>No recent PRs analyzed</p>
             </div>
           ) : (
-            <div className="history-list">
+            <div className='history-list'>
               {recentPRs.map((pr, index) => (
-                <div key={index} className="history-item" onClick={() => loadFromHistory(pr.url)}>
-                  <div className="history-item-main">
-                    <div className="history-title">{pr.title}</div>
-                    <div className="history-meta">
-                      <span className="history-number">#{pr.number}</span>
-                      <span className="history-author">by @{pr.author}</span>
+                <div key={index} className='history-item' onClick={() => loadFromHistory(pr.url)}>
+                  <div className='history-item-main'>
+                    <div className='history-title'>{pr.title}</div>
+                    <div className='history-meta'>
+                      <span className='history-number'>#{pr.number}</span>
+                      <span className='history-author'>by @{pr.author}</span>
                     </div>
                   </div>
-                  <div className="history-status">
+                  <div className='history-status'>
                     {pr.needsApproval === 0 ? (
-                      <span className="history-badge approved">✅ Ready</span>
+                      <span className='history-badge approved'>✅ Ready</span>
                     ) : (
-                      <span className="history-badge pending">{pr.needsApproval} needed</span>
+                      <span className='history-badge pending'>{pr.needsApproval} needed</span>
                     )}
                   </div>
                 </div>
@@ -243,27 +239,27 @@ function App() {
 
   const renderSkeletonLoader = () => {
     return (
-      <div className="skeleton-container">
+      <div className='skeleton-container'>
         {/* View Toggle Skeleton */}
-        <div className="skeleton-view-toggle">
-          <div className="skeleton-toggle-btn"></div>
-          <div className="skeleton-toggle-btn"></div>
+        <div className='skeleton-view-toggle'>
+          <div className='skeleton-toggle-btn'></div>
+          <div className='skeleton-toggle-btn'></div>
         </div>
 
         {/* Progress Section Skeleton */}
-        <div className="skeleton-progress-section">
-          <div className="skeleton-progress-overview">
-            <div className="skeleton-progress-ring"></div>
-            <div className="skeleton-progress-info">
-              <div className="skeleton-title"></div>
-              <div className="skeleton-stats">
-                <div className="skeleton-stat">
-                  <div className="skeleton-stat-number"></div>
-                  <div className="skeleton-stat-label"></div>
+        <div className='skeleton-progress-section'>
+          <div className='skeleton-progress-overview'>
+            <div className='skeleton-progress-ring'></div>
+            <div className='skeleton-progress-info'>
+              <div className='skeleton-title'></div>
+              <div className='skeleton-stats'>
+                <div className='skeleton-stat'>
+                  <div className='skeleton-stat-number'></div>
+                  <div className='skeleton-stat-label'></div>
                 </div>
-                <div className="skeleton-stat">
-                  <div className="skeleton-stat-number"></div>
-                  <div className="skeleton-stat-label"></div>
+                <div className='skeleton-stat'>
+                  <div className='skeleton-stat-number'></div>
+                  <div className='skeleton-stat-label'></div>
                 </div>
               </div>
             </div>
@@ -271,23 +267,23 @@ function App() {
         </div>
 
         {/* Approval Groups Skeleton */}
-        <div className="skeleton-approval-section">
-          <div className="skeleton-section-title"></div>
+        <div className='skeleton-approval-section'>
+          <div className='skeleton-section-title'></div>
           {[1, 2, 3].map(i => (
-            <div key={i} className="skeleton-approval-group">
-              <div className="skeleton-group-header">
-                <div className="skeleton-group-title"></div>
-                <div className="skeleton-approved-by"></div>
+            <div key={i} className='skeleton-approval-group'>
+              <div className='skeleton-group-header'>
+                <div className='skeleton-group-title'></div>
+                <div className='skeleton-approved-by'></div>
               </div>
-              <div className="skeleton-group-content">
-                <div className="skeleton-group-text"></div>
-                <div className="skeleton-users-grid">
+              <div className='skeleton-group-content'>
+                <div className='skeleton-group-text'></div>
+                <div className='skeleton-users-grid'>
                   {[1, 2, 3, 4].map(j => (
-                    <div key={j} className="skeleton-user-card">
-                      <div className="skeleton-user-avatar"></div>
-                      <div className="skeleton-user-info">
-                        <div className="skeleton-user-name"></div>
-                        <div className="skeleton-user-username"></div>
+                    <div key={j} className='skeleton-user-card'>
+                      <div className='skeleton-user-avatar'></div>
+                      <div className='skeleton-user-info'>
+                        <div className='skeleton-user-name'></div>
+                        <div className='skeleton-user-username'></div>
                       </div>
                     </div>
                   ))}
@@ -298,15 +294,15 @@ function App() {
         </div>
 
         {/* Reviewers Section Skeleton */}
-        <div className="skeleton-reviewers-section">
-          <div className="skeleton-section-title"></div>
-          <div className="skeleton-users-grid">
+        <div className='skeleton-reviewers-section'>
+          <div className='skeleton-section-title'></div>
+          <div className='skeleton-users-grid'>
             {[1, 2, 3, 4, 5, 6].map(i => (
-              <div key={i} className="skeleton-user-card">
-                <div className="skeleton-user-avatar"></div>
-                <div className="skeleton-user-info">
-                  <div className="skeleton-user-name"></div>
-                  <div className="skeleton-user-username"></div>
+              <div key={i} className='skeleton-user-card'>
+                <div className='skeleton-user-avatar'></div>
+                <div className='skeleton-user-info'>
+                  <div className='skeleton-user-name'></div>
+                  <div className='skeleton-user-username'></div>
                 </div>
               </div>
             ))}
@@ -320,30 +316,30 @@ function App() {
     if (user.type === 'team') {
       return (
         <div key={user.username} className={`user-card team-card ${isApproved ? 'approved' : ''}`}>
-          <div className="user-avatar team-avatar">👥</div>
-          <div className="user-info">
-            <div className="user-name">{user.name}</div>
-            <div className="user-username">@{user.username}</div>
+          <div className='user-avatar team-avatar'>👥</div>
+          <div className='user-info'>
+            <div className='user-name'>{user.name}</div>
+            <div className='user-username'>@{user.username}</div>
           </div>
-          {isApproved && <div className="approval-badge">✅</div>}
+          {isApproved && <div className='approval-badge'>✅</div>}
         </div>
       );
     }
 
     return (
       <div key={user.username} className={`user-card ${isApproved ? 'approved' : ''}`}>
-        <div className="user-avatar">
+        <div className='user-avatar'>
           {user.avatar_url ? (
             <img src={user.avatar_url} alt={user.username} />
           ) : (
-            <div className="avatar-placeholder">👤</div>
+            <div className='avatar-placeholder'>👤</div>
           )}
         </div>
-        <div className="user-info">
-          <div className="user-name">{user.name}</div>
-          <div className="user-username">@{user.username}</div>
+        <div className='user-info'>
+          <div className='user-name'>{user.name}</div>
+          <div className='user-username'>@{user.username}</div>
         </div>
-        {isApproved && <div className="approval-badge">✅</div>}
+        {isApproved && <div className='approval-badge'>✅</div>}
       </div>
     );
   };
@@ -352,24 +348,24 @@ function App() {
     if (!showThemeDropdown) return null;
 
     return (
-      <div className="theme-dropdown">
-        <div className="theme-header">
+      <div className='theme-dropdown'>
+        <div className='theme-header'>
           <h3>🎨 Choose Theme</h3>
         </div>
-        <div className="theme-content">
-          <div className="theme-grid">
-            {themes.map((theme) => (
-              <div 
-                key={theme.id} 
+        <div className='theme-content'>
+          <div className='theme-grid'>
+            {themes.map(theme => (
+              <div
+                key={theme.id}
                 className={`theme-option ${currentTheme === theme.id ? 'active' : ''}`}
                 onClick={() => changeTheme(theme.id)}
               >
                 <div className={`theme-preview theme-${theme.id}`}></div>
-                <div className="theme-info">
-                  <div className="theme-name">{theme.name}</div>
-                  <div className="theme-description">{theme.description}</div>
+                <div className='theme-info'>
+                  <div className='theme-name'>{theme.name}</div>
+                  <div className='theme-description'>{theme.description}</div>
                 </div>
-                {currentTheme === theme.id && <div className="theme-check">✓</div>}
+                {currentTheme === theme.id && <div className='theme-check'>✓</div>}
               </div>
             ))}
           </div>
@@ -380,35 +376,35 @@ function App() {
 
   return (
     <div className={`App theme-${currentTheme}`}>
-      <header className="App-header">
-        <div className="header-content">
+      <header className='App-header'>
+        <div className='header-content'>
           <div>
             <h1>🔍 PR Approval Finder v5.0</h1>
             <p>Find minimum required approvals for your Pull Request</p>
           </div>
-          <div className="header-controls">
-            <div className="history-container">
-              <button 
-                className="history-btn" 
-                onClick={toggleHistory} 
-                title="Recent PRs"
-                type="button"
+          <div className='header-controls'>
+            <div className='history-container'>
+              <button
+                className='history-btn'
+                onClick={toggleHistory}
+                title='Recent PRs'
+                type='button'
                 data-1p-ignore
-                autoComplete="off"
+                autoComplete='off'
               >
                 📋
-                {recentPRs.length > 0 && <span className="history-count">{recentPRs.length}</span>}
+                {recentPRs.length > 0 && <span className='history-count'>{recentPRs.length}</span>}
               </button>
               {renderHistoryDropdown()}
             </div>
-            <div className="theme-container">
-              <button 
-                className="theme-toggle" 
-                onClick={toggleThemeDropdown} 
-                title="Choose theme"
-                type="button"
+            <div className='theme-container'>
+              <button
+                className='theme-toggle'
+                onClick={toggleThemeDropdown}
+                title='Choose theme'
+                type='button'
                 data-1p-ignore
-                autoComplete="off"
+                autoComplete='off'
               >
                 🎨
               </button>
@@ -418,42 +414,42 @@ function App() {
         </div>
       </header>
 
-      <main className="main-content">
-        <form onSubmit={handleSubmit} className="pr-form">
-          <div className="form-group">
-            <label htmlFor="prUrl">GitHub PR URL:</label>
+      <main className='main-content'>
+        <form onSubmit={handleSubmit} className='pr-form'>
+          <div className='form-group'>
+            <label htmlFor='prUrl'>GitHub PR URL:</label>
             <input
-              type="url"
-              id="prUrl"
+              type='url'
+              id='prUrl'
               value={prUrl}
-              onChange={(e) => setPrUrl(e.target.value)}
-              placeholder="https://github.com/owner/repo/pull/123"
+              onChange={e => setPrUrl(e.target.value)}
+              placeholder='https://github.com/owner/repo/pull/123'
               required
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="githubToken">
+          <div className='form-group'>
+            <label htmlFor='githubToken'>
               GitHub Token (optional - for private repos & higher rate limits):
             </label>
             <input
-              type="password"
-              id="githubToken"
+              type='password'
+              id='githubToken'
               value={githubToken}
-              onChange={(e) => setGithubToken(e.target.value)}
-              placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+              onChange={e => setGithubToken(e.target.value)}
+              placeholder='ghp_xxxxxxxxxxxxxxxxxxxx'
             />
           </div>
 
-          <button type="submit" disabled={loading} className="analyze-btn">
+          <button type='submit' disabled={loading} className='analyze-btn'>
             {loading ? (
               <>
-                <span className="spinner"></span>
+                <span className='spinner'></span>
                 Analyzing...
               </>
             ) : (
               <>
-                <span className="btn-icon">🚀</span>
+                <span className='btn-icon'>🚀</span>
                 Analyze PR
               </>
             )}
@@ -461,37 +457,41 @@ function App() {
         </form>
 
         {error && (
-          <div className="error-message">
-            <div className="error-content">
-              <span className="error-icon">⚠️</span>
-              <div className="error-text">
+          <div className='error-message'>
+            <div className='error-content'>
+              <span className='error-icon'>⚠️</span>
+              <div className='error-text'>
                 <strong>Error:</strong> {error}
               </div>
             </div>
             {rateLimitInfo && (
-              <div className="rate-limit-info">
-                <div className="rate-limit-header">
-                  <span className="rate-limit-icon">⏱️</span>
+              <div className='rate-limit-info'>
+                <div className='rate-limit-header'>
+                  <span className='rate-limit-icon'>⏱️</span>
                   <strong>Rate Limit Details:</strong>
                 </div>
-                <div className="rate-limit-details">
-                  <div className="rate-limit-item">
-                    <span className="rate-limit-label">Remaining:</span>
-                    <span className="rate-limit-value">{rateLimitInfo.remaining}/{rateLimitInfo.limit}</span>
-                  </div>
-                  <div className="rate-limit-item">
-                    <span className="rate-limit-label">Resets in:</span>
-                    <span className="rate-limit-value">
-                      {rateLimitInfo.minutesUntilReset} minute{rateLimitInfo.minutesUntilReset !== 1 ? 's' : ''}
+                <div className='rate-limit-details'>
+                  <div className='rate-limit-item'>
+                    <span className='rate-limit-label'>Remaining:</span>
+                    <span className='rate-limit-value'>
+                      {rateLimitInfo.remaining}/{rateLimitInfo.limit}
                     </span>
                   </div>
-                  <div className="rate-limit-item">
-                    <span className="rate-limit-label">Reset time:</span>
-                    <span className="rate-limit-value">{rateLimitInfo.resetTimeFormatted}</span>
+                  <div className='rate-limit-item'>
+                    <span className='rate-limit-label'>Resets in:</span>
+                    <span className='rate-limit-value'>
+                      {rateLimitInfo.minutesUntilReset} minute
+                      {rateLimitInfo.minutesUntilReset !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <div className='rate-limit-item'>
+                    <span className='rate-limit-label'>Reset time:</span>
+                    <span className='rate-limit-value'>{rateLimitInfo.resetTimeFormatted}</span>
                   </div>
                 </div>
-                <div className="rate-limit-tip">
-                  💡 <strong>Tip:</strong> Add a GitHub token above for 5,000 requests/hour instead of 60/hour
+                <div className='rate-limit-tip'>
+                  💡 <strong>Tip:</strong> Add a GitHub token above for 5,000 requests/hour instead
+                  of 60/hour
                 </div>
               </div>
             )}
@@ -501,24 +501,26 @@ function App() {
         {loading && renderSkeletonLoader()}
 
         {result && !loading && (
-          <div className="results">
+          <div className='results'>
             {/* PR Title Section */}
-            <div className="pr-title-section">
-              <div className="pr-title-container">
-                <div className="pr-title-main">
-                  <h2 className="pr-title">{result.prInfo.title}</h2>
-                  <div className="pr-meta">
-                    <span className="pr-number">#{result.prInfo.number}</span>
-                    <span className="pr-author">by @{result.prInfo.author}</span>
-                    <span className="pr-state" data-state={result.prInfo.state.toLowerCase()}>{result.prInfo.state}</span>
+            <div className='pr-title-section'>
+              <div className='pr-title-container'>
+                <div className='pr-title-main'>
+                  <h2 className='pr-title'>{result.prInfo.title}</h2>
+                  <div className='pr-meta'>
+                    <span className='pr-number'>#{result.prInfo.number}</span>
+                    <span className='pr-author'>by @{result.prInfo.author}</span>
+                    <span className='pr-state' data-state={result.prInfo.state.toLowerCase()}>
+                      {result.prInfo.state}
+                    </span>
                   </div>
                 </div>
-                <a 
-                  href={result.prInfo.url} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="pr-link-btn"
-                  title="Open PR in GitHub"
+                <a
+                  href={result.prInfo.url}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='pr-link-btn'
+                  title='Open PR in GitHub'
                 >
                   🔗 View PR
                 </a>
@@ -527,54 +529,57 @@ function App() {
 
             {/* Rate Limit Warning for successful requests */}
             {rateLimitInfo && rateLimitInfo.remaining <= (githubToken ? 100 : 20) && (
-              <div className="rate-limit-warning-standalone">
-                <div className="rate-limit-warning">
-                  ⚠️ <strong>Low Rate Limit Warning:</strong> You have {rateLimitInfo.remaining} requests remaining. 
-                  {githubToken ? (
-                    `Wait ${rateLimitInfo.minutesUntilReset} minute${rateLimitInfo.minutesUntilReset !== 1 ? 's' : ''} for reset or consider using a fresh token.`
-                  ) : (
-                    `Consider using a GitHub token for higher limits or wait ${rateLimitInfo.minutesUntilReset} minute${rateLimitInfo.minutesUntilReset !== 1 ? 's' : ''} for reset.`
-                  )}
+              <div className='rate-limit-warning-standalone'>
+                <div className='rate-limit-warning'>
+                  ⚠️ <strong>Low Rate Limit Warning:</strong> You have {rateLimitInfo.remaining}{' '}
+                  requests remaining.
+                  {githubToken
+                    ? `Wait ${rateLimitInfo.minutesUntilReset} minute${rateLimitInfo.minutesUntilReset !== 1 ? 's' : ''} for reset or consider using a fresh token.`
+                    : `Consider using a GitHub token for higher limits or wait ${rateLimitInfo.minutesUntilReset} minute${rateLimitInfo.minutesUntilReset !== 1 ? 's' : ''} for reset.`}
                 </div>
               </div>
             )}
 
             {/* View Toggle */}
-            <div className="view-toggle">
-              <button 
+            <div className='view-toggle'>
+              <button
                 className={`toggle-btn ${viewMode === 'basic' ? 'active' : ''}`}
                 onClick={() => setViewMode('basic')}
-                type="button"
+                type='button'
                 data-1p-ignore
-                autoComplete="off"
+                autoComplete='off'
               >
                 📊 Basic View
               </button>
-              <button 
+              <button
                 className={`toggle-btn ${viewMode === 'advanced' ? 'active' : ''}`}
                 onClick={() => setViewMode('advanced')}
-                type="button"
+                type='button'
                 data-1p-ignore
-                autoComplete="off"
+                autoComplete='off'
               >
                 🔬 Advanced View
               </button>
             </div>
 
             {/* Progress Overview */}
-            <section className="progress-section">
-              <div className="progress-overview">
+            <section className='progress-section'>
+              <div className='progress-overview'>
                 {renderProgressRing()}
-                <div className="progress-info">
+                <div className='progress-info'>
                   <h2>Approval Progress</h2>
-                  <div className="progress-stats">
-                    <div className="stat">
-                      <span className="stat-number">{result.totalGroupsNeedingApproval}</span>
-                      <span className="stat-label">more approval{result.totalGroupsNeedingApproval !== 1 ? 's' : ''} needed</span>
+                  <div className='progress-stats'>
+                    <div className='stat'>
+                      <span className='stat-number'>{result.totalGroupsNeedingApproval}</span>
+                      <span className='stat-label'>
+                        more approval{result.totalGroupsNeedingApproval !== 1 ? 's' : ''} needed
+                      </span>
                     </div>
-                    <div className="stat">
-                      <span className="stat-number">{calculateProgress().completed}</span>
-                      <span className="stat-label">group{calculateProgress().completed !== 1 ? 's' : ''} satisfied</span>
+                    <div className='stat'>
+                      <span className='stat-number'>{calculateProgress().completed}</span>
+                      <span className='stat-label'>
+                        group{calculateProgress().completed !== 1 ? 's' : ''} satisfied
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -585,26 +590,33 @@ function App() {
             {viewMode === 'basic' && (
               <>
                 {/* Minimum Required Approvals */}
-                <section className="approval-section">
+                <section className='approval-section'>
                   <h2>🎯 Required Approvals</h2>
-                  
+
                   {result.minRequiredApprovals.map((group, index) => (
-                    <div key={index} className={`approval-group ${group.needsApproval ? 'needs-approval' : 'approved'}`}>
-                      <div className="group-header">
+                    <div
+                      key={index}
+                      className={`approval-group ${group.needsApproval ? 'needs-approval' : 'approved'}`}
+                    >
+                      <div className='group-header'>
                         <h3>
-                          {group.needsApproval ? '❌' : '✅'} 
-                          Group {index + 1} ({group.files.length} file{group.files.length !== 1 ? 's' : ''})
+                          {group.needsApproval ? '❌' : '✅'}
+                          Group {index + 1} ({group.files.length} file
+                          {group.files.length !== 1 ? 's' : ''})
                         </h3>
                         {!group.needsApproval && (
-                          <span className="approved-by">Approved by @{group.approvedBy}</span>
+                          <span className='approved-by'>Approved by @{group.approvedBy}</span>
                         )}
                       </div>
-                      
-                      <div className="group-options">
-                        <p><strong>Need approval from ANY ONE of:</strong></p>
-                        <div className="users-grid">
+
+                      <div className='group-options'>
+                        <p>
+                          <strong>Need approval from ANY ONE of:</strong>
+                        </p>
+                        <div className='users-grid'>
                           {group.ownerDetails.map(user => {
-                            const isApproved = !group.needsApproval && user.username === group.approvedBy;
+                            const isApproved =
+                              !group.needsApproval && user.username === group.approvedBy;
                             return renderUserCard(user, isApproved);
                           })}
                         </div>
@@ -614,29 +626,32 @@ function App() {
                 </section>
 
                 {/* All Reviewers */}
-                <section className="reviewers-section">
+                <section className='reviewers-section'>
                   <h2>👥 All Possible Reviewers</h2>
-                  <div className="users-grid">
+                  <div className='users-grid'>
                     {result.allUserDetails.map(user => {
                       const isApproved = result.approvals.includes(user.username);
                       const isRequested = result.requestedReviewers.includes(user.username);
                       return (
-                        <div key={user.username} className={`user-card ${isApproved ? 'approved' : ''} ${isRequested ? 'requested' : ''}`}>
-                          <div className="user-avatar">
+                        <div
+                          key={user.username}
+                          className={`user-card ${isApproved ? 'approved' : ''} ${isRequested ? 'requested' : ''}`}
+                        >
+                          <div className='user-avatar'>
                             {user.avatar_url ? (
                               <img src={user.avatar_url} alt={user.username} />
                             ) : user.type === 'team' ? (
-                              <div className="team-avatar">👥</div>
+                              <div className='team-avatar'>👥</div>
                             ) : (
-                              <div className="avatar-placeholder">👤</div>
+                              <div className='avatar-placeholder'>👤</div>
                             )}
                           </div>
-                          <div className="user-info">
-                            <div className="user-name">{user.name}</div>
-                            <div className="user-username">@{user.username}</div>
-                            {isRequested && <div className="user-status">Requested</div>}
+                          <div className='user-info'>
+                            <div className='user-name'>{user.name}</div>
+                            <div className='user-username'>@{user.username}</div>
+                            {isRequested && <div className='user-status'>Requested</div>}
                           </div>
-                          {isApproved && <div className="approval-badge">✅</div>}
+                          {isApproved && <div className='approval-badge'>✅</div>}
                         </div>
                       );
                     })}
@@ -649,39 +664,46 @@ function App() {
             {viewMode === 'advanced' && (
               <>
                 {/* Minimum Required Approvals */}
-                <section className="approval-section">
+                <section className='approval-section'>
                   <h2>🎯 Required Approvals</h2>
-                  
+
                   {result.minRequiredApprovals.map((group, index) => (
-                    <div key={index} className={`approval-group ${group.needsApproval ? 'needs-approval' : 'approved'}`}>
-                      <div className="group-header">
+                    <div
+                      key={index}
+                      className={`approval-group ${group.needsApproval ? 'needs-approval' : 'approved'}`}
+                    >
+                      <div className='group-header'>
                         <h3>
-                          {group.needsApproval ? '❌' : '✅'} 
-                          Group {index + 1} ({group.files.length} file{group.files.length !== 1 ? 's' : ''})
+                          {group.needsApproval ? '❌' : '✅'}
+                          Group {index + 1} ({group.files.length} file
+                          {group.files.length !== 1 ? 's' : ''})
                         </h3>
                         {!group.needsApproval && (
-                          <span className="approved-by">Approved by @{group.approvedBy}</span>
+                          <span className='approved-by'>Approved by @{group.approvedBy}</span>
                         )}
                       </div>
-                      
-                      <div className="group-files">
+
+                      <div className='group-files'>
                         <details>
                           <summary>📁 View files ({group.files.length})</summary>
-                          <ul className="file-list">
+                          <ul className='file-list'>
                             {group.files.map((file, fileIndex) => (
-                              <li key={fileIndex} className="file-item">
-                                <span className="file-path">{file}</span>
+                              <li key={fileIndex} className='file-item'>
+                                <span className='file-path'>{file}</span>
                               </li>
                             ))}
                           </ul>
                         </details>
                       </div>
-                      
-                      <div className="group-options">
-                        <p><strong>Need approval from ANY ONE of:</strong></p>
-                        <div className="users-grid">
+
+                      <div className='group-options'>
+                        <p>
+                          <strong>Need approval from ANY ONE of:</strong>
+                        </p>
+                        <div className='users-grid'>
                           {group.ownerDetails.map(user => {
-                            const isApproved = !group.needsApproval && user.username === group.approvedBy;
+                            const isApproved =
+                              !group.needsApproval && user.username === group.approvedBy;
                             return renderUserCard(user, isApproved);
                           })}
                         </div>
@@ -691,19 +713,21 @@ function App() {
                 </section>
 
                 {/* File-by-file Analysis */}
-                <section className="file-analysis-section">
+                <section className='file-analysis-section'>
                   <h2>📄 File-by-File Analysis</h2>
-                  <div className="file-analysis">
+                  <div className='file-analysis'>
                     {result.fileApprovalDetails.map((detail, index) => (
-                      <div key={index} className="file-detail">
-                        <div className="file-path-container">
-                          <span className="file-directory">{detail.file.split('/').slice(0, -1).join('/')}/</span>
-                          <span className="file-name">{detail.file.split('/').pop()}</span>
+                      <div key={index} className='file-detail'>
+                        <div className='file-path-container'>
+                          <span className='file-directory'>
+                            {detail.file.split('/').slice(0, -1).join('/')}/
+                          </span>
+                          <span className='file-name'>{detail.file.split('/').pop()}</span>
                         </div>
-                        <div className="file-pattern">
+                        <div className='file-pattern'>
                           <strong>Pattern:</strong> {detail.pattern}
                         </div>
-                        <div className="file-owners">
+                        <div className='file-owners'>
                           <strong>Owners:</strong> {detail.owners.join(', ') || 'None'}
                         </div>
                       </div>
@@ -712,31 +736,35 @@ function App() {
                 </section>
 
                 {/* Current Status */}
-                <section className="status-section">
+                <section className='status-section'>
                   <h2>📊 Current Status</h2>
-                  <div className="status-grid">
-                    <div className="status-item">
+                  <div className='status-grid'>
+                    <div className='status-item'>
                       <h3>✅ Current Approvals</h3>
-                      <div className="status-list">
+                      <div className='status-list'>
                         {result.approvals.length > 0 ? (
                           result.approvals.map(approval => (
-                            <span key={approval} className="status-badge approved">@{approval}</span>
+                            <span key={approval} className='status-badge approved'>
+                              @{approval}
+                            </span>
                           ))
                         ) : (
-                          <span className="no-items">No approvals yet</span>
+                          <span className='no-items'>No approvals yet</span>
                         )}
                       </div>
                     </div>
 
-                    <div className="status-item">
+                    <div className='status-item'>
                       <h3>👀 Requested Reviewers</h3>
-                      <div className="status-list">
+                      <div className='status-list'>
                         {result.requestedReviewers.length > 0 ? (
                           result.requestedReviewers.map(reviewer => (
-                            <span key={reviewer} className="status-badge requested">@{reviewer}</span>
+                            <span key={reviewer} className='status-badge requested'>
+                              @{reviewer}
+                            </span>
                           ))
                         ) : (
-                          <span className="no-items">No reviewers requested</span>
+                          <span className='no-items'>No reviewers requested</span>
                         )}
                       </div>
                     </div>
@@ -749,15 +777,15 @@ function App() {
       </main>
 
       {/* Copyright Footer */}
-      <footer className="app-footer">
-        <div className="footer-content">
-          <div className="footer-left">
-            <div className="copyright" title="Assisted with Cursor AI">
-              © 2025 <span className="author-name">Aswin</span>
+      <footer className='app-footer'>
+        <div className='footer-content'>
+          <div className='footer-left'>
+            <div className='copyright' title='Assisted with Cursor AI'>
+              © 2025 <span className='author-name'>Aswin</span>
             </div>
           </div>
-          <div className="footer-right">
-            <div className="cloudflare-badge" title="Secured and accelerated by Cloudflare">
+          <div className='footer-right'>
+            <div className='cloudflare-badge' title='Secured and accelerated by Cloudflare'>
               🛡️ Protected by Cloudflare
             </div>
           </div>

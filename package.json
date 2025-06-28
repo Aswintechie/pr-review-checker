@@ -8,7 +8,12 @@
     "server": "cd server && npm run dev",
     "client": "cd client && npm start",
     "build": "cd client && npm run build",
-    "start": "cd server && npm start"
+    "start": "cd server && npm start",
+    "lint": "concurrently \"cd client && npm run lint\" \"cd server && npm run lint\"",
+    "lint:fix": "concurrently \"cd client && npm run lint:fix\" \"cd server && npm run lint:fix\"",
+    "format": "concurrently \"cd client && npm run format\" \"cd server && npm run format\"",
+    "format:check": "concurrently \"cd client && npm run format:check\" \"cd server && npm run format:check\"",
+    "code:fix": "concurrently \"cd client && npm run code:fix\" \"cd server && npm run code:fix\""
   },
   "keywords": [
     "github",
