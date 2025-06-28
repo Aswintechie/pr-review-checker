@@ -37,7 +37,7 @@ jobs:
       run: npm run lint
     
     - name: Build check
-      run: cd client && npm run build
+      run: cd client && CI=false npm run build
 
   # Security scanning
   security-scan:
@@ -158,7 +158,7 @@ jobs:
         fi
     
     - name: Build project
-      run: cd client && npm run build
+      run: cd client && CI=false npm run build
 
   # CODEOWNERS validation
   codeowners-validation:

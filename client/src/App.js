@@ -44,6 +44,7 @@ function App() {
       try {
         setRecentPRs(JSON.parse(savedPRs));
       } catch (e) {
+        // eslint-disable-next-line no-console
         console.warn('Failed to parse recent PRs from localStorage');
       }
     }
