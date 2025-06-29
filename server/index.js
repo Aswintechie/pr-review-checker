@@ -76,10 +76,12 @@ function matchPattern(pattern, filePath) {
   }
 
   // Glob pattern matching
+  // First escape dots, then handle ** and * carefully to avoid conflicts
   const regexPattern = pattern
     .replace(/\./g, '\\.')
-    .replace(/\*\*/g, '.*') // ** matches any number of directories
+    .replace(/\*\*/g, '__DOUBLE_STAR__') // Temporary placeholder
     .replace(/\*/g, '[^/]*') // * matches anything except directory separator
+    .replace(/__DOUBLE_STAR__/g, '.*') // ** matches any number of directories
     .replace(/\?/g, '[^/]'); // ? matches single character except directory separator
 
   const regex = new RegExp(`^${regexPattern}$`);
@@ -159,45 +161,41 @@ app.post('/api/pr-approvers', async (req, res) => {
       // Parse CODEOWNERS and find required approvers
       const rules = parseCodeowners(codeownersContent);
 
-      // For each changed file, find the most specific matching rule
-      for (const file of changedFiles) {
-        const matchedRules = [];
+      // IMPORTANT: GitHub CODEOWNERS uses "last matching rule wins" behavior
+      // This means if multiple patterns match a file, the pattern that appears
+      // later in the CODEOWNERS file takes precedence (similar to .gitignore)
 
-        for (const rule of rules) {
+      // For each changed file, find the last matching rule (GitHub CODEOWNERS behavior)
+      for (const file of changedFiles) {
+        let lastMatchingRule = null;
+
+        // Iterate through rules in order and keep track of the last one that matches
+        for (let i = 0; i < rules.length; i++) {
+          const rule = rules[i];
           if (matchPattern(rule.pattern, file)) {
-            matchedRules.push({
-              ...rule,
-              specificity: rule.pattern.length + (rule.pattern.includes('*') ? 0 : 10),
-            });
+            lastMatchingRule = { ...rule, ruleIndex: i };
           }
         }
 
-        // Sort by specificity (more specific patterns first, later rules override earlier ones)
-        matchedRules.sort((a, b) => {
-          // First sort by specificity, then by order in file (later rules win)
-          if (a.specificity !== b.specificity) {
-            return b.specificity - a.specificity;
-          }
-          return 0; // Keep original order for same specificity
-        });
+        // Use the last matching rule (this follows GitHub CODEOWNERS specification)
+        const selectedRule = lastMatchingRule;
 
-        // Take the most specific rule (CODEOWNERS typically uses the most specific match)
-        const mostSpecificRule = matchedRules[0];
-
-        if (mostSpecificRule) {
+        if (selectedRule) {
           fileApprovalDetails.push({
             file,
-            pattern: mostSpecificRule.pattern,
-            owners: mostSpecificRule.owners,
+            pattern: selectedRule.pattern,
+            owners: selectedRule.owners,
+            ruleIndex: selectedRule.ruleIndex,
           });
 
           // Add owners to the global set
-          mostSpecificRule.owners.forEach(owner => requiredApprovers.add(owner));
+          selectedRule.owners.forEach(owner => requiredApprovers.add(owner));
         } else {
           fileApprovalDetails.push({
             file,
             pattern: 'No matching rule',
             owners: [],
+            ruleIndex: -1,
           });
         }
       }
@@ -224,6 +222,7 @@ app.post('/api/pr-approvers', async (req, res) => {
     // Group files by their required approvers to find minimum set
     const approverGroups = new Map();
     const filesByApproverGroup = new Map();
+    const filesWithoutOwners = [];
 
     for (const detail of fileApprovalDetails) {
       if (detail.owners && detail.owners.length > 0) {
@@ -234,6 +233,9 @@ app.post('/api/pr-approvers', async (req, res) => {
           filesByApproverGroup.set(groupKey, []);
         }
         filesByApproverGroup.get(groupKey).push(detail.file);
+      } else {
+        // Track files with no CODEOWNERS rule separately
+        filesWithoutOwners.push(detail.file);
       }
     }
 
@@ -266,9 +268,11 @@ app.post('/api/pr-approvers', async (req, res) => {
       }
     }
 
-    // Fetch user details (full names) for all required approvers
+    // Fetch user details (full names) for all required approvers + current approvers + requested reviewers
     const userDetails = new Map();
-    const allUsers = Array.from(requiredApprovers);
+    const allUsers = Array.from(
+      new Set([...requiredApprovers, ...approvals, ...requestedReviewers])
+    );
 
     // Fetch user info in parallel for better performance
     const userPromises = allUsers.map(async username => {
@@ -310,6 +314,9 @@ app.post('/api/pr-approvers', async (req, res) => {
       console.log(`  ${detail.file}`);
       console.log(`    Pattern: ${detail.pattern}`);
       console.log(`    Owners: ${detail.owners.join(', ') || 'None'}`);
+      if (detail.ruleIndex >= 0) {
+        console.log(`    Rule Index: ${detail.ruleIndex} (last matching rule wins)`);
+      }
     });
     console.log('\nMinimum Required Approvals:');
     minRequiredApprovals.forEach((group, index) => {
@@ -321,13 +328,63 @@ app.post('/api/pr-approvers', async (req, res) => {
       );
     });
 
-    const totalGroupsNeedingApproval = minRequiredApprovals.filter(g => g.needsApproval).length;
-    console.log(`\n📊 MINIMUM APPROVALS NEEDED: ${totalGroupsNeedingApproval} more people`);
+    // Show files without CODEOWNERS rules
+    if (filesWithoutOwners.length > 0) {
+      console.log(`  Files without CODEOWNERS rules: ${filesWithoutOwners.length} files`);
+      console.log(`    Files: ${filesWithoutOwners.join(', ')}`);
+      console.log(`    Status: ⚪ NO APPROVAL REQUIRED (no CODEOWNERS rule)`);
+    }
 
-    console.log('\nSummary:');
-    console.log('All possible approvers:', Array.from(requiredApprovers));
-    console.log('Current approvals:', approvals);
-    console.log('Requested reviewers:', requestedReviewers);
+    const totalGroupsNeedingApproval = minRequiredApprovals.filter(g => g.needsApproval).length;
+    const totalFilesInGroups = minRequiredApprovals.reduce(
+      (sum, group) => sum + group.files.length,
+      0
+    );
+    const totalAccountedFiles = totalFilesInGroups + filesWithoutOwners.length;
+
+    console.log(`\n📊 MINIMUM APPROVALS NEEDED: ${totalGroupsNeedingApproval} more people`);
+    console.log(
+      `📈 FILE ACCOUNTING: ${totalAccountedFiles}/${changedFiles.length} files accounted for`
+    );
+    if (totalAccountedFiles !== changedFiles.length) {
+      console.log(`⚠️  MISMATCH: ${changedFiles.length - totalAccountedFiles} files unaccounted!`);
+    }
+
+    // Include current approvers and requested reviewers in the "all possible" set since they clearly have approval permissions
+    const allPossibleApprovers = new Set([
+      ...requiredApprovers,
+      ...approvals,
+      ...requestedReviewers,
+    ]);
+
+    console.log('\n🔍 DETAILED APPROVER ANALYSIS:');
+    console.log('📋 Required approvers (from CODEOWNERS):', Array.from(requiredApprovers));
+    console.log('✅ Current approvals:', approvals);
+    console.log('📝 Requested reviewers:', requestedReviewers);
+    console.log('🔧 Creating allPossibleApprovers set...');
+    console.log('   - Adding required approvers:', Array.from(requiredApprovers));
+    console.log('   - Adding current approvals:', approvals);
+    console.log('   - Adding requested reviewers:', requestedReviewers);
+    console.log(
+      '👥 All possible approvers (required + current + requested):',
+      Array.from(allPossibleApprovers)
+    );
+
+    // Debug: Check if the combination worked
+    const missingFromRequired = approvals.filter(approval => !requiredApprovers.has(approval));
+    if (missingFromRequired.length > 0) {
+      console.log('⚠️  Current approvers NOT in CODEOWNERS:', missingFromRequired);
+      console.log('✅ These will be added to allPossibleApprovers');
+    }
+
+    const requestedNotInRequired = requestedReviewers.filter(
+      reviewer => !requiredApprovers.has(reviewer)
+    );
+    if (requestedNotInRequired.length > 0) {
+      console.log('⚠️  Requested reviewers NOT in CODEOWNERS:', requestedNotInRequired);
+      console.log('✅ These will be added to allPossibleApprovers');
+    }
+
     console.log('========================');
 
     // Add user details to each approval group for the new UI
@@ -382,9 +439,11 @@ app.post('/api/pr-approvers', async (req, res) => {
       changedFiles,
       fileApprovalDetails,
       minRequiredApprovals: enhancedMinRequiredApprovals,
+      filesWithoutOwners,
       totalGroupsNeedingApproval,
       minApprovalsNeeded: totalGroupsNeedingApproval,
       requiredApprovers: Array.from(requiredApprovers),
+      allPossibleApprovers: Array.from(allPossibleApprovers),
       allUserDetails: userDetailsArray,
       userDetails: Object.fromEntries(userDetails),
       approvals,

@@ -63,6 +63,14 @@ This directory contains GitHub Actions workflows for automated CI/CD processes i
 - **PR Size Analysis**: Warns about large PRs (>50 files or >1000 lines)
 - Automated PR labeling and analysis
 
+#### Commit Message Validation
+- **Smart Validation**: Different rules for collaborators vs external contributors
+- **Collaborator Bypass**: Project collaborators can use any commit message format
+- **External Contributor Rules**: Must follow conventional commits or issue reference format
+  - Conventional: `feat: description`, `fix(scope): description`
+  - Issue reference: `#123: description`
+- **Automatic Detection**: Based on git user configuration
+
 #### Integration Tests
 - Server startup and health checks
 - End-to-end integration testing

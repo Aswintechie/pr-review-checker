@@ -1,0 +1,85 @@
+#!/bin/sh
+
+# Get the commit message
+commit_msg=$(cat "$1")
+
+# Get the current user's GitHub username from git config
+github_user=$(git config user.login 2>/dev/null || git config user.name 2>/dev/null || echo "")
+
+# List of collaborators (users who can bypass commit message restrictions)
+# Add GitHub usernames of project collaborators here
+collaborators=(
+  "azayasankaran"
+  "Aswin-coder"
+  "dmakoviichuk-tt"
+  "rfurko-tt" 
+  "ayerofieiev-tt"
+  # Add more collaborators as needed
+)
+
+# Function to check if user is a collaborator
+is_collaborator() {
+  local user="$1"
+  for collaborator in "${collaborators[@]}"; do
+    if [ "$user" = "$collaborator" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Function to validate commit message format
+validate_commit_message() {
+  local msg="$1"
+  
+  # Allow merge commits
+  if echo "$msg" | grep -qE "^Merge (branch|pull request)"; then
+    return 0
+  fi
+  
+  # Check for conventional commit format: type(scope): description
+  if echo "$msg" | grep -qE "^(feat|fix|docs|style|refactor|test|chore)(\([a-zA-Z0-9_-]+\))?:\ .+"; then
+    return 0
+  fi
+  
+  # Check for issue number format: #123: description
+  if echo "$msg" | grep -qE "^#[0-9]+:\ .+"; then
+    return 0
+  fi
+  
+  return 1
+}
+
+echo "🔍 Checking commit message format..."
+
+# If user is a collaborator, allow any commit message
+if is_collaborator "$github_user"; then
+  echo "✅ Collaborator detected ($github_user) - commit message restrictions bypassed"
+  exit 0
+fi
+
+# For external contributors, validate the commit message
+echo "📝 External contributor detected - validating commit message format..."
+
+if validate_commit_message "$commit_msg"; then
+  echo "✅ Commit message follows required format"
+  exit 0
+else
+  echo "❌ Commit message format invalid!"
+  echo ""
+  echo "For external contributors, commit messages must follow one of these formats:"
+  echo "  • Conventional commits: feat: description, fix: description, docs: description, etc."
+  echo "  • Issue reference: #123: description"
+  echo ""
+  echo "Examples:"
+  echo "  ✅ feat: add user authentication"
+  echo "  ✅ fix(auth): resolve login timeout issue"
+  echo "  ✅ #456: implement new dashboard feature"
+  echo ""
+  echo "Your commit message: '$commit_msg'"
+  echo ""
+  echo "If you're a project collaborator, make sure your git user.login or user.name"
+  echo "matches your GitHub username and is added to the collaborators list."
+  
+  exit 1
+fi 
