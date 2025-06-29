@@ -481,13 +481,36 @@ function App() {
               </button>
               {renderHistoryDropdown()}
             </div>
+            <select
+              value={currentTheme}
+              onChange={e => changeTheme(e.target.value)}
+              className='theme-selector'
+            >
+              <option value='light'>🌅 Light</option>
+              <option value='dark'>🌙 Dark</option>
+              <option value='ocean'>🌊 Ocean</option>
+              <option value='forest'>🌲 Forest</option>
+              <option value='sunset'>🌇 Sunset</option>
+              <option value='midnight'>🌌 Midnight</option>
+              <option value='arctic'>❄️ Arctic</option>
+              <option value='cherry'>🌸 Cherry</option>
+            </select>
             <button
-              className='feedback-btn'
+              className='contact-btn header-btn'
+              onClick={() =>
+                window.open(
+                  'mailto:contact@aswinlocal.in?subject=PR Approval Finder - Contact&body=Hi there,%0D%0A%0D%0AI wanted to reach out about...',
+                  '_blank'
+                )
+              }
+              title='Send direct email to contact@aswinlocal.in'
+            >
+              ✉️
+            </button>
+            <button
+              className='feedback-btn header-btn'
               onClick={() => setShowFeedbackForm(true)}
-              title='Send feedback'
-              type='button'
-              data-1p-ignore
-              autoComplete='off'
+              title='Share feedback or suggestions'
             >
               💬
             </button>

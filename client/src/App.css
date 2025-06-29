@@ -322,7 +322,7 @@ body {
 .header-controls {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 8px;
 }
 
 .history-container,
@@ -1888,4 +1888,56 @@ section h2 {
   .rating-text {
     font-size: 0.7rem;
   }
+}
+
+/* Header Buttons - Contact & Feedback */
+.header-btn {
+  background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-color-dark) 100%);
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  overflow: hidden;
+  margin-left: 8px;
+}
+
+.header-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.header-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Contact Button - Green theme */
+.contact-btn {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+.contact-btn:hover {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(5, 150, 105, 0.3);
+}
+
+/* Feedback Button - Uses theme colors */
+.feedback-btn {
+  background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-color-dark) 100%);
+}
+
+.feedback-btn:hover {
+  background: linear-gradient(135deg, var(--accent-color-light) 0%, var(--accent-color) 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(var(--accent-color-rgb), 0.3);
 }
