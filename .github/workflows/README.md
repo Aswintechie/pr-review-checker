@@ -57,11 +57,22 @@ This directory contains GitHub Actions workflows for automated CI/CD processes i
 - Only runs on pull requests
 
 #### PR-Specific Checks
-- **Semantic Title Validation**: Ensures PR titles follow conventional commit format
-  - Valid formats: `feat:`, `fix:`, `docs:`, `style:`, `refactor:`, `test:`, `chore:`
-  - Optional scope: `feat(auth): add login feature`
+- **Smart PR Title Validation**: Different rules for collaborators vs external contributors
+  - **Collaborators**: Any PR title format allowed
+  - **External Contributors**: Must follow conventional commit format or issue reference
+    - Valid formats: `feat:`, `fix:`, `docs:`, `style:`, `refactor:`, `test:`, `chore:`
+    - Optional scope: `feat(auth): add login feature`
+    - Issue reference: `#123: description`
 - **PR Size Analysis**: Warns about large PRs (>50 files or >1000 lines)
 - Automated PR labeling and analysis
+
+#### Commit Message Validation
+- **Smart Validation**: Different rules for collaborators vs external contributors
+- **Collaborator Bypass**: Project collaborators can use any commit message format
+- **External Contributor Rules**: Must follow conventional commits or issue reference format
+  - Conventional: `feat: description`, `fix(scope): description`
+  - Issue reference: `#123: description`
+- **Automatic Detection**: Based on git user configuration
 
 #### Integration Tests
 - Server startup and health checks
@@ -110,10 +121,13 @@ These workflows are designed to work with branch protection rules:
    npm run lint
    ```
 
-2. **Creating PRs**: Ensure title follows semantic format
-   - ✅ `feat: add new authentication system`
-   - ✅ `fix(api): resolve rate limiting issue`
-   - ❌ `updated some files`
+2. **Creating PRs**: 
+   - **Collaborators**: Use any PR title format you prefer
+   - **External Contributors**: Ensure title follows structured format
+     - ✅ `feat: add new authentication system`
+     - ✅ `fix(api): resolve rate limiting issue`
+     - ✅ `#123: implement new dashboard`
+     - ❌ `updated some files`
 
 3. **Large Changes**: Consider breaking into smaller PRs if warned
 
