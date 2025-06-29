@@ -642,19 +642,21 @@ app.post('/api/pr-approvers', async (req, res) => {
       });
     }
 
-    // Helper function to check if an individual approver satisfies a team requirement
+        // Helper function to check if an individual approver satisfies a team requirement
     const checkTeamApproval = (teamName, approvedBy) => {
       const team = teamDetails.get(teamName);
       if (!team || !team.members) return null;
       
-      // Check if any of the individual approvers are team members
+      // Check which individual approvers are team members
+      const approvedTeamMembers = [];
       for (const approver of approvedBy) {
         const isMember = team.members.some(member => member.username === approver);
         if (isMember) {
-          return approver; // Return which team member approved
+          approvedTeamMembers.push(approver);
         }
       }
-      return null;
+      
+      return approvedTeamMembers.length > 0 ? approvedTeamMembers : null;
     };
 
     // Calculate minimum required approvals with enhanced team support
@@ -667,6 +669,7 @@ app.post('/api/pr-approvers', async (req, res) => {
       let approver = null;
       let approverType = 'individual'; // 'individual' or 'team'
       let teamName = null;
+      let approvedTeamMembers = [];
 
       // Check each owner (individual or team) for approval
       for (const owner of owners) {
@@ -678,10 +681,11 @@ app.post('/api/pr-approvers', async (req, res) => {
           break;
         } else if (owner.includes('/')) {
           // Check if this is a team and if any approver is a team member
-          const teamApprover = checkTeamApproval(owner, approvedBy);
-          if (teamApprover) {
+          const teamApprovers = checkTeamApproval(owner, approvedBy);
+          if (teamApprovers) {
             hasApproval = true;
-            approver = teamApprover;
+            approver = teamApprovers[0]; // Primary approver for display
+            approvedTeamMembers = teamApprovers; // All approved team members
             approverType = 'team';
             teamName = owner;
             break;
@@ -698,6 +702,7 @@ app.post('/api/pr-approvers', async (req, res) => {
           approvedBy: null,
           approverType: null,
           teamName: null,
+          approvedTeamMembers: [],
         });
         stillNeedApprovalGroups.push(owners);
       } else {
@@ -709,6 +714,7 @@ app.post('/api/pr-approvers', async (req, res) => {
           approvedBy: approver,
           approverType,
           teamName,
+          approvedTeamMembers,
         });
       }
     }
@@ -772,7 +778,12 @@ app.post('/api/pr-approvers', async (req, res) => {
         console.log(`    Status: ❌ NEEDS APPROVAL`);
       } else {
         if (group.approverType === 'team') {
-          console.log(`    Status: ✅ Approved by ${group.approvedBy} (member of ${group.teamName})`);
+          const membersList = group.approvedTeamMembers.length > 1 
+            ? `${group.approvedTeamMembers.join(', ')}`
+            : group.approvedBy;
+          console.log(
+            `    Status: ✅ Approved by ${membersList} (member${group.approvedTeamMembers.length > 1 ? 's' : ''} of ${group.teamName})`
+          );
         } else {
           console.log(`    Status: ✅ Approved by ${group.approvedBy}`);
         }

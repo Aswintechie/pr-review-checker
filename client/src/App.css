@@ -1439,6 +1439,7 @@ section h2 {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 1rem;
+  overflow: visible;
 }
 
 .user-card {
@@ -1451,6 +1452,7 @@ section h2 {
   transition: all 0.3s ease;
   position: relative;
   cursor: pointer;
+  overflow: visible;
 }
 
 .user-card:hover {
@@ -1473,7 +1475,7 @@ section h2 {
   border-color: var(--purple);
   flex-direction: column;
   align-items: stretch;
-  overflow: hidden;
+  overflow: visible;
   transition: all 0.3s ease;
 }
 
@@ -1525,6 +1527,7 @@ section h2 {
   background: var(--bg-secondary);
   margin-top: 8px;
   animation: expandIn 0.3s ease-out;
+  overflow: visible;
 }
 
 @keyframes expandIn {
@@ -1551,23 +1554,32 @@ section h2 {
 
 .team-members-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  padding: 1rem 0;
 }
 
 .team-member {
+  position: relative;
+  overflow: visible;
   display: flex;
   align-items: center;
-  padding: 8px;
+  padding: 12px;
   background: var(--bg-primary);
-  border: 1px solid var(--border-primary);
-  border-radius: 8px;
-  transition: all 0.2s ease;
+  border: 2px solid var(--border-primary);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  margin-bottom: 8px;
 }
 
 .team-member:hover {
-  border-color: var(--border-secondary);
-  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.team-member.approved:hover {
+  transform: scale(1.03) translateY(-1px);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
 }
 
 .member-avatar {
@@ -2288,3 +2300,73 @@ section h2 {
 }
 
 /* Feedback Button */
+
+/* Team approval enhancements */
+.approval-count {
+  color: var(--success);
+  font-weight: 600;
+  font-size: 0.85em;
+}
+
+.team-member.approved {
+  border: 2px solid var(--success) !important;
+  background: var(--success-bg) !important;
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3) !important;
+}
+
+.member-approved {
+  font-size: 0.7rem;
+  color: var(--success);
+  font-weight: 600;
+  margin-top: 0.25rem;
+  text-align: center;
+}
+
+.member-approval-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: var(--success);
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: bold;
+  border: 2px solid var(--bg-primary);
+  z-index: 1;
+}
+
+/* Enhanced team member grid */
+.team-members-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 1rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* Responsive adjustments for team approvals */
+@media (max-width: 768px) {
+  .approval-count {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.8em;
+  }
+  
+  .team-members-grid {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.5rem;
+  }
+  
+  .member-approval-badge {
+    width: 16px;
+    height: 16px;
+    font-size: 0.6rem;
+  }
+}
