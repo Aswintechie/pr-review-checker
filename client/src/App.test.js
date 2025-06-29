@@ -18,7 +18,7 @@ describe('App Component', () => {
 
   test('renders main heading', () => {
     render(<App />);
-    const heading = screen.getByText(/PR Approval Finder v5.0/i);
+    const heading = screen.getByText(/PR Approval Finder v6.0/i);
     expect(heading).toBeInTheDocument();
   });
 
@@ -107,12 +107,12 @@ describe('App Component', () => {
 
   test('theme persistence works', () => {
     // Set a theme in localStorage
-    localStorage.setItem('currentTheme', '3');
+    localStorage.setItem('currentTheme', 'dark');
 
     render(<App />);
 
     // Check if body has the theme class
-    expect(document.body.className).toContain('theme-3');
+    expect(document.body.className).toContain('theme-dark');
   });
 
   test('recent PRs are loaded from localStorage', () => {
