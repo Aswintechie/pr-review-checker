@@ -83,6 +83,17 @@ const FeedbackForm = ({ onClose }) => {
         <div className='feedback-header'>
           <h2>📝 Share Your Feedback</h2>
           <p>Help us improve PR Approval Finder</p>
+          <div className='contact-options'>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: '8px 0' }}>
+              💡 You can also email us directly at{' '}
+              <a
+                href='mailto:contact@aswinlocal.in'
+                style={{ color: 'var(--accent-color)', textDecoration: 'none' }}
+              >
+                contact@aswinlocal.in
+              </a>
+            </p>
+          </div>
           <button className='close-btn' onClick={onClose} type='button' aria-label='Close'>
             ✕
           </button>
