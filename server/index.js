@@ -267,7 +267,7 @@ const GITHUB_API_BASE = 'https://api.github.com';
 // Email configuration
 let emailTransporter = null;
 if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-  emailTransporter = nodemailer.createTransporter({
+  emailTransporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port: parseInt(process.env.SMTP_PORT) || 587,
     secure: false, // true for 465, false for other ports
