@@ -84,13 +84,7 @@ function matchPattern(pattern, filePath) {
     .replace(/__DOUBLE_STAR__/g, '.*') // ** matches any number of directories
     .replace(/\?/g, '[^/]'); // ? matches single character except directory separator
 
-  const regex = new RegExp(`^${regexPattern}$`);
-  
-  // Debug logging for the specific file we're having issues with
-  if (filePath === 'tt-train/sources/ttml/core/xtensor_utils.hpp' && pattern.includes('tt-train')) {
-    console.log(`DEBUG matchPattern: pattern="${pattern}" -> regexPattern="${regexPattern}" -> regex="${regex}" -> test result: ${regex.test(filePath)}`);
-  }
-  
+    const regex = new RegExp(`^${regexPattern}$`);
   return regex.test(filePath);
 }
 
@@ -164,15 +158,8 @@ app.post('/api/pr-approvers', async (req, res) => {
     const fileApprovalDetails = [];
 
     if (codeownersContent) {
-      // Parse CODEOWNERS and find required approvers
+            // Parse CODEOWNERS and find required approvers
       const rules = parseCodeowners(codeownersContent);
-      
-      // Debug: Log the last few rules to see if tt-train/** is being parsed correctly
-      console.log(`DEBUG: Parsed ${rules.length} CODEOWNERS rules`);
-      console.log('DEBUG: Last 5 rules:');
-      rules.slice(-5).forEach((rule, index) => {
-        console.log(`  ${rules.length - 5 + index}: "${rule.pattern}" -> [${rule.owners.join(', ')}]`);
-      });
 
       // IMPORTANT: GitHub CODEOWNERS uses "last matching rule wins" behavior
       // This means if multiple patterns match a file, the pattern that appears
@@ -185,14 +172,7 @@ app.post('/api/pr-approvers', async (req, res) => {
         // Iterate through rules in order and keep track of the last one that matches
         for (let i = 0; i < rules.length; i++) {
           const rule = rules[i];
-          const matches = matchPattern(rule.pattern, file);
-          
-          // Debug logging for the specific file we're having issues with
-          if (file === 'tt-train/sources/ttml/core/xtensor_utils.hpp') {
-            console.log(`DEBUG: Testing pattern "${rule.pattern}" against file "${file}": ${matches ? 'MATCH' : 'NO MATCH'}`);
-          }
-          
-          if (matches) {
+                    if (matchPattern(rule.pattern, file)) {
             lastMatchingRule = { ...rule, ruleIndex: i };
           }
         }
