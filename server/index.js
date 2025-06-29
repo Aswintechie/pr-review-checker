@@ -459,13 +459,42 @@ app.post('/api/pr-approvers', async (req, res) => {
 
     const pr = prResponse.data;
 
-    // Fetch PR files
-    const filesResponse = await axios.get(
-      `${GITHUB_API_BASE}/repos/${owner}/${repo}/pulls/${prNumber}/files`,
-      { headers }
-    );
+    // Fetch PR files with pagination support
+    let changedFiles = [];
+    let page = 1;
+    const perPage = 100; // GitHub's max per_page for this endpoint is 3000, but 100 is reasonable
+    let hasMorePages = true;
 
-    const changedFiles = filesResponse.data.map(file => file.filename);
+    while (hasMorePages) {
+      const filesResponse = await axios.get(
+        `${GITHUB_API_BASE}/repos/${owner}/${repo}/pulls/${prNumber}/files`,
+        {
+          headers,
+          params: {
+            per_page: perPage,
+            page,
+          },
+        }
+      );
+
+      const files = filesResponse.data.map(file => file.filename);
+      changedFiles = changedFiles.concat(files);
+
+      // If we got fewer files than per_page, we've reached the last page
+      if (files.length < perPage) {
+        hasMorePages = false;
+      }
+
+      page++;
+
+      // Safety check to prevent infinite loops (GitHub API shouldn't have more than ~1000 pages)
+      if (page > 1000) {
+        console.warn(`⚠️  Stopped fetching files at page ${page} - possible infinite loop`);
+        hasMorePages = false;
+      }
+    }
+
+    console.log(`📁 Successfully fetched ${changedFiles.length} files from ${page} page(s)`);
 
     // Fetch CODEOWNERS file
     let codeownersContent = '';
