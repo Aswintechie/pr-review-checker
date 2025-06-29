@@ -22,6 +22,7 @@ app.get('/health', (req, res) => {
 
 // GitHub API configuration
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const GITHUB_TEAMS_TOKEN = process.env.GITHUB_TEAMS_TOKEN;
 const GITHUB_API_BASE = 'https://api.github.com';
 
 // Helper function to parse CODEOWNERS file
@@ -87,6 +88,74 @@ function matchPattern(pattern, filePath) {
   const regex = new RegExp(`^${regexPattern}$`);
   return regex.test(filePath);
 }
+
+// GitHub Teams Support Functions
+// fetchTeamMembers function removed (not currently used)
+
+async function fetchTeamDetails(org, teamSlug, token) {
+  try {
+    const headers = {
+      Accept: 'application/vnd.github.v3+json',
+      Authorization: `token ${token}`,
+    };
+
+    const [teamResponse, membersResponse] = await Promise.all([
+      axios.get(`${GITHUB_API_BASE}/orgs/${org}/teams/${teamSlug}`, { headers }),
+      axios.get(`${GITHUB_API_BASE}/orgs/${org}/teams/${teamSlug}/members`, { headers }),
+    ]);
+
+    const team = teamResponse.data;
+    const members = membersResponse.data;
+
+    // Fetch full user details for each team member
+    const memberDetailsPromises = members.map(async member => {
+      try {
+        const userResponse = await axios.get(`${GITHUB_API_BASE}/users/${member.login}`, {
+          headers,
+        });
+        return {
+          username: member.login,
+          name: userResponse.data.name || member.login, // Use full name if available, fallback to username
+          avatar_url: member.avatar_url,
+          type: 'user',
+        };
+      } catch (error) {
+        console.warn(`Could not fetch details for user ${member.login}:`, error.message);
+        return {
+          username: member.login,
+          name: member.login, // Fallback to username if API call fails
+          avatar_url: member.avatar_url,
+          type: 'user',
+        };
+      }
+    });
+
+    const membersWithDetails = await Promise.all(memberDetailsPromises);
+
+    return {
+      name: team.name,
+      slug: team.slug,
+      description: team.description,
+      url: team.html_url,
+      memberCount: team.members_count,
+      members: membersWithDetails,
+      type: 'team',
+    };
+  } catch (error) {
+    console.warn(`Could not fetch details for team ${org}/${teamSlug}:`, error.message);
+    return {
+      name: `${org}/${teamSlug}`,
+      slug: teamSlug,
+      description: 'Team details unavailable',
+      url: null,
+      memberCount: 0,
+      members: [],
+      type: 'team',
+    };
+  }
+}
+
+// isUserInTeams function removed (not currently used)
 
 // Get required approvers for a PR
 app.post('/api/pr-approvers', async (req, res) => {
@@ -387,12 +456,54 @@ app.post('/api/pr-approvers', async (req, res) => {
 
     console.log('========================');
 
+    // Fetch team details for any teams referenced in CODEOWNERS or requested teams
+    const teamDetails = new Map();
+    const teamsToFetch = new Set();
+
+    // Collect teams from CODEOWNERS entries (teams are identified by org/team format)
+    Array.from(requiredApprovers).forEach(approver => {
+      if (approver.includes('/')) {
+        teamsToFetch.add(approver);
+      }
+    });
+
+    // Add requested teams
+    requestedTeams.forEach(team => teamsToFetch.add(team));
+
+    // Fetch team details if we have a teams token
+    if (GITHUB_TEAMS_TOKEN && teamsToFetch.size > 0) {
+      console.log('🔍 Fetching team details for:', Array.from(teamsToFetch));
+
+      const teamPromises = Array.from(teamsToFetch).map(async teamName => {
+        // Handle both 'org/team' and 'team' formats
+        let org, teamSlug;
+        if (teamName.includes('/')) {
+          [org, teamSlug] = teamName.split('/');
+        } else {
+          // If no org specified, try to extract from repo owner
+          org = owner;
+          teamSlug = teamName;
+        }
+
+        const details = await fetchTeamDetails(org, teamSlug, GITHUB_TEAMS_TOKEN);
+        return { teamName, details };
+      });
+
+      const teamResults = await Promise.all(teamPromises);
+      teamResults.forEach(({ teamName, details }) => {
+        teamDetails.set(teamName, details);
+      });
+    }
+
     // Add user details to each approval group for the new UI
     const enhancedMinRequiredApprovals = minRequiredApprovals.map(group => ({
       ...group,
-      ownerDetails: group.owners.map(
-        owner => userDetails.get(owner) || { username: owner, name: owner, type: 'user' }
-      ),
+      ownerDetails: group.owners.map(owner => {
+        if (teamDetails.has(owner)) {
+          return teamDetails.get(owner);
+        }
+        return userDetails.get(owner) || { username: owner, name: owner, type: 'user' };
+      }),
     }));
 
     // Extract rate limit information from the last response headers
@@ -446,6 +557,8 @@ app.post('/api/pr-approvers', async (req, res) => {
       allPossibleApprovers: Array.from(allPossibleApprovers),
       allUserDetails: userDetailsArray,
       userDetails: Object.fromEntries(userDetails),
+      teamDetails: Object.fromEntries(teamDetails),
+      teamsConfigured: GITHUB_TEAMS_TOKEN ? true : false,
       approvals,
       currentApprovals: approvals,
       stillNeedApproval,

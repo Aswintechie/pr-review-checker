@@ -313,18 +313,99 @@ function App() {
     );
   };
 
-  const renderUserCard = (user, isApproved = false) => {
-    if (user.type === 'team') {
-      return (
-        <div key={user.username} className={`user-card team-card ${isApproved ? 'approved' : ''}`}>
+  const [expandedTeams, setExpandedTeams] = useState(new Set());
+
+  const toggleTeamExpansion = teamKey => {
+    setExpandedTeams(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(teamKey)) {
+        newSet.delete(teamKey);
+      } else {
+        newSet.add(teamKey);
+      }
+      return newSet;
+    });
+  };
+
+  const renderTeamCard = (team, isApproved = false) => {
+    const teamKey = team.slug || team.username;
+    const isExpanded = expandedTeams.has(teamKey);
+    const memberCount = team.members ? team.members.length : team.memberCount || 0;
+
+    return (
+      <div
+        key={teamKey}
+        className={`user-card team-card ${isApproved ? 'approved' : ''} ${isExpanded ? 'expanded' : ''}`}
+      >
+        <div
+          className='team-header'
+          onClick={() => toggleTeamExpansion(teamKey)}
+          role='button'
+          tabIndex={0}
+          onKeyDown={e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              toggleTeamExpansion(teamKey);
+            }
+          }}
+        >
           <div className='user-avatar team-avatar'>👥</div>
           <div className='user-info'>
-            <div className='user-name'>{user.name}</div>
-            <div className='user-username'>@{user.username}</div>
+            <div className='user-name'>{team.name}</div>
+            <div className='user-username'>
+              @{team.username || team.slug}
+              {memberCount > 0 && (
+                <span className='member-count'>
+                  {' '}
+                  • {memberCount} member{memberCount !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+            {team.description && <div className='team-description'>{team.description}</div>}
           </div>
+          <div className='team-expand-indicator'>{isExpanded ? '▼' : '▶'}</div>
           {isApproved && <div className='approval-badge'>✅</div>}
         </div>
-      );
+
+        {isExpanded && team.members && team.members.length > 0 && (
+          <div className='team-members'>
+            <div className='team-members-title'>Team Members:</div>
+            <div className='team-members-grid'>
+              {team.members.map(member => (
+                <div key={member.username} className='team-member'>
+                  <div className='member-avatar'>
+                    {member.avatar_url ? (
+                      <img src={member.avatar_url} alt={member.username} />
+                    ) : (
+                      <div className='avatar-placeholder'>👤</div>
+                    )}
+                  </div>
+                  <div className='member-info'>
+                    <div className='member-name'>{member.name}</div>
+                    <div className='member-username'>@{member.username}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {isExpanded && (!team.members || team.members.length === 0) && (
+          <div className='team-members'>
+            <div className='team-members-empty'>
+              {result?.teamsConfigured
+                ? 'No members found or insufficient permissions to view team members.'
+                : 'Team member details unavailable. Configure GITHUB_TEAMS_TOKEN to view team members.'}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderUserCard = (user, isApproved = false) => {
+    if (user.type === 'team') {
+      return renderTeamCard(user, isApproved);
     }
 
     return (

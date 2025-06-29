@@ -15,6 +15,14 @@ collaborators=(
   # Add more collaborators as needed
 )
 
+# List of GitHub teams (org/team format) whose members can bypass commit message restrictions
+# Requires GITHUB_TEAMS_TOKEN environment variable with read:org permissions
+collaborator_teams=(
+  # "your-org/core-team"
+  # "your-org/maintainers"
+  # Add more teams as needed
+)
+
 # Function to check if user is a collaborator
 is_collaborator() {
   local user="$1"

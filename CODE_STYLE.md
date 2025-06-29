@@ -169,13 +169,31 @@ The system identifies collaborators by matching the git user configuration again
 - `git config user.login` (GitHub username)
 - `git config user.name` (fallback)
 
-### Current Collaborators List
-The following users can bypass commit message restrictions:
+### Current Collaborators & Teams
+
+#### **Individual Collaborators**
+The following users can bypass commit message and PR title restrictions:
 - `azayasankaran`
 - `Aswin-coder` 
-- `dmakoviichuk-tt`
-- `rfurko-tt`
-- `ayerofieiev-tt`
+- `Aswinmcw`
+
+#### **Team-Based Collaboration (Optional)**
+Support for GitHub teams allows entire teams to bypass validation rules:
+
+**Configuration Requirements:**
+- `GITHUB_TEAMS_TOKEN` environment variable with `read:org` permissions
+- Teams configured in both validation locations (see configuration section below)
+
+**Example Team Configuration:**
+- `your-org/core-team` - Core development team
+- `your-org/maintainers` - Project maintainers
+- `your-org/security-team` - Security review team
+
+**Benefits:**
+- ✅ **Scalable Management**: Add/remove team members without updating configuration
+- ✅ **Centralized Control**: Manage permissions through GitHub team membership
+- ✅ **Expandable UI**: View team members in interactive expandable cards
+- ✅ **Automatic Sync**: Team membership changes reflect immediately
 
 ### How It Works
 
@@ -229,22 +247,36 @@ updated stuff
 WIP: work in progress
 ```
 
-**✅ Valid for Collaborators (any format):**
+**✅ Valid for Collaborators & Team Members (any format):**
 
-*Commit Messages:*
+*Commit Messages (Individual Collaborators Only):*
 ```bash
 git commit -m "quick fix"           # ← Allowed for collaborators
 git commit -m "feat: add feature"   # ← Also valid
 git commit -m "debugging session"   # ← Also allowed
 ```
 
-*PR Titles:*
+*PR Titles (Individual Collaborators & Team Members):*
 ```
-quick fix                          # ← Allowed for collaborators
+quick fix                          # ← Allowed for collaborators/team members
 feat: add feature                  # ← Also valid
 debugging session                  # ← Also allowed
 WIP: experimenting with new API    # ← Also allowed
 ```
+
+### **UI Features for Teams**
+
+#### **Expandable Team Cards**
+- **Click to expand**: Team cards show member count and can be clicked to reveal team members
+- **Member details**: Each team member shows avatar, name, and username
+- **Team information**: Displays team description and member count
+- **Visual hierarchy**: Clear distinction between teams and individual users
+
+#### **Team Display in PR Analysis**
+- **CODEOWNERS teams**: Teams from CODEOWNERS file appear as expandable cards
+- **Requested teams**: Teams requested as reviewers show up in the interface
+- **Member visibility**: When `GITHUB_TEAMS_TOKEN` is configured, individual team members are displayed
+- **Fallback handling**: Graceful degradation when team details are unavailable
 
 ### Configuration
 
@@ -264,9 +296,32 @@ collaborators=(
   "new-collaborator-username" 
   # Add more as needed - keep in sync with .husky/commit-msg
 )
+
+collaborator_teams=(
+  "your-org/team-slug"
+  # Add more teams as needed
+)
 ```
 
-**⚠️ Important**: Keep both lists synchronized to ensure consistent behavior across commit messages and PR title validation.
+#### **Team Configuration (Optional)**
+
+**1. Set up GitHub Teams Token:**
+```bash
+# In server/.env
+GITHUB_TEAMS_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
+```
+
+**Required permissions for teams token:**
+- `read:org` - Read organization teams and memberships
+
+**2. Configure Teams in Validation:**
+- **Commit Messages**: Add teams to `.husky/commit-msg` (Note: Team validation only works for PR titles due to local git hook limitations)
+- **PR Titles**: Add teams to `.github/workflows/ci.yml`
+
+**⚠️ Important**: 
+- Keep individual collaborator lists synchronized between both locations
+- Team validation is only available for PR titles (GitHub Actions environment)
+- Local commit message validation only supports individual collaborators
 
 ## Benefits
 
