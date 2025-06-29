@@ -20,6 +20,54 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK', service: 'PR Approval Finder' });
 });
 
+// Feedback submission endpoint
+app.post('/api/feedback', (req, res) => {
+  try {
+    const { name, email, type, subject, message, rating } = req.body;
+
+    // Validate required fields
+    if (!subject || !message) {
+      return res.status(400).json({ error: 'Subject and message are required' });
+    }
+
+    // Basic validation
+    if (subject.length > 200) {
+      return res.status(400).json({ error: 'Subject must be less than 200 characters' });
+    }
+
+    if (message.length > 2000) {
+      return res.status(400).json({ error: 'Message must be less than 2000 characters' });
+    }
+
+    // Log feedback to console (in production, you'd save to database)
+    console.log('\n📝 New Feedback Received:');
+    console.log('========================');
+    console.log(`Type: ${type || 'feedback'}`);
+    console.log(`Rating: ${rating || 5}/5`);
+    console.log(`Subject: ${subject}`);
+    console.log(`Message: ${message}`);
+    if (name) console.log(`Name: ${name}`);
+    if (email) console.log(`Email: ${email}`);
+    console.log(`Timestamp: ${new Date().toISOString()}`);
+    console.log('========================\n');
+
+    // In a real application, you would:
+    // 1. Save to database
+    // 2. Send email notification
+    // 3. Create ticket in issue tracking system
+    // 4. Return more detailed response
+
+    res.json({
+      success: true,
+      message: 'Feedback submitted successfully',
+      id: `feedback_${Date.now()}`, // Simple ID generation
+    });
+  } catch (error) {
+    console.error('Error processing feedback:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // GitHub API configuration
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_TEAMS_TOKEN = process.env.GITHUB_TEAMS_TOKEN;

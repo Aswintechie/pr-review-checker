@@ -7,6 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
+import FeedbackForm from './FeedbackForm';
 
 function App() {
   const [prUrl, setPrUrl] = useState('');
@@ -20,6 +21,7 @@ function App() {
   const [recentPRs, setRecentPRs] = useState([]);
   const [currentTheme, setCurrentTheme] = useState('light');
   const [showThemeDropdown, setShowThemeDropdown] = useState(false);
+  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
 
   const themes = [
     { id: 'light', name: '☀️ Light', description: 'Clean and bright' },
@@ -479,6 +481,16 @@ function App() {
               </button>
               {renderHistoryDropdown()}
             </div>
+            <button
+              className='feedback-btn'
+              onClick={() => setShowFeedbackForm(true)}
+              title='Send feedback'
+              type='button'
+              data-1p-ignore
+              autoComplete='off'
+            >
+              💬
+            </button>
             <div className='theme-container'>
               <button
                 className='theme-toggle'
@@ -873,6 +885,7 @@ function App() {
           </div>
         </div>
       </footer>
+      {showFeedbackForm && <FeedbackForm onClose={() => setShowFeedbackForm(false)} />}
     </div>
   );
 }
