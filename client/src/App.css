@@ -1623,7 +1623,7 @@ section h2 {
   cursor: pointer;
 }
 
-.feedback-type-option input[type="radio"] {
+.feedback-type-option input[type='radio'] {
   position: absolute;
   opacity: 0;
   width: 0;
@@ -1646,7 +1646,7 @@ section h2 {
   font-size: 1.2rem;
 }
 
-.feedback-type-option input[type="radio"]:checked + .feedback-type-label {
+.feedback-type-option input[type='radio']:checked + .feedback-type-label {
   border-color: var(--purple);
   background: var(--purple-bg);
   color: var(--text-primary);
@@ -1669,7 +1669,7 @@ section h2 {
   cursor: pointer;
 }
 
-.rating-option input[type="radio"] {
+.rating-option input[type='radio'] {
   position: absolute;
   opacity: 0;
   width: 0;
@@ -1699,7 +1699,7 @@ section h2 {
   color: var(--text-secondary);
 }
 
-.rating-option input[type="radio"]:checked + .rating-label {
+.rating-option input[type='radio']:checked + .rating-label {
   border-color: var(--purple);
   background: var(--purple-bg);
   transform: scale(1.05);
@@ -1795,10 +1795,15 @@ section h2 {
 }
 
 @keyframes bounce {
-  0%, 20%, 53%, 80%, 100% {
+  0%,
+  20%,
+  53%,
+  80%,
+  100% {
     transform: translate3d(0, 0, 0);
   }
-  40%, 43% {
+  40%,
+  43% {
     transform: translate3d(0, -20px, 0);
   }
   70% {

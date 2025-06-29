@@ -61,14 +61,14 @@ const FeedbackForm = ({ onClose }) => {
 
   if (submitted) {
     return (
-      <div className="feedback-overlay">
-        <div className="feedback-modal">
-          <div className="feedback-success">
-            <div className="success-icon">🎉</div>
+      <div className='feedback-overlay'>
+        <div className='feedback-modal'>
+          <div className='feedback-success'>
+            <div className='success-icon'>🎉</div>
             <h2>Thank You!</h2>
             <p>Your feedback has been submitted successfully.</p>
             <p>We appreciate your input and will review it carefully.</p>
-            <button className="btn-primary" onClick={onClose} type="button">
+            <button className='btn-primary' onClick={onClose} type='button'>
               Close
             </button>
           </div>
@@ -78,56 +78,56 @@ const FeedbackForm = ({ onClose }) => {
   }
 
   return (
-    <div className="feedback-overlay">
-      <div className="feedback-modal">
-        <div className="feedback-header">
+    <div className='feedback-overlay'>
+      <div className='feedback-modal'>
+        <div className='feedback-header'>
           <h2>📝 Share Your Feedback</h2>
           <p>Help us improve PR Approval Finder</p>
-          <button className="close-btn" onClick={onClose} type="button" aria-label="Close">
+          <button className='close-btn' onClick={onClose} type='button' aria-label='Close'>
             ✕
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="feedback-form">
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="name">Name (Optional)</label>
+        <form onSubmit={handleSubmit} className='feedback-form'>
+          <div className='form-row'>
+            <div className='form-group'>
+              <label htmlFor='name'>Name (Optional)</label>
               <input
-                type="text"
-                id="name"
-                name="name"
+                type='text'
+                id='name'
+                name='name'
                 value={formData.name}
                 onChange={handleInputChange}
-                placeholder="Your name"
+                placeholder='Your name'
               />
             </div>
-            <div className="form-group">
-              <label htmlFor="email">Email (Optional)</label>
+            <div className='form-group'>
+              <label htmlFor='email'>Email (Optional)</label>
               <input
-                type="email"
-                id="email"
-                name="email"
+                type='email'
+                id='email'
+                name='email'
                 value={formData.email}
                 onChange={handleInputChange}
-                placeholder="your.email@example.com"
+                placeholder='your.email@example.com'
               />
             </div>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="type">Feedback Type</label>
-            <div className="feedback-types">
+          <div className='form-group'>
+            <label htmlFor='type'>Feedback Type</label>
+            <div className='feedback-types'>
               {feedbackTypes.map(type => (
-                <label key={type.value} className="feedback-type-option">
+                <label key={type.value} className='feedback-type-option'>
                   <input
-                    type="radio"
-                    name="type"
+                    type='radio'
+                    name='type'
                     value={type.value}
                     checked={formData.type === type.value}
                     onChange={handleInputChange}
                   />
-                  <span className="feedback-type-label">
-                    <span className="feedback-type-icon">{type.icon}</span>
+                  <span className='feedback-type-label'>
+                    <span className='feedback-type-icon'>{type.icon}</span>
                     {type.label.replace(/^.+?\s/, '')}
                   </span>
                 </label>
@@ -135,80 +135,73 @@ const FeedbackForm = ({ onClose }) => {
             </div>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="rating">Overall Rating</label>
-            <div className="rating-container">
+          <div className='form-group'>
+            <label htmlFor='rating'>Overall Rating</label>
+            <div className='rating-container'>
               {ratings.map(rating => (
-                <label key={rating.value} className="rating-option">
+                <label key={rating.value} className='rating-option'>
                   <input
-                    type="radio"
-                    name="rating"
+                    type='radio'
+                    name='rating'
                     value={rating.value}
                     checked={formData.rating === rating.value}
                     onChange={handleInputChange}
                   />
-                  <span className="rating-label">
-                    <span className="rating-emoji">{rating.emoji}</span>
-                    <span className="rating-text">{rating.label}</span>
+                  <span className='rating-label'>
+                    <span className='rating-emoji'>{rating.emoji}</span>
+                    <span className='rating-text'>{rating.label}</span>
                   </span>
                 </label>
               ))}
             </div>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="subject">Subject</label>
+          <div className='form-group'>
+            <label htmlFor='subject'>Subject</label>
             <input
-              type="text"
-              id="subject"
-              name="subject"
+              type='text'
+              id='subject'
+              name='subject'
               value={formData.subject}
               onChange={handleInputChange}
-              placeholder="Brief summary of your feedback"
+              placeholder='Brief summary of your feedback'
               required
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="message">Message</label>
+          <div className='form-group'>
+            <label htmlFor='message'>Message</label>
             <textarea
-              id="message"
-              name="message"
+              id='message'
+              name='message'
               value={formData.message}
               onChange={handleInputChange}
-              placeholder="Share your thoughts, suggestions, or report an issue..."
-              rows="6"
+              placeholder='Share your thoughts, suggestions, or report an issue...'
+              rows='6'
               required
             />
-            <div className="character-count">
-              {formData.message.length}/2000
-            </div>
+            <div className='character-count'>{formData.message.length}/2000</div>
           </div>
 
           {error && (
-            <div className="error-message">
-              <div className="error-content">
-                <span className="error-icon">⚠️</span>
-                <span className="error-text">{error}</span>
+            <div className='error-message'>
+              <div className='error-content'>
+                <span className='error-icon'>⚠️</span>
+                <span className='error-text'>{error}</span>
               </div>
             </div>
           )}
 
-          <div className="form-actions">
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={onClose}
-              disabled={loading}
-            >
+          <div className='form-actions'>
+            <button type='button' className='btn-secondary' onClick={onClose} disabled={loading}>
               Cancel
             </button>
             <button
-              type="submit"
-              className="btn-primary"
+              type='submit'
+              className='btn-primary'
               disabled={loading || !formData.subject.trim() || !formData.message.trim()}
             >
-              {loading && <span className="spinner" />}
+              {loading && <span className='spinner' />}
               {loading ? 'Submitting...' : 'Submit Feedback'}
             </button>
           </div>
@@ -218,4 +211,4 @@ const FeedbackForm = ({ onClose }) => {
   );
 };
 
-export default FeedbackForm; 
+export default FeedbackForm;
