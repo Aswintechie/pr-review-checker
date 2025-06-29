@@ -137,9 +137,9 @@ git commit -m "Add feature"
 # Result: const x = { a: 1, b: 2 };
 ```
 
-## Commit Message Validation
+## Commit Message & PR Title Validation
 
-The project includes intelligent commit message validation that applies different rules based on contributor type:
+The project includes intelligent validation for both commit messages and PR titles that applies different rules based on contributor type:
 
 ### Rules for External Contributors
 External contributors must follow structured commit message formats:
@@ -178,44 +178,95 @@ The following users can bypass commit message restrictions:
 - `ayerofieiev-tt`
 
 ### How It Works
+
+#### **Commit Message Validation (Local)**
 1. **Commit Attempted**: User tries to commit changes
-2. **User Detection**: System checks if committer is a collaborator
+2. **User Detection**: System checks if committer is a collaborator via git config
 3. **Rule Application**: 
    - **Collaborators**: Any message format allowed ✅
    - **External Contributors**: Must follow structured format ❌/✅
 4. **Validation**: Commit proceeds if rules are satisfied
 
+#### **PR Title Validation (GitHub Actions)**
+1. **PR Created/Updated**: User creates or updates a pull request
+2. **User Detection**: System checks if PR author is a collaborator via GitHub username
+3. **Rule Application**: 
+   - **Collaborators**: Any PR title format allowed ✅
+   - **External Contributors**: Must follow structured format ❌/✅
+4. **Validation**: PR checks pass if rules are satisfied
+
 ### Examples
 
 **✅ Valid for External Contributors:**
+
+*Commit Messages:*
 ```bash
 git commit -m "feat: add dark mode support"
 git commit -m "fix(ui): resolve button alignment issue"
 git commit -m "#789: implement search functionality"
 ```
 
+*PR Titles:*
+```
+feat: add dark mode support
+fix(ui): resolve button alignment issue  
+#789: implement search functionality
+```
+
 **❌ Invalid for External Contributors:**
+
+*Commit Messages:*
 ```bash
 git commit -m "quick fix"
 git commit -m "updated stuff"
 git commit -m "WIP"
 ```
 
+*PR Titles:*
+```
+quick fix
+updated stuff
+WIP: work in progress
+```
+
 **✅ Valid for Collaborators (any format):**
+
+*Commit Messages:*
 ```bash
 git commit -m "quick fix"           # ← Allowed for collaborators
 git commit -m "feat: add feature"   # ← Also valid
 git commit -m "debugging session"   # ← Also allowed
 ```
 
+*PR Titles:*
+```
+quick fix                          # ← Allowed for collaborators
+feat: add feature                  # ← Also valid
+debugging session                  # ← Also allowed
+WIP: experimenting with new API    # ← Also allowed
+```
+
 ### Configuration
-To add new collaborators, update the list in `.husky/commit-msg`:
+
+To add new collaborators, update the collaborator lists in **both locations**:
+
+**1. For Commit Message Validation** (`.husky/commit-msg`):
 ```bash
 collaborators=(
   "new-collaborator-username"
   # Add more as needed
 )
 ```
+
+**2. For PR Title Validation** (`.github/workflows/ci.yml`):
+```bash
+collaborators=(
+  "new-collaborator-username" 
+  # Add more as needed - keep in sync with .husky/commit-msg
+)
+```
+
+**⚠️ Important**: Keep both lists synchronized to ensure consistent behavior across commit messages and PR title validation.
 
 ## Benefits
 
@@ -225,4 +276,4 @@ collaborators=(
 ✅ **Faster Reviews**: Less time spent on style discussions  
 ✅ **Modern Standards**: Enforces ES6+ best practices  
 ✅ **Pre-commit Validation**: Code quality enforced automatically before commits  
-✅ **Flexible Commit Messages**: Collaborators have freedom while maintaining quality for external contributions 
+✅ **Flexible Commit Messages & PR Titles**: Collaborators have freedom while maintaining quality for external contributions 

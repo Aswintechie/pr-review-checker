@@ -229,12 +229,78 @@ jobs:
     - name: Check PR title
       run: |
         PR_TITLE="${{ github.event.pull_request.title }}"
+        PR_AUTHOR="${{ github.event.pull_request.user.login }}"
+        
+        echo "🔍 Checking PR title format..."
         echo "PR Title: $PR_TITLE"
-        if [[ "$PR_TITLE" =~ ^(feat|fix|docs|style|refactor|test|chore)(\([a-zA-Z0-9_-]+\))?:\ .+ ]]; then
-          echo "✅ PR title follows semantic commit format"
+        echo "PR Author: $PR_AUTHOR"
+        
+        # List of collaborators (users who can bypass PR title restrictions)
+        # Keep this in sync with .husky/commit-msg collaborators list
+        collaborators=(
+          "azayasankaran"
+          "Aswin-coder"
+          "Aswinmcw"
+          # Add more collaborators as needed
+        )
+        
+        # Function to check if user is a collaborator
+        is_collaborator() {
+          local user="$1"
+          for collaborator in "${collaborators[@]}"; do
+            if [ "$user" = "$collaborator" ]; then
+              return 0
+            fi
+          done
+          return 1
+        }
+        
+        # Function to validate PR title format
+        validate_pr_title() {
+          local title="$1"
+          
+          # Check for conventional commit format: type(scope): description
+          if [[ "$title" =~ ^(feat|fix|docs|style|refactor|test|chore)(\([a-zA-Z0-9_-]+\))?:\ .+ ]]; then
+            return 0
+          fi
+          
+          # Check for issue number format: #123: description
+          if [[ "$title" =~ ^#[0-9]+:\ .+ ]]; then
+            return 0
+          fi
+          
+          return 1
+        }
+        
+        # If user is a collaborator, allow any PR title
+        if is_collaborator "$PR_AUTHOR"; then
+          echo "✅ Collaborator detected ($PR_AUTHOR) - PR title restrictions bypassed"
+          exit 0
+        fi
+        
+        # For external contributors, validate the PR title
+        echo "📝 External contributor detected - validating PR title format..."
+        
+        if validate_pr_title "$PR_TITLE"; then
+          echo "✅ PR title follows required format"
+          exit 0
         else
-          echo "❌ PR title should follow semantic commit format: type(scope): description"
-          echo "Examples: feat: add new feature, fix(auth): resolve login issue"
+          echo "❌ PR title format invalid!"
+          echo ""
+          echo "For external contributors, PR titles must follow one of these formats:"
+          echo "  • Conventional commits: feat: description, fix: description, docs: description, etc."
+          echo "  • Issue reference: #123: description"
+          echo ""
+          echo "Examples:"
+          echo "  ✅ feat: add user authentication"
+          echo "  ✅ fix(auth): resolve login timeout issue"
+          echo "  ✅ #456: implement new dashboard feature"
+          echo ""
+          echo "Your PR title: '$PR_TITLE'"
+          echo ""
+          echo "If you're a project collaborator, make sure your GitHub username"
+          echo "is added to the collaborators list in the workflow."
+          
           exit 1
         fi
     
