@@ -386,7 +386,11 @@ app.post('/api/pr-approvers', async (req, res) => {
     }
 
     // Include current approvers and requested reviewers in the "all possible" set since they clearly have approval permissions
-    const allPossibleApprovers = new Set([...requiredApprovers, ...approvals, ...requestedReviewers]);
+    const allPossibleApprovers = new Set([
+      ...requiredApprovers,
+      ...approvals,
+      ...requestedReviewers,
+    ]);
 
     console.log('\n🔍 DETAILED APPROVER ANALYSIS:');
     console.log('📋 Required approvers (from CODEOWNERS):', Array.from(requiredApprovers));
@@ -396,21 +400,26 @@ app.post('/api/pr-approvers', async (req, res) => {
     console.log('   - Adding required approvers:', Array.from(requiredApprovers));
     console.log('   - Adding current approvals:', approvals);
     console.log('   - Adding requested reviewers:', requestedReviewers);
-    console.log('👥 All possible approvers (required + current + requested):', Array.from(allPossibleApprovers));
-    
+    console.log(
+      '👥 All possible approvers (required + current + requested):',
+      Array.from(allPossibleApprovers)
+    );
+
     // Debug: Check if the combination worked
     const missingFromRequired = approvals.filter(approval => !requiredApprovers.has(approval));
     if (missingFromRequired.length > 0) {
       console.log('⚠️  Current approvers NOT in CODEOWNERS:', missingFromRequired);
       console.log('✅ These will be added to allPossibleApprovers');
     }
-    
-    const requestedNotInRequired = requestedReviewers.filter(reviewer => !requiredApprovers.has(reviewer));
+
+    const requestedNotInRequired = requestedReviewers.filter(
+      reviewer => !requiredApprovers.has(reviewer)
+    );
     if (requestedNotInRequired.length > 0) {
       console.log('⚠️  Requested reviewers NOT in CODEOWNERS:', requestedNotInRequired);
       console.log('✅ These will be added to allPossibleApprovers');
     }
-    
+
     console.log('========================');
 
     // Add user details to each approval group for the new UI
