@@ -107,18 +107,36 @@ async function fetchTeamDetails(org, teamSlug, token) {
     const team = teamResponse.data;
     const members = membersResponse.data;
 
+    // Fetch full user details for each team member
+    const memberDetailsPromises = members.map(async member => {
+      try {
+        const userResponse = await axios.get(`${GITHUB_API_BASE}/users/${member.login}`, { headers });
+        return {
+          username: member.login,
+          name: userResponse.data.name || member.login, // Use full name if available, fallback to username
+          avatar_url: member.avatar_url,
+          type: 'user',
+        };
+      } catch (error) {
+        console.warn(`Could not fetch details for user ${member.login}:`, error.message);
+        return {
+          username: member.login,
+          name: member.login, // Fallback to username if API call fails
+          avatar_url: member.avatar_url,
+          type: 'user',
+        };
+      }
+    });
+
+    const membersWithDetails = await Promise.all(memberDetailsPromises);
+
     return {
       name: team.name,
       slug: team.slug,
       description: team.description,
       url: team.html_url,
       memberCount: team.members_count,
-      members: members.map(member => ({
-        username: member.login,
-        name: member.login, // We'll fetch full names separately if needed
-        avatar_url: member.avatar_url,
-        type: 'user',
-      })),
+      members: membersWithDetails,
       type: 'team',
     };
   } catch (error) {
