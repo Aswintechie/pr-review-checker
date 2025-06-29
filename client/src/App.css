@@ -1891,30 +1891,4 @@ section h2 {
 }
 
 /* Feedback Button */
-.feedback-btn {
-  background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-color-dark) 100%);
-  color: white;
-  border: none;
-  padding: 10px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 16px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  position: relative;
-  overflow: hidden;
-}
 
-.feedback-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-}
-
-.feedback-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
