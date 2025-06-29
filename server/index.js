@@ -7,6 +7,7 @@
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
+const nodemailer = require('nodemailer');
 require('dotenv').config();
 
 const app = express();
@@ -21,7 +22,7 @@ app.get('/health', (req, res) => {
 });
 
 // Feedback submission endpoint
-app.post('/api/feedback', (req, res) => {
+app.post('/api/feedback', async (req, res) => {
   try {
     const { name, email, type, subject, message, rating } = req.body;
 
@@ -39,7 +40,10 @@ app.post('/api/feedback', (req, res) => {
       return res.status(400).json({ error: 'Message must be less than 2000 characters' });
     }
 
-    // Log feedback to console (in production, you'd save to database)
+    const feedbackId = `feedback_${Date.now()}`;
+    const timestamp = new Date().toISOString();
+
+    // Log feedback to console
     console.log('\n📝 New Feedback Received:');
     console.log('========================');
     console.log(`Type: ${type || 'feedback'}`);
@@ -48,19 +52,119 @@ app.post('/api/feedback', (req, res) => {
     console.log(`Message: ${message}`);
     if (name) console.log(`Name: ${name}`);
     if (email) console.log(`Email: ${email}`);
-    console.log(`Timestamp: ${new Date().toISOString()}`);
+    console.log(`Timestamp: ${timestamp}`);
     console.log('========================\n');
 
-    // In a real application, you would:
-    // 1. Save to database
-    // 2. Send email notification
-    // 3. Create ticket in issue tracking system
-    // 4. Return more detailed response
+    // Send email notification if configured
+    if (emailTransporter && process.env.FEEDBACK_EMAIL) {
+      try {
+        const emailHtml = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc; border-radius: 12px;">
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+            <h2 style="color: white; margin: 0; font-size: 24px;">📝 New Feedback Received</h2>
+            <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0;">PR Approval Finder Feedback System</p>
+          </div>
+          
+          <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+            <div style="margin-bottom: 15px;">
+              <strong style="color: #374151;">Type:</strong> 
+              <span style="background: #f3f4f6; padding: 4px 8px; border-radius: 6px; margin-left: 8px; text-transform: capitalize;">${type || 'feedback'}</span>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+              <strong style="color: #374151;">Rating:</strong> 
+              <span style="margin-left: 8px; font-size: 18px;">
+                ${'⭐'.repeat(rating || 5)} (${rating || 5}/5)
+              </span>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+              <strong style="color: #374151;">Subject:</strong>
+              <p style="margin: 5px 0 0 0; padding: 10px; background: #f9fafb; border-radius: 6px; border-left: 4px solid #667eea;">${subject}</p>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+              <strong style="color: #374151;">Message:</strong>
+              <div style="margin: 5px 0 0 0; padding: 15px; background: #f9fafb; border-radius: 6px; border-left: 4px solid #667eea; white-space: pre-wrap; line-height: 1.6;">${message}</div>
+            </div>
+            
+            ${
+              name
+                ? `
+            <div style="margin-bottom: 15px;">
+              <strong style="color: #374151;">Name:</strong> 
+              <span style="margin-left: 8px;">${name}</span>
+            </div>
+            `
+                : ''
+            }
+            
+            ${
+              email
+                ? `
+            <div style="margin-bottom: 15px;">
+              <strong style="color: #374151;">Contact Email:</strong> 
+              <a href="mailto:${email}" style="margin-left: 8px; color: #667eea; text-decoration: none;">${email}</a>
+            </div>
+            `
+                : ''
+            }
+            
+            <div style="margin-bottom: 15px;">
+              <strong style="color: #374151;">Feedback ID:</strong> 
+              <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'SF Mono', Monaco, monospace; margin-left: 8px;">${feedbackId}</code>
+            </div>
+            
+            <div style="margin-bottom: 0;">
+              <strong style="color: #374151;">Submitted:</strong> 
+              <span style="margin-left: 8px; color: #6b7280;">${new Date(timestamp).toLocaleString()}</span>
+            </div>
+          </div>
+          
+          <div style="margin-top: 20px; padding: 15px; background: #e5e7eb; border-radius: 8px; text-align: center;">
+            <p style="margin: 0; font-size: 14px; color: #6b7280;">
+              This feedback was automatically sent from the PR Approval Finder application
+            </p>
+          </div>
+        </div>
+        `;
+
+        const mailOptions = {
+          from: `"PR Approval Finder" <${process.env.SMTP_USER}>`,
+          to: process.env.FEEDBACK_EMAIL,
+          subject: `[PR Approval Finder] ${(type || 'feedback').toUpperCase()}: ${subject}`,
+          html: emailHtml,
+          text: `
+New Feedback Received - PR Approval Finder
+
+Type: ${type || 'feedback'}
+Rating: ${rating || 5}/5 stars
+Subject: ${subject}
+
+Message:
+${message}
+
+${name ? `Name: ${name}` : ''}
+${email ? `Contact Email: ${email}` : ''}
+
+Feedback ID: ${feedbackId}
+Submitted: ${new Date(timestamp).toLocaleString()}
+          `.trim(),
+        };
+
+        await emailTransporter.sendMail(mailOptions);
+        console.log('📧 Email notification sent successfully to', process.env.FEEDBACK_EMAIL);
+      } catch (emailError) {
+        console.error('📧 Failed to send email notification:', emailError.message);
+        // Don't fail the whole request if email fails
+      }
+    }
 
     res.json({
       success: true,
       message: 'Feedback submitted successfully',
-      id: `feedback_${Date.now()}`, // Simple ID generation
+      id: feedbackId,
+      emailSent: !!(emailTransporter && process.env.FEEDBACK_EMAIL),
     });
   } catch (error) {
     console.error('Error processing feedback:', error);
@@ -68,10 +172,124 @@ app.post('/api/feedback', (req, res) => {
   }
 });
 
+// Test email endpoint for debugging
+app.post('/api/test-email', async (req, res) => {
+  try {
+    if (!emailTransporter) {
+      return res.status(400).json({
+        error: 'Email not configured',
+        message: 'Please check your SMTP configuration in .env file',
+        required: ['SMTP_USER', 'SMTP_PASS', 'FEEDBACK_EMAIL'],
+      });
+    }
+
+    if (!process.env.FEEDBACK_EMAIL) {
+      return res.status(400).json({
+        error: 'FEEDBACK_EMAIL not set',
+        message: 'Please set FEEDBACK_EMAIL in your .env file',
+      });
+    }
+
+    const testMailOptions = {
+      from: `"PR Approval Finder Test" <${process.env.SMTP_USER}>`,
+      to: process.env.FEEDBACK_EMAIL,
+      subject: '[PR Approval Finder] Email Test - Configuration Working!',
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+            <h2 style="color: white; margin: 0; font-size: 24px;">✅ Email Configuration Test</h2>
+            <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0;">PR Approval Finder - SMTP Test</p>
+          </div>
+          
+          <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid #e5e7eb;">
+            <h3 style="color: #10b981; margin-top: 0;">🎉 Success!</h3>
+            <p>Your email configuration is working correctly. You should now receive feedback notifications when users submit feedback through the form.</p>
+            
+            <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981; margin: 20px 0;">
+              <h4 style="margin: 0 0 10px 0; color: #065f46;">Configuration Details:</h4>
+              <ul style="margin: 0; color: #374151;">
+                <li><strong>SMTP Host:</strong> ${process.env.SMTP_HOST || 'smtp.gmail.com'}</li>
+                <li><strong>SMTP Port:</strong> ${process.env.SMTP_PORT || '587'}</li>
+                <li><strong>From Email:</strong> ${process.env.SMTP_USER}</li>
+                <li><strong>To Email:</strong> ${process.env.FEEDBACK_EMAIL}</li>
+                <li><strong>Test Time:</strong> ${new Date().toLocaleString()}</li>
+              </ul>
+            </div>
+            
+            <p style="margin-bottom: 0;">You can now use the feedback form with confidence that notifications will be delivered to your inbox!</p>
+          </div>
+        </div>
+      `,
+      text: `
+Email Configuration Test - SUCCESS!
+
+Your PR Approval Finder email configuration is working correctly.
+
+Configuration:
+- SMTP Host: ${process.env.SMTP_HOST || 'smtp.gmail.com'}
+- SMTP Port: ${process.env.SMTP_PORT || '587'}
+- From Email: ${process.env.SMTP_USER}
+- To Email: ${process.env.FEEDBACK_EMAIL}
+- Test Time: ${new Date().toLocaleString()}
+
+You should now receive feedback notifications when users submit feedback.
+      `.trim(),
+    };
+
+    await emailTransporter.sendMail(testMailOptions);
+
+    res.json({
+      success: true,
+      message: 'Test email sent successfully!',
+      details: {
+        from: process.env.SMTP_USER,
+        to: process.env.FEEDBACK_EMAIL,
+        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+        port: process.env.SMTP_PORT || '587',
+      },
+    });
+  } catch (error) {
+    console.error('📧 Email test failed:', error);
+    res.status(500).json({
+      error: 'Email test failed',
+      message: error.message,
+      code: error.code,
+      troubleshooting: 'Check docs/EMAIL_TROUBLESHOOTING.md for help',
+    });
+  }
+});
+
 // GitHub API configuration
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_TEAMS_TOKEN = process.env.GITHUB_TEAMS_TOKEN;
 const GITHUB_API_BASE = 'https://api.github.com';
+
+// Email configuration
+let emailTransporter = null;
+if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+  emailTransporter = nodemailer.createTransporter({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.SMTP_PORT) || 587,
+    secure: false, // true for 465, false for other ports
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+
+  // Verify email configuration
+  emailTransporter.verify((error, _success) => {
+    if (error) {
+      console.warn('⚠️  Email configuration error:', error.message);
+      console.warn('📧 Email notifications will be disabled');
+      emailTransporter = null;
+    } else {
+      console.log('📧 Email server is ready to send feedback notifications');
+    }
+  });
+} else {
+  console.log('📧 No email configuration found - feedback will only be logged to console');
+}
 
 // Helper function to parse CODEOWNERS file
 function parseCodeowners(codeownersContent) {
