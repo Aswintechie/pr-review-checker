@@ -7,13 +7,11 @@ commit_msg=$(cat "$1")
 github_user=$(git config user.login 2>/dev/null || git config user.name 2>/dev/null || echo "")
 
 # List of collaborators (users who can bypass commit message restrictions)
-# Add GitHub usernames of project collaborators here
+# Add GitHub usernames and git user names of project collaborators here
 collaborators=(
   "azayasankaran"
   "Aswin-coder"
-  "dmakoviichuk-tt"
-  "rfurko-tt" 
-  "ayerofieiev-tt"
+  "Aswinmcw"
   # Add more collaborators as needed
 )
 
