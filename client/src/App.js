@@ -22,6 +22,7 @@ function App() {
   const [currentTheme, setCurrentTheme] = useState('light');
   const [showThemeDropdown, setShowThemeDropdown] = useState(false);
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
+  const [feedbackPrefillData, setFeedbackPrefillData] = useState({});
 
   const themes = [
     { id: 'light', name: '☀️ Light', description: 'Clean and bright' },
@@ -866,6 +867,39 @@ function App() {
                 </section>
               </>
             )}
+
+            {/* Feedback Call-to-Action Section */}
+            <section className='feedback-cta-section'>
+              <div className='feedback-cta-container'>
+                <div className='feedback-cta-content'>
+                  <h3>🤔 Found any issues with group separation?</h3>
+                  <p>
+                    If you noticed any mismatches in how we grouped the required approvals or
+                    CODEOWNERS matching, we&apos;d love to hear from you! Your feedback helps us
+                    improve the accuracy of our analysis.
+                  </p>
+                  <button
+                    className='feedback-cta-btn'
+                    onClick={() => {
+                      setFeedbackPrefillData({
+                        type: 'improvement',
+                        subject: `CODEOWNERS Analysis Feedback - PR #${result.prInfo.number}`,
+                        message: `PR URL: ${result.prInfo.url}\n\nI found the following issues with the group separation or CODEOWNERS matching:\n\n`,
+                      });
+                      setShowFeedbackForm(true);
+                    }}
+                    type='button'
+                  >
+                    💬 Report Issue & Suggest Improvements
+                  </button>
+                  <p className='feedback-cta-note'>
+                    We&apos;ll prefill the PR details to make it easier for you to report specific
+                    issues.
+                  </p>
+                </div>
+                <div className='feedback-cta-icon'>🎯</div>
+              </div>
+            </section>
           </div>
         )}
       </main>
@@ -885,7 +919,15 @@ function App() {
           </div>
         </div>
       </footer>
-      {showFeedbackForm && <FeedbackForm onClose={() => setShowFeedbackForm(false)} />}
+      {showFeedbackForm && (
+        <FeedbackForm
+          onClose={() => {
+            setShowFeedbackForm(false);
+            setFeedbackPrefillData({});
+          }}
+          prefillData={feedbackPrefillData}
+        />
+      )}
     </div>
   );
 }
