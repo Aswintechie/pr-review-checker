@@ -7,14 +7,14 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const FeedbackForm = ({ onClose }) => {
+const FeedbackForm = ({ onClose, prefillData = {} }) => {
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    type: 'feedback',
-    subject: '',
-    message: '',
-    rating: 5,
+    name: prefillData.name || '',
+    email: prefillData.email || '',
+    type: prefillData.type || 'feedback',
+    subject: prefillData.subject || '',
+    message: prefillData.message || '',
+    rating: prefillData.rating || 5,
   });
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
