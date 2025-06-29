@@ -642,11 +642,11 @@ app.post('/api/pr-approvers', async (req, res) => {
       });
     }
 
-        // Helper function to check if an individual approver satisfies a team requirement
+    // Helper function to check if an individual approver satisfies a team requirement
     const checkTeamApproval = (teamName, approvedBy) => {
       const team = teamDetails.get(teamName);
       if (!team || !team.members) return null;
-      
+
       // Check which individual approvers are team members
       const approvedTeamMembers = [];
       for (const approver of approvedBy) {
@@ -655,7 +655,7 @@ app.post('/api/pr-approvers', async (req, res) => {
           approvedTeamMembers.push(approver);
         }
       }
-      
+
       return approvedTeamMembers.length > 0 ? approvedTeamMembers : null;
     };
 
@@ -778,9 +778,10 @@ app.post('/api/pr-approvers', async (req, res) => {
         console.log(`    Status: ❌ NEEDS APPROVAL`);
       } else {
         if (group.approverType === 'team') {
-          const membersList = group.approvedTeamMembers.length > 1 
-            ? `${group.approvedTeamMembers.join(', ')}`
-            : group.approvedBy;
+          const membersList =
+            group.approvedTeamMembers.length > 1
+              ? `${group.approvedTeamMembers.join(', ')}`
+              : group.approvedBy;
           console.log(
             `    Status: ✅ Approved by ${membersList} (member${group.approvedTeamMembers.length > 1 ? 's' : ''} of ${group.teamName})`
           );

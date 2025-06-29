@@ -1,5 +1,5 @@
 /**
- * PR Approval Finder v5.0
+ * PR Approval Finder v6.0
  * Copyright (c) 2025 Aswin
  * Licensed under MIT License
  */
@@ -365,10 +365,7 @@ function App() {
                 </span>
               )}
               {isApproved && approvedCount > 0 && (
-                <span className='approval-count'>
-                  {' '}
-                  • {approvedCount} approved
-                </span>
+                <span className='approval-count'> • {approvedCount} approved</span>
               )}
             </div>
             {team.description && <div className='team-description'>{team.description}</div>}
@@ -384,7 +381,10 @@ function App() {
               {team.members.map(member => {
                 const memberApproved = approvedMembers.includes(member.username);
                 return (
-                  <div key={member.username} className={`team-member ${memberApproved ? 'approved' : ''}`}>
+                  <div
+                    key={member.username}
+                    className={`team-member ${memberApproved ? 'approved' : ''}`}
+                  >
                     <div className='member-avatar'>
                       {member.avatar_url ? (
                         <img src={member.avatar_url} alt={member.username} />
@@ -476,7 +476,7 @@ function App() {
       <header className='App-header'>
         <div className='header-content'>
           <div>
-            <h1>🔍 PR Approval Finder v5.0</h1>
+            <h1>🔍 PR Approval Finder v6.0</h1>
             <p>Find minimum required approvals for your Pull Request</p>
           </div>
           <div className='header-controls'>
@@ -731,12 +731,17 @@ function App() {
                         <div className='users-grid'>
                           {group.ownerDetails.map(user => {
                             const isApproved =
-                              !group.needsApproval && 
-                              (user.username === group.approvedBy || 
-                               (user.type === 'team' && (group.teamName === user.username || group.teamName?.endsWith(user.name))));
-                            const approvedMembers = user.type === 'team' && (group.teamName === user.username || group.teamName?.endsWith(user.name))
-                              ? group.approvedTeamMembers || []
-                              : [];
+                              !group.needsApproval &&
+                              (user.username === group.approvedBy ||
+                                (user.type === 'team' &&
+                                  (group.teamName === user.username ||
+                                    group.teamName?.endsWith(user.name))));
+                            const approvedMembers =
+                              user.type === 'team' &&
+                              (group.teamName === user.username ||
+                                group.teamName?.endsWith(user.name))
+                                ? group.approvedTeamMembers || []
+                                : [];
                             return renderUserCard(user, isApproved, approvedMembers);
                           })}
                         </div>
@@ -831,12 +836,17 @@ function App() {
                         <div className='users-grid'>
                           {group.ownerDetails.map(user => {
                             const isApproved =
-                              !group.needsApproval && 
-                              (user.username === group.approvedBy || 
-                               (user.type === 'team' && (group.teamName === user.username || group.teamName?.endsWith(user.name))));
-                            const approvedMembers = user.type === 'team' && (group.teamName === user.username || group.teamName?.endsWith(user.name))
-                              ? group.approvedTeamMembers || []
-                              : [];
+                              !group.needsApproval &&
+                              (user.username === group.approvedBy ||
+                                (user.type === 'team' &&
+                                  (group.teamName === user.username ||
+                                    group.teamName?.endsWith(user.name))));
+                            const approvedMembers =
+                              user.type === 'team' &&
+                              (group.teamName === user.username ||
+                                group.teamName?.endsWith(user.name))
+                                ? group.approvedTeamMembers || []
+                                : [];
                             return renderUserCard(user, isApproved, approvedMembers);
                           })}
                         </div>

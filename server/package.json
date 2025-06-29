@@ -1,6 +1,6 @@
 {
   "name": "pr-approval-server",
-  "version": "5.0.0",
+  "version": "6.0.0",
   "description": "Backend server for PR Approval Finder",
   "main": "index.js",
   "scripts": {
