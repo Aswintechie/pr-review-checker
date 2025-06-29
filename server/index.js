@@ -110,7 +110,9 @@ async function fetchTeamDetails(org, teamSlug, token) {
     // Fetch full user details for each team member
     const memberDetailsPromises = members.map(async member => {
       try {
-        const userResponse = await axios.get(`${GITHUB_API_BASE}/users/${member.login}`, { headers });
+        const userResponse = await axios.get(`${GITHUB_API_BASE}/users/${member.login}`, {
+          headers,
+        });
         return {
           username: member.login,
           name: userResponse.data.name || member.login, // Use full name if available, fallback to username
