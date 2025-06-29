@@ -84,7 +84,7 @@ function matchPattern(pattern, filePath) {
     .replace(/__DOUBLE_STAR__/g, '.*') // ** matches any number of directories
     .replace(/\?/g, '[^/]'); // ? matches single character except directory separator
 
-    const regex = new RegExp(`^${regexPattern}$`);
+  const regex = new RegExp(`^${regexPattern}$`);
   return regex.test(filePath);
 }
 
@@ -158,7 +158,7 @@ app.post('/api/pr-approvers', async (req, res) => {
     const fileApprovalDetails = [];
 
     if (codeownersContent) {
-            // Parse CODEOWNERS and find required approvers
+      // Parse CODEOWNERS and find required approvers
       const rules = parseCodeowners(codeownersContent);
 
       // IMPORTANT: GitHub CODEOWNERS uses "last matching rule wins" behavior
@@ -172,7 +172,7 @@ app.post('/api/pr-approvers', async (req, res) => {
         // Iterate through rules in order and keep track of the last one that matches
         for (let i = 0; i < rules.length; i++) {
           const rule = rules[i];
-                    if (matchPattern(rule.pattern, file)) {
+          if (matchPattern(rule.pattern, file)) {
             lastMatchingRule = { ...rule, ruleIndex: i };
           }
         }
@@ -371,26 +371,9 @@ app.post('/api/pr-approvers', async (req, res) => {
     );
 
     // Debug: Check if the combination worked
-    const missingFromRequired = approvals.filter(approval => !requiredApprovers.has(approval));
-    if (missingFromRequired.length > 0) {
-      console.log('⚠️  Current approvers NOT in CODEOWNERS:', missingFromRequired);
-      console.log('✅ These will be added to allPossibleApprovers');
-    }
 
-    const requestedNotInRequired = requestedReviewers.filter(
-      reviewer => !requiredApprovers.has(reviewer)
-    );
-    if (requestedNotInRequired.length > 0) {
-      console.log('⚠️  Requested reviewers NOT in CODEOWNERS:', requestedNotInRequired);
-      console.log('✅ These will be added to allPossibleApprovers');
-    }
 
     // Include current approvers and requested reviewers in the "all possible" set since they clearly have approval permissions
-    const allPossibleApprovers = new Set([
-      ...requiredApprovers,
-      ...approvals,
-      ...requestedReviewers,
-    ]);
 
     console.log('\n🔍 DETAILED APPROVER ANALYSIS:');
     console.log('📋 Required approvers (from CODEOWNERS):', Array.from(requiredApprovers));

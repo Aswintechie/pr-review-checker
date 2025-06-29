@@ -1,27 +1,27 @@
 const { override, overrideDevServer } = require('customize-cra');
 
-// Override dev server configuration to handle webpack-dev-server v5 compatibility
 const devServerConfig = () => (config) => {
-  // Remove deprecated onAfterSetupMiddleware if it exists
-  if (config.onAfterSetupMiddleware) {
-    delete config.onAfterSetupMiddleware;
-  }
+  // Remove deprecated middleware options
+  delete config.onAfterSetupMiddleware;
+  delete config.onBeforeSetupMiddleware;
   
-  // Remove deprecated onBeforeSetupMiddleware if it exists
-  if (config.onBeforeSetupMiddleware) {
-    delete config.onBeforeSetupMiddleware;
-  }
+  // Remove any HTTPS configuration that's causing issues
+  delete config.https;
   
-  // Use the new setupMiddlewares option instead
+  // Force HTTP only for development
+  config.server = {
+    type: 'http'
+  };
+
+  // Use the new setupMiddlewares option
   config.setupMiddlewares = (middlewares, devServer) => {
-    // Add any custom middleware here if needed
     return middlewares;
   };
-  
+
   return config;
 };
 
 module.exports = {
   webpack: override(),
-  devServer: overrideDevServer(devServerConfig())
-}; 
+  devServer: overrideDevServer(devServerConfig()),
+};
