@@ -603,13 +603,91 @@ app.post('/api/pr-approvers', async (req, res) => {
       }
     }
 
-    // Calculate minimum required approvals
+    // Fetch team details for any teams referenced in CODEOWNERS or requested teams
+    const teamDetails = new Map();
+    const teamsToFetch = new Set();
+
+    // Collect teams from CODEOWNERS entries (teams are identified by org/team format)
+    Array.from(requiredApprovers).forEach(approver => {
+      if (approver.includes('/')) {
+        teamsToFetch.add(approver);
+      }
+    });
+
+    // Add requested teams
+    requestedTeams.forEach(team => teamsToFetch.add(team));
+
+    // Fetch team details if we have a teams token
+    if (GITHUB_TEAMS_TOKEN && teamsToFetch.size > 0) {
+      console.log('🔍 Fetching team details for:', Array.from(teamsToFetch));
+
+      const teamPromises = Array.from(teamsToFetch).map(async teamName => {
+        // Handle both 'org/team' and 'team' formats
+        let org, teamSlug;
+        if (teamName.includes('/')) {
+          [org, teamSlug] = teamName.split('/');
+        } else {
+          // If no org specified, try to extract from repo owner
+          org = owner;
+          teamSlug = teamName;
+        }
+
+        const details = await fetchTeamDetails(org, teamSlug, GITHUB_TEAMS_TOKEN);
+        return { teamName, details };
+      });
+
+      const teamResults = await Promise.all(teamPromises);
+      teamResults.forEach(({ teamName, details }) => {
+        teamDetails.set(teamName, details);
+      });
+    }
+
+    // Helper function to check if an individual approver satisfies a team requirement
+    const checkTeamApproval = (teamName, approvedBy) => {
+      const team = teamDetails.get(teamName);
+      if (!team || !team.members) return null;
+      
+      // Check if any of the individual approvers are team members
+      for (const approver of approvedBy) {
+        const isMember = team.members.some(member => member.username === approver);
+        if (isMember) {
+          return approver; // Return which team member approved
+        }
+      }
+      return null;
+    };
+
+    // Calculate minimum required approvals with enhanced team support
     const minRequiredApprovals = [];
     const stillNeedApprovalGroups = [];
 
     for (const [groupKey, owners] of approverGroups) {
       const files = filesByApproverGroup.get(groupKey);
-      const hasApproval = owners.some(owner => approvedBy.has(owner));
+      let hasApproval = false;
+      let approver = null;
+      let approverType = 'individual'; // 'individual' or 'team'
+      let teamName = null;
+
+      // Check each owner (individual or team) for approval
+      for (const owner of owners) {
+        if (approvedBy.has(owner)) {
+          // Direct individual approval
+          hasApproval = true;
+          approver = owner;
+          approverType = 'individual';
+          break;
+        } else if (owner.includes('/')) {
+          // Check if this is a team and if any approver is a team member
+          const teamApprover = checkTeamApproval(owner, approvedBy);
+          if (teamApprover) {
+            hasApproval = true;
+            approver = teamApprover;
+            approverType = 'team';
+            teamName = owner;
+            break;
+          }
+        }
+      }
 
       if (!hasApproval) {
         // Need at least one approval from this group
@@ -618,16 +696,19 @@ app.post('/api/pr-approvers', async (req, res) => {
           owners,
           needsApproval: true,
           approvedBy: null,
+          approverType: null,
+          teamName: null,
         });
         stillNeedApprovalGroups.push(owners);
       } else {
         // This group is satisfied
-        const approver = owners.find(owner => approvedBy.has(owner));
         minRequiredApprovals.push({
           files,
           owners,
           needsApproval: false,
           approvedBy: approver,
+          approverType,
+          teamName,
         });
       }
     }
@@ -687,9 +768,15 @@ app.post('/api/pr-approvers', async (req, res) => {
       console.log(`  Group ${index + 1}: ${group.files.length} files`);
       console.log(`    Files: ${group.files.join(', ')}`);
       console.log(`    Options: ${group.owners.join(', ')}`);
-      console.log(
-        `    Status: ${group.needsApproval ? '❌ NEEDS APPROVAL' : `✅ Approved by ${group.approvedBy}`}`
-      );
+      if (group.needsApproval) {
+        console.log(`    Status: ❌ NEEDS APPROVAL`);
+      } else {
+        if (group.approverType === 'team') {
+          console.log(`    Status: ✅ Approved by ${group.approvedBy} (member of ${group.teamName})`);
+        } else {
+          console.log(`    Status: ✅ Approved by ${group.approvedBy}`);
+        }
+      }
     });
 
     // Show files without CODEOWNERS rules
@@ -750,45 +837,6 @@ app.post('/api/pr-approvers', async (req, res) => {
     }
 
     console.log('========================');
-
-    // Fetch team details for any teams referenced in CODEOWNERS or requested teams
-    const teamDetails = new Map();
-    const teamsToFetch = new Set();
-
-    // Collect teams from CODEOWNERS entries (teams are identified by org/team format)
-    Array.from(requiredApprovers).forEach(approver => {
-      if (approver.includes('/')) {
-        teamsToFetch.add(approver);
-      }
-    });
-
-    // Add requested teams
-    requestedTeams.forEach(team => teamsToFetch.add(team));
-
-    // Fetch team details if we have a teams token
-    if (GITHUB_TEAMS_TOKEN && teamsToFetch.size > 0) {
-      console.log('🔍 Fetching team details for:', Array.from(teamsToFetch));
-
-      const teamPromises = Array.from(teamsToFetch).map(async teamName => {
-        // Handle both 'org/team' and 'team' formats
-        let org, teamSlug;
-        if (teamName.includes('/')) {
-          [org, teamSlug] = teamName.split('/');
-        } else {
-          // If no org specified, try to extract from repo owner
-          org = owner;
-          teamSlug = teamName;
-        }
-
-        const details = await fetchTeamDetails(org, teamSlug, GITHUB_TEAMS_TOKEN);
-        return { teamName, details };
-      });
-
-      const teamResults = await Promise.all(teamPromises);
-      teamResults.forEach(({ teamName, details }) => {
-        teamDetails.set(teamName, details);
-      });
-    }
 
     // Add user details to each approval group for the new UI
     const enhancedMinRequiredApprovals = minRequiredApprovals.map(group => ({

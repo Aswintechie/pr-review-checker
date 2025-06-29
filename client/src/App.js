@@ -700,7 +700,13 @@ function App() {
                           {group.files.length !== 1 ? 's' : ''})
                         </h3>
                         {!group.needsApproval && (
-                          <span className='approved-by'>Approved by @{group.approvedBy}</span>
+                          <span className='approved-by'>
+                            {group.approverType === 'team' ? (
+                              <>Approved by @{group.approvedBy} (member of {group.teamName})</>
+                            ) : (
+                              <>Approved by @{group.approvedBy}</>
+                            )}
+                          </span>
                         )}
                       </div>
 
@@ -774,7 +780,13 @@ function App() {
                           {group.files.length !== 1 ? 's' : ''})
                         </h3>
                         {!group.needsApproval && (
-                          <span className='approved-by'>Approved by @{group.approvedBy}</span>
+                          <span className='approved-by'>
+                            {group.approverType === 'team' ? (
+                              <>Approved by @{group.approvedBy} (member of {group.teamName})</>
+                            ) : (
+                              <>Approved by @{group.approvedBy}</>
+                            )}
+                          </span>
                         )}
                       </div>
 
