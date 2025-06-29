@@ -244,6 +244,14 @@ jobs:
           # Add more collaborators as needed
         )
         
+        # List of GitHub teams whose members can bypass PR title restrictions
+        # Format: "org/team-slug"
+        collaborator_teams=(
+          # "your-org/core-team"
+          # "your-org/maintainers"
+          # Add more teams as needed
+        )
+        
         # Function to check if user is a collaborator
         is_collaborator() {
           local user="$1"
@@ -252,6 +260,35 @@ jobs:
               return 0
             fi
           done
+          return 1
+        }
+        
+        # Function to check if user is a member of any collaborator teams
+        is_team_member() {
+          local user="$1"
+          
+          # Skip team checks if no teams configured or no token available
+          if [ ${#collaborator_teams[@]} -eq 0 ] || [ -z "${{ secrets.GITHUB_TOKEN }}" ]; then
+            return 1
+          fi
+          
+          for team in "${collaborator_teams[@]}"; do
+            # Extract org and team from "org/team" format
+            local org=$(echo "$team" | cut -d'/' -f1)
+            local team_slug=$(echo "$team" | cut -d'/' -f2)
+            
+            # Check if user is a member of this team using GitHub API
+            local response=$(curl -s -o /dev/null -w "%{http_code}" \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/orgs/$org/teams/$team_slug/memberships/$user")
+            
+            if [ "$response" = "200" ]; then
+              echo "✅ User $user is a member of team $team"
+              return 0
+            fi
+          done
+          
           return 1
         }
         
@@ -272,9 +309,12 @@ jobs:
           return 1
         }
         
-        # If user is a collaborator, allow any PR title
+        # If user is a collaborator or team member, allow any PR title
         if is_collaborator "$PR_AUTHOR"; then
           echo "✅ Collaborator detected ($PR_AUTHOR) - PR title restrictions bypassed"
+          exit 0
+        elif is_team_member "$PR_AUTHOR"; then
+          echo "✅ Team member detected ($PR_AUTHOR) - PR title restrictions bypassed"
           exit 0
         fi
         
