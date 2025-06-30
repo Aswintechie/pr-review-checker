@@ -571,7 +571,7 @@ function App() {
                 <strong>Error:</strong> {error}
               </div>
             </div>
-            {rateLimitInfo && (
+            {rateLimitInfo && rateLimitInfo.showWarning && (
               <div className='rate-limit-info'>
                 <div className='rate-limit-header'>
                   <span className='rate-limit-icon'>⏱️</span>
@@ -635,7 +635,7 @@ function App() {
             </div>
 
             {/* Rate Limit Warning for successful requests */}
-            {rateLimitInfo && rateLimitInfo.remaining <= (githubToken ? 100 : 20) && (
+            {rateLimitInfo && rateLimitInfo.showWarning && (
               <div className='rate-limit-warning-standalone'>
                 <div className='rate-limit-warning'>
                   ⚠️ <strong>Low Rate Limit Warning:</strong> You have {rateLimitInfo.remaining}{' '}

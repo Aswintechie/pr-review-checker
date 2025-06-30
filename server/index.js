@@ -886,15 +886,14 @@ app.post('/api/pr-approvers', async (req, res) => {
       const resetTimestamp = lastResponseHeaders['x-ratelimit-reset'];
       const limit = parseInt(lastResponseHeaders['x-ratelimit-limit']);
 
-      // Only include rate limit info if remaining requests are less than 100
-      if (remaining < 100 && resetTimestamp) {
+      if (resetTimestamp) {
         const resetTime = new Date(parseInt(resetTimestamp) * 1000);
         const now = new Date();
         const minutesUntilReset = Math.ceil((resetTime - now) / (1000 * 60));
 
         rateLimitInfo = {
-          remaining,
-          limit,
+          remaining: parseInt(remaining),
+          limit: parseInt(limit),
           resetTime: resetTime.toISOString(),
           resetTimestamp: parseInt(resetTimestamp),
           minutesUntilReset: Math.max(0, minutesUntilReset),
@@ -907,6 +906,7 @@ app.post('/api/pr-approvers', async (req, res) => {
             minute: '2-digit',
             timeZoneName: 'short',
           }),
+          showWarning: parseInt(remaining) < 100, // Only show warning when < 100 requests remaining
         };
       }
     }
@@ -988,6 +988,7 @@ app.post('/api/pr-approvers', async (req, res) => {
             minute: '2-digit',
             timeZoneName: 'short',
           }),
+          showWarning: parseInt(remaining) < 100, // Only show warning when < 100 requests remaining
         };
 
         // Only show rate limit error if remaining requests are less than 100
