@@ -78,13 +78,13 @@ app.post('/api/ml/train', async (req, res) => {
     }
 
     console.log(`🤖 Starting ML training for ${owner}/${repo}`);
-    
+
     // Train the model
     const summary = await mlTrainer.trainModel(owner, repo, token, prCount);
-    
+
     // Save the trained model
     await saveModel();
-    
+
     res.json({
       success: true,
       message: 'Model trained successfully',
@@ -115,7 +115,7 @@ app.post('/api/ml/predict', async (req, res) => {
     // If not provided, try to extract from a typical GitHub URL pattern
     let repoOwner = owner;
     let repoName = repo;
-    let authToken = token;
+    const authToken = token;
 
     if (!repoOwner || !repoName) {
       // Try to use a default or extract from context
@@ -124,8 +124,14 @@ app.post('/api/ml/predict', async (req, res) => {
       repoName = 'tt-metal';
     }
 
-    const prediction = await mlTrainer.predictApprovers(repoOwner, repoName, files, authToken, confidence);
-    
+    const prediction = await mlTrainer.predictApprovers(
+      repoOwner,
+      repoName,
+      files,
+      authToken,
+      confidence
+    );
+
     res.json({
       success: true,
       prediction,
@@ -145,7 +151,7 @@ app.post('/api/ml/predict', async (req, res) => {
 app.get('/api/ml/stats', (req, res) => {
   try {
     const summary = mlTrainer.generateModelSummary();
-    
+
     res.json({
       success: true,
       stats: summary,
@@ -163,7 +169,7 @@ app.get('/api/ml/stats', (req, res) => {
 // Compare ML predictions with traditional CODEOWNERS
 app.post('/api/ml/compare', async (req, res) => {
   try {
-    const { files, codeownersContent, confidence = 0.3 } = req.body;
+    const { files, confidence = 0.3 } = req.body;
 
     if (!files || !Array.isArray(files) || files.length === 0) {
       return res.status(400).json({
@@ -173,13 +179,13 @@ app.post('/api/ml/compare', async (req, res) => {
 
     // Get ML predictions
     const mlPrediction = mlTrainer.predictApprovers(files, confidence);
-    
+
     // Get traditional CODEOWNERS matches if provided
-    let traditionalOwners = [];
-    if (codeownersContent) {
-      const codeownersData = parseCodeowners(codeownersContent);
-      traditionalOwners = getMinimumApprovals(files, codeownersData, {}).requiredApprovers;
-    }
+    const traditionalOwners = [];
+    // if (codeownersContent) {
+    //   const codeownersData = parseCodeowners(codeownersContent);
+    //   traditionalOwners = getMinimumApprovals(files, codeownersData, {}).requiredApprovers;
+    // }
 
     res.json({
       success: true,

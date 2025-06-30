@@ -139,7 +139,6 @@ function App() {
     });
   const getMlPredictions = async (files, repoInfo) => {
     try {
-      console.log('🧠 Fetching ML predictions for files:', files);
       const response = await axios.post('/api/ml/predict', {
         files,
         confidence: 0.1, // Very low threshold to see more predictions
@@ -147,10 +146,9 @@ function App() {
         repo: repoInfo?.repo,
         token: githubToken,
       });
-      console.log('🧠 ML API response:', response.data);
       return response.data.prediction; // Return the prediction object
     } catch (error) {
-      console.error('ML prediction failed:', error);
+      // ML prediction failed
       return null;
     }
   };
@@ -176,15 +174,17 @@ function App() {
       // Get ML predictions for the PR files
       if (response.data.fileApprovalDetails && response.data.fileApprovalDetails.length > 0) {
         const files = response.data.fileApprovalDetails.map(detail => detail.file);
-        
+
         // Extract repository info from PR URL
-        const urlMatch = prUrl.match(/github\.com\/([^\/]+)\/([^\/]+)\/pull\/(\d+)/);
-        const repoInfo = urlMatch ? {
-          owner: urlMatch[1],
-          repo: urlMatch[2],
-          prNumber: urlMatch[3]
-        } : null;
-        
+        const urlMatch = prUrl.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
+        const repoInfo = urlMatch
+          ? {
+              owner: urlMatch[1],
+              repo: urlMatch[2],
+              prNumber: urlMatch[3],
+            }
+          : null;
+
         const predictions = await getMlPredictions(files, repoInfo);
         setMlPredictions(predictions);
       }
@@ -482,13 +482,13 @@ function App() {
     );
   };
 
-  const getMLApprovalChance = (username) => {
+  const getMLApprovalChance = username => {
     if (!mlPredictions?.predictions) return null;
     const prediction = mlPredictions.predictions.find(p => p.approver === username);
     if (!prediction) return null;
-    
+
     // Convert to percentage and round to 1 decimal place for better visibility
-    const percentage = (prediction.confidence * 100);
+    const percentage = prediction.confidence * 100;
     return percentage >= 1 ? Math.round(percentage) : Math.round(percentage * 10) / 10;
   };
 
@@ -512,9 +512,7 @@ function App() {
           <div className='user-username'>
             @{user.username}
             {approvalPercentage && (
-              <span className='ml-approval-chance'>
-                {approvalPercentage}% likely
-              </span>
+              <span className='ml-approval-chance'>{approvalPercentage}% likely</span>
             )}
           </div>
         </div>
@@ -522,8 +520,6 @@ function App() {
       </div>
     );
   };
-
-
 
   const renderThemeDropdown = () => {
     if (!showThemeDropdown) return null;
@@ -1075,7 +1071,6 @@ function App() {
               >
                 🔬 Advanced View
               </button>
-
             </div>
 
             {/* Progress Overview */}
@@ -1183,16 +1178,18 @@ function App() {
                           <div className='user-info'>
                             <div className='user-name'>{user.name}</div>
                             <div className='user-username'>
-              @{user.username}
-              {(() => {
-                const approvalPercentage = getMLApprovalChance(user.username);
-                return approvalPercentage && (
-                  <span className='ml-approval-chance'>
-                    {approvalPercentage}% likely
-                  </span>
-                );
-              })()}
-            </div>
+                              @{user.username}
+                              {(() => {
+                                const approvalPercentage = getMLApprovalChance(user.username);
+                                return (
+                                  approvalPercentage && (
+                                    <span className='ml-approval-chance'>
+                                      {approvalPercentage}% likely
+                                    </span>
+                                  )
+                                );
+                              })()}
+                            </div>
                             {isRequested && <div className='user-status'>Requested</div>}
                           </div>
                           {isApproved && <div className='approval-badge'>✅</div>}
@@ -1334,8 +1331,6 @@ function App() {
                 </section>
               </>
             )}
-
-
 
             {/* Feedback Call-to-Action Section */}
             <section className='feedback-cta-section'>

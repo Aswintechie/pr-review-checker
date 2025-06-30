@@ -2144,8 +2144,14 @@ section h2 {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .ml-section {
@@ -2545,34 +2551,32 @@ section h2 {
   font-size: 0.9rem;
 }
 
-
-
 /* Responsive Design for ML Components */
 @media (max-width: 768px) {
   .ml-tabs {
     flex-direction: column;
     align-items: center;
   }
-  
+
   .ml-tab {
     width: 100%;
     max-width: 200px;
   }
-  
+
   .stats-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .comparison-grid {
     grid-template-columns: 1fr;
     gap: 1rem;
   }
-  
+
   .file-input-group {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .remove-file-btn {
     align-self: flex-end;
     width: auto;
