@@ -410,7 +410,7 @@ function App() {
             <div className='team-members-empty'>
               {result?.teamsConfigured
                 ? 'No members found or insufficient permissions to view team members.'
-                : 'Team member details unavailable. Configure GITHUB_TEAMS_TOKEN to view team members.'}
+                : 'Team member details unavailable. Add a GitHub token with org:read scope to view team members.'}
             </div>
           </div>
         )}
@@ -537,7 +537,7 @@ function App() {
 
           <div className='form-group'>
             <label htmlFor='githubToken'>
-              GitHub Token (optional - for private repos & higher rate limits):
+              GitHub Token (optional - for private repos, team access & higher rate limits):
             </label>
             <input
               type='password'
@@ -571,7 +571,7 @@ function App() {
                 <strong>Error:</strong> {error}
               </div>
             </div>
-            {rateLimitInfo && (
+            {rateLimitInfo && rateLimitInfo.showWarning && (
               <div className='rate-limit-info'>
                 <div className='rate-limit-header'>
                   <span className='rate-limit-icon'>⏱️</span>
@@ -635,7 +635,7 @@ function App() {
             </div>
 
             {/* Rate Limit Warning for successful requests */}
-            {rateLimitInfo && rateLimitInfo.remaining <= (githubToken ? 100 : 20) && (
+            {rateLimitInfo && rateLimitInfo.showWarning && (
               <div className='rate-limit-warning-standalone'>
                 <div className='rate-limit-warning'>
                   ⚠️ <strong>Low Rate Limit Warning:</strong> You have {rateLimitInfo.remaining}{' '}

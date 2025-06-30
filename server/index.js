@@ -423,6 +423,21 @@ async function fetchTeamDetails(org, teamSlug, token) {
 
 // isUserInTeams function removed (not currently used)
 
+// Helper function to get the appropriate token for different operations
+function getTokenForOperation(userToken, operation = 'repo') {
+  // If user provided a token, use it for all operations
+  if (userToken) {
+    return userToken;
+  }
+
+  // Fallback to .env tokens based on operation
+  if (operation === 'teams' && GITHUB_TEAMS_TOKEN) {
+    return GITHUB_TEAMS_TOKEN;
+  }
+
+  return GITHUB_TOKEN;
+}
+
 // Get required approvers for a PR
 app.post('/api/pr-approvers', async (req, res) => {
   try {
@@ -439,7 +454,7 @@ app.post('/api/pr-approvers', async (req, res) => {
     }
 
     const [, owner, repo, prNumber] = urlMatch;
-    const token = githubToken || GITHUB_TOKEN;
+    const token = getTokenForOperation(githubToken);
 
     // Create headers with optional authorization
     const headers = {
@@ -617,8 +632,9 @@ app.post('/api/pr-approvers', async (req, res) => {
     // Add requested teams
     requestedTeams.forEach(team => teamsToFetch.add(team));
 
-    // Fetch team details if we have a teams token
-    if (GITHUB_TEAMS_TOKEN && teamsToFetch.size > 0) {
+    // Fetch team details if we have a token
+    const teamsToken = getTokenForOperation(githubToken, 'teams');
+    if (teamsToken && teamsToFetch.size > 0) {
       console.log('🔍 Fetching team details for:', Array.from(teamsToFetch));
 
       const teamPromises = Array.from(teamsToFetch).map(async teamName => {
@@ -632,7 +648,7 @@ app.post('/api/pr-approvers', async (req, res) => {
           teamSlug = teamName;
         }
 
-        const details = await fetchTeamDetails(org, teamSlug, GITHUB_TEAMS_TOKEN);
+        const details = await fetchTeamDetails(org, teamSlug, teamsToken);
         return { teamName, details };
       });
 
@@ -866,11 +882,11 @@ app.post('/api/pr-approvers', async (req, res) => {
     let rateLimitInfo = null;
 
     if (lastResponseHeaders['x-ratelimit-remaining'] !== undefined) {
-      const remaining = lastResponseHeaders['x-ratelimit-remaining'];
+      const remaining = parseInt(lastResponseHeaders['x-ratelimit-remaining']);
       const resetTimestamp = lastResponseHeaders['x-ratelimit-reset'];
-      const limit = lastResponseHeaders['x-ratelimit-limit'];
+      const limit = parseInt(lastResponseHeaders['x-ratelimit-limit']);
 
-      if (remaining !== undefined && resetTimestamp) {
+      if (resetTimestamp) {
         const resetTime = new Date(parseInt(resetTimestamp) * 1000);
         const now = new Date();
         const minutesUntilReset = Math.ceil((resetTime - now) / (1000 * 60));
@@ -890,6 +906,7 @@ app.post('/api/pr-approvers', async (req, res) => {
             minute: '2-digit',
             timeZoneName: 'short',
           }),
+          showWarning: parseInt(remaining) < 100, // Only show warning when < 100 requests remaining
         };
       }
     }
@@ -913,7 +930,7 @@ app.post('/api/pr-approvers', async (req, res) => {
       allUserDetails: userDetailsArray,
       userDetails: Object.fromEntries(userDetails),
       teamDetails: Object.fromEntries(teamDetails),
-      teamsConfigured: GITHUB_TEAMS_TOKEN ? true : false,
+      teamsConfigured: getTokenForOperation(githubToken, 'teams') ? true : false,
       approvals,
       currentApprovals: approvals,
       stillNeedApproval,
@@ -971,17 +988,25 @@ app.post('/api/pr-approvers', async (req, res) => {
             minute: '2-digit',
             timeZoneName: 'short',
           }),
+          showWarning: parseInt(remaining) < 100, // Only show warning when < 100 requests remaining
         };
 
-        if (minutesUntilReset > 0) {
-          userFriendlyError = `GitHub API rate limit exceeded (${remaining}/${limit} remaining). Rate limit resets in ${minutesUntilReset} minute${minutesUntilReset !== 1 ? 's' : ''} at ${rateLimitInfo.resetTimeFormatted}. Try adding a GitHub token for higher limits.`;
+        // Only show rate limit error if remaining requests are less than 100
+        if (parseInt(remaining) < 100) {
+          if (minutesUntilReset > 0) {
+            userFriendlyError = `GitHub API rate limit exceeded (${remaining}/${limit} remaining). Rate limit resets in ${minutesUntilReset} minute${minutesUntilReset !== 1 ? 's' : ''} at ${rateLimitInfo.resetTimeFormatted}. Try adding a GitHub token for higher limits.`;
+          } else {
+            userFriendlyError =
+              'GitHub API rate limit exceeded. Try adding a GitHub token for higher limits.';
+          }
         } else {
+          // If we have 100+ requests remaining, this might be a different 403 error
           userFriendlyError =
-            'GitHub API rate limit exceeded. Try adding a GitHub token for higher limits.';
+            'GitHub API access denied. This might be due to insufficient permissions or repository access restrictions.';
         }
       } else {
         userFriendlyError =
-          'GitHub API rate limit exceeded or insufficient permissions. Try adding a GitHub token.';
+          'GitHub API access denied. This might be due to insufficient permissions or repository access restrictions.';
       }
     } else if (error.response?.status === 404) {
       userFriendlyError =
