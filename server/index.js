@@ -8,6 +8,7 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const nodemailer = require('nodemailer');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -15,6 +16,9 @@ const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from the React build folder
+app.use(express.static(path.join(__dirname, '../client/build')));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -1022,6 +1026,11 @@ app.post('/api/pr-approvers', async (req, res) => {
       debug: errorDetails,
     });
   }
+});
+
+// Fallback to index.html for SPA routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/build/index.html'));
 });
 
 // Only start the server if this file is run directly (not imported for testing)
