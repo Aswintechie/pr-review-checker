@@ -423,6 +423,21 @@ async function fetchTeamDetails(org, teamSlug, token) {
 
 // isUserInTeams function removed (not currently used)
 
+// Helper function to get the appropriate token for different operations
+function getTokenForOperation(userToken, operation = 'repo') {
+  // If user provided a token, use it for all operations
+  if (userToken) {
+    return userToken;
+  }
+  
+  // Fallback to .env tokens based on operation
+  if (operation === 'teams' && GITHUB_TEAMS_TOKEN) {
+    return GITHUB_TEAMS_TOKEN;
+  }
+  
+  return GITHUB_TOKEN;
+}
+
 // Get required approvers for a PR
 app.post('/api/pr-approvers', async (req, res) => {
   try {
@@ -439,7 +454,7 @@ app.post('/api/pr-approvers', async (req, res) => {
     }
 
     const [, owner, repo, prNumber] = urlMatch;
-    const token = githubToken || GITHUB_TOKEN;
+    const token = getTokenForOperation(githubToken);
 
     // Create headers with optional authorization
     const headers = {
@@ -617,8 +632,9 @@ app.post('/api/pr-approvers', async (req, res) => {
     // Add requested teams
     requestedTeams.forEach(team => teamsToFetch.add(team));
 
-    // Fetch team details if we have a teams token
-    if (GITHUB_TEAMS_TOKEN && teamsToFetch.size > 0) {
+    // Fetch team details if we have a token
+    const teamsToken = getTokenForOperation(githubToken, 'teams');
+    if (teamsToken && teamsToFetch.size > 0) {
       console.log('🔍 Fetching team details for:', Array.from(teamsToFetch));
 
       const teamPromises = Array.from(teamsToFetch).map(async teamName => {
@@ -632,7 +648,7 @@ app.post('/api/pr-approvers', async (req, res) => {
           teamSlug = teamName;
         }
 
-        const details = await fetchTeamDetails(org, teamSlug, GITHUB_TEAMS_TOKEN);
+        const details = await fetchTeamDetails(org, teamSlug, teamsToken);
         return { teamName, details };
       });
 
@@ -913,7 +929,7 @@ app.post('/api/pr-approvers', async (req, res) => {
       allUserDetails: userDetailsArray,
       userDetails: Object.fromEntries(userDetails),
       teamDetails: Object.fromEntries(teamDetails),
-      teamsConfigured: GITHUB_TEAMS_TOKEN ? true : false,
+      teamsConfigured: getTokenForOperation(githubToken, 'teams') ? true : false,
       approvals,
       currentApprovals: approvals,
       stillNeedApproval,

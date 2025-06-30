@@ -410,7 +410,7 @@ function App() {
             <div className='team-members-empty'>
               {result?.teamsConfigured
                 ? 'No members found or insufficient permissions to view team members.'
-                : 'Team member details unavailable. Configure GITHUB_TEAMS_TOKEN to view team members.'}
+                : 'Team member details unavailable. Add a GitHub token with org:read scope to view team members.'}
             </div>
           </div>
         )}
@@ -537,7 +537,7 @@ function App() {
 
           <div className='form-group'>
             <label htmlFor='githubToken'>
-              GitHub Token (optional - for private repos & higher rate limits):
+              GitHub Token (optional - for private repos, team access & higher rate limits):
             </label>
             <input
               type='password'
