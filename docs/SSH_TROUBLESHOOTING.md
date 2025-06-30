@@ -47,9 +47,32 @@ Check that all secrets are correctly set:
 | `CLOUDFLARE_HOSTNAME` | Must match exactly: `ubuntu.aswinlocal.in` |
 | `SSH_HOST` | Should be: `ubuntu.aswinlocal.in` |
 | `SSH_USER` | Should be: `aswin` |
-| `SSH_PASSWORD` | Your VM password |
+| `SSH_PRIVATE_KEY` | Complete private key content (including BEGIN/END lines) |
 
-#### **Step 4: Check VM SSH Service**
+**Important**: The `SSH_PRIVATE_KEY` should include the complete key content:
+```
+-----BEGIN OPENSSH PRIVATE KEY-----
+[private key content]
+-----END OPENSSH PRIVATE KEY-----
+```
+
+#### **Step 4: Check SSH Key Setup**
+
+Verify SSH key authentication is properly configured:
+
+```bash
+# On your VM, check authorized_keys
+cat ~/.ssh/authorized_keys
+
+# Check SSH key permissions
+ls -la ~/.ssh/
+# Should show: -rw------- for authorized_keys
+
+# Test SSH key authentication locally
+ssh -i ~/.ssh/github_actions_key aswin@YOUR_VM_IP
+```
+
+#### **Step 5: Check VM SSH Service**
 
 Ensure SSH is running on your VM:
 
@@ -63,7 +86,7 @@ sudo systemctl start ssh
 sudo systemctl enable ssh
 ```
 
-#### **Step 5: Test Direct SSH (if possible)**
+#### **Step 6: Test Direct SSH (if possible)**
 
 If you can access your VM directly (without Cloudflare Access):
 
@@ -74,27 +97,24 @@ ssh aswin@YOUR_VM_IP
 
 ## 🔧 Alternative Solutions
 
-### Option 1: Use SSH Keys Instead of Password
+### Option 1: Use Password Authentication (if SSH keys don't work)
 
-1. **Generate SSH Key Pair**
-   ```bash
-   ssh-keygen -t ed25519 -C "github-actions"
-   ```
+If SSH key authentication fails, you can fall back to password authentication:
 
-2. **Add Public Key to VM**
-   ```bash
-   # Copy public key to VM
-   ssh-copy-id -i ~/.ssh/id_ed25519.pub aswin@YOUR_VM_IP
-   ```
+1. **Update GitHub Secrets**
+   - Add `SSH_PASSWORD` secret with your VM password
+   - Remove `SSH_PRIVATE_KEY` secret
 
-3. **Update GitHub Secrets**
-   - Add `SSH_PRIVATE_KEY` secret with the private key content
-   - Remove `SSH_PASSWORD` secret
-
-4. **Update Workflow**
+2. **Update Workflow**
    ```yaml
    env:
-     SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+     SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+   ```
+
+3. **Modify SSH Config**
+   ```bash
+   # Remove IdentityFile line from SSH config
+   # Add PasswordAuthentication yes
    ```
 
 ### Option 2: Use Different Cloudflare Access Method

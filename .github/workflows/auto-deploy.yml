@@ -32,7 +32,7 @@ jobs:
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
-          SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           CLOUDFLARE_HOSTNAME: ${{ secrets.CLOUDFLARE_HOSTNAME }}
           DEPLOY_ENV: ${{ github.event.inputs.environment || 'production' }}
           FORCE_DEPLOY: ${{ github.event.inputs.force_deploy || 'false' }}
@@ -57,15 +57,21 @@ jobs:
             echo "✅ cloudflared already available"
           fi
           
-          # Create SSH config for Cloudflare Access
-          echo "🔧 Setting up SSH configuration..."
+          # Setup SSH with private key
+          echo "🔧 Setting up SSH configuration with private key..."
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
           
+          # Create private key file
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          
+          # Create SSH config for Cloudflare Access
           cat > ~/.ssh/config << EOF
           Host vm-deploy
             HostName $SSH_HOST
             User $SSH_USER
+            IdentityFile ~/.ssh/id_ed25519
             ProxyCommand cloudflared access ssh --hostname $CLOUDFLARE_HOSTNAME
             StrictHostKeyChecking no
             UserKnownHostsFile /dev/null
@@ -102,8 +108,9 @@ jobs:
             echo "   1. Verify CLOUDFLARE_HOSTNAME secret matches your Cloudflare Access hostname"
             echo "   2. Check that Cloudflare Access SSH is enabled for this hostname"
             echo "   3. Ensure the VM is accessible via Cloudflare Access"
-            echo "   4. Verify SSH_USER and SSH_PASSWORD secrets are correct"
+            echo "   4. Verify SSH_USER and SSH_PRIVATE_KEY secrets are correct"
             echo "   5. Check if the VM's SSH service is running"
+            echo "   6. Ensure the public key is added to ~/.ssh/authorized_keys on the VM"
             exit 1
           fi
           
