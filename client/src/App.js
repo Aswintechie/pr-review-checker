@@ -618,8 +618,28 @@ function App() {
                     <span className='pr-number'>#{result.prInfo.number}</span>
                     <span className='pr-author'>by @{result.prInfo.author}</span>
                     <span className='pr-state' data-state={result.prInfo.state.toLowerCase()}>
-                      {result.prInfo.state}
+                      {result.prInfo.state === 'draft' && '📝 Draft'}
+                      {result.prInfo.state === 'merged' && '✅ Merged'}
+                      {result.prInfo.state === 'closed' && '❌ Closed'}
+                      {result.prInfo.state === 'open' && '🔓 Open'}
                     </span>
+                    {result.prInfo.statusDetails && (
+                      <>
+                        {result.prInfo.statusDetails.isDraft && (
+                          <span className='pr-status-note'>📝 Draft PR</span>
+                        )}
+                        {result.prInfo.statusDetails.isMerged && result.prInfo.statusDetails.mergedAt && (
+                          <span className='pr-status-note'>
+                            ✅ Merged {new Date(result.prInfo.statusDetails.mergedAt).toLocaleDateString()}
+                          </span>
+                        )}
+                        {result.prInfo.statusDetails.mergeableState && result.prInfo.statusDetails.mergeableState !== 'unknown' && (
+                          <span className='pr-status-note'>
+                            🔄 {result.prInfo.statusDetails.mergeableState}
+                          </span>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
                 <a

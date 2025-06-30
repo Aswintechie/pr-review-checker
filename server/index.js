@@ -478,6 +478,31 @@ app.post('/api/pr-approvers', async (req, res) => {
 
     const pr = prResponse.data;
 
+    // Enhanced PR status detection
+    let prStatus = pr.state;
+    const prStatusDetails = {
+      state: pr.state,
+      isDraft: pr.draft || false,
+      isMerged: pr.merged || false,
+      mergeable: pr.mergeable,
+      mergeableState: pr.mergeable_state,
+      mergedAt: pr.merged_at,
+      closedAt: pr.closed_at,
+      createdAt: pr.created_at,
+      updatedAt: pr.updated_at,
+    };
+
+    // Determine specific status
+    if (pr.merged) {
+      prStatus = 'merged';
+    } else if (pr.draft) {
+      prStatus = 'draft';
+    } else if (pr.state === 'closed' && !pr.merged) {
+      prStatus = 'closed';
+    } else if (pr.state === 'open') {
+      prStatus = 'open';
+    }
+
     // Fetch PR files with pagination support
     let changedFiles = [];
     let page = 1;
@@ -920,8 +945,9 @@ app.post('/api/pr-approvers', async (req, res) => {
         title: pr.title,
         number: pr.number,
         author: pr.user.login,
-        state: pr.state,
+        state: prStatus,
         url: pr.html_url,
+        statusDetails: prStatusDetails,
       },
       changedFiles,
       fileApprovalDetails,
