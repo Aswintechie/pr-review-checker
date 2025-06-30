@@ -27,7 +27,7 @@ You need to configure these secrets in your GitHub repository:
 |-------------|-------------|---------------|
 | `SSH_HOST` | The internal hostname/IP of your VM | `ubuntu.aswinlocal.in` |
 | `SSH_USER` | SSH username for the VM | `aswin` |
-| `SSH_PASSWORD` | SSH password for the VM | `your_password_here` |
+| `SSH_PRIVATE_KEY` | SSH private key content (ed25519 recommended) | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
 | `CLOUDFLARE_HOSTNAME` | Cloudflare Access hostname | `ubuntu.aswinlocal.in` |
 
 ## 🎛️ Manual Deployment
@@ -54,7 +54,37 @@ You need to configure these secrets in your GitHub repository:
 ### 1. Configure GitHub Secrets
 Add all the secrets listed above in your repository settings.
 
-### 2. Ensure Auto-Deploy Script Exists
+### 2. Set Up SSH Keys
+
+Generate and configure SSH keys for secure authentication:
+
+#### Generate SSH Key Pair (if you don't have one)
+```bash
+# Generate a new SSH key pair
+ssh-keygen -t ed25519 -C "github-actions-deploy" -f ~/.ssh/github_actions_key
+
+# This creates:
+# - ~/.ssh/github_actions_key (private key)
+# - ~/.ssh/github_actions_key.pub (public key)
+```
+
+#### Add Public Key to VM
+```bash
+# Copy the public key to your VM
+ssh-copy-id -i ~/.ssh/github_actions_key.pub aswin@YOUR_VM_IP
+
+# Or manually add to authorized_keys
+cat ~/.ssh/github_actions_key.pub | ssh aswin@YOUR_VM_IP "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
+```
+
+#### Add Private Key to GitHub Secrets
+1. Copy the private key content:
+   ```bash
+   cat ~/.ssh/github_actions_key
+   ```
+2. Add as `SSH_PRIVATE_KEY` secret in GitHub repository settings
+
+### 3. Ensure Auto-Deploy Script Exists
 Make sure the script `/home/aswin/pr-review-checker/auto-deploy.sh` exists on your VM and is executable:
 
 ```bash
@@ -62,7 +92,7 @@ Make sure the script `/home/aswin/pr-review-checker/auto-deploy.sh` exists on yo
 chmod +x /home/aswin/pr-review-checker/auto-deploy.sh
 ```
 
-### 3. Set Up Systemd Service
+### 4. Set Up Systemd Service
 Create a systemd service file for the application:
 
 ```bash
@@ -96,7 +126,7 @@ sudo systemctl enable pr-deploy
 sudo systemctl start pr-deploy
 ```
 
-### 4. Test the Script
+### 5. Test the Script
 Test that your auto-deploy script works correctly:
 
 ```bash
@@ -179,8 +209,8 @@ The GitHub Action includes detailed logging with emojis for easy identification:
 
 ## 🔒 Security Notes
 
-- The SSH password is stored securely in GitHub secrets
-- SSH key checking is disabled for automation
+- The SSH private key is stored securely in GitHub secrets
+- SSH key checking is enabled for automation
 - The connection uses Cloudflare Access for secure tunneling
 - All secrets are encrypted and not visible in logs
 - Systemd service runs with appropriate user permissions

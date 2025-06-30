@@ -7,7 +7,7 @@ LOG_FILE="/home/aswin/pr-review-checker/deploy.log"
 PROJECT_DIR="/home/aswin/pr-review-checker"
 APP_NAME="pr-deploy"
 
-echo "$(date): 🚀 Starting production auto-deployment..." | tee -a "$LOG_FILE"
+echo "$(date): Starting production auto-deployment..." | tee -a "$LOG_FILE"
 cd "$PROJECT_DIR"
 
 echo "$(date): 📥 Pulling latest changes from Git..." | tee -a "$LOG_FILE"
@@ -37,5 +37,19 @@ sleep 5
 if curl -f http://localhost:3001/health > /dev/null 2>&1; then
     echo "$(date): ✅ Health check passed" | tee -a "$LOG_FILE"
 else
+    echo "❌ Application health check failed!"
+    echo "🔍 Checking logs..."
+    
+    # Show recent logs if available
+    if command -v pm2 &> /dev/null; then
+        pm2 logs $PM2_APP_NAME --lines 20
+    fi
+    
+    exit 1
+fi
+
     echo "$(date): ⚠️ Health check failed - service may still be starting" | tee -a "$LOG_FILE"
 fi 
+echo "🎉 Auto-deploy completed successfully!"
+echo "📅 Deployment time: $(date)"
+echo "🌍 Environment: $DEPLOY_ENV" 
