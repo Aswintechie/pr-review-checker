@@ -63,6 +63,14 @@ describe('PR Approval Server', () => {
         title: 'Test PR',
         user: { login: 'testuser' },
         state: 'open',
+        draft: false,
+        merged: false,
+        mergeable: true,
+        mergeable_state: 'clean',
+        merged_at: null,
+        closed_at: null,
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
         html_url: 'https://github.com/owner/repo/pull/123',
         base: { repo: { full_name: 'owner/repo' } },
         requested_reviewers: [],
@@ -177,6 +185,14 @@ describe('PR Approval Server', () => {
         title: 'Test PR',
         user: { login: 'testuser' },
         state: 'open',
+        draft: false,
+        merged: false,
+        mergeable: true,
+        mergeable_state: 'clean',
+        merged_at: null,
+        closed_at: null,
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
         html_url: 'https://github.com/owner/repo/pull/123',
         base: { repo: { full_name: 'owner/repo' } },
         requested_reviewers: [],
@@ -229,6 +245,63 @@ describe('PR Approval Server', () => {
       expect(response.body).toHaveProperty('rateLimitInfo');
       expect(response.body.rateLimitInfo.limit).toBe(5000);
       expect(response.body.rateLimitInfo.remaining).toBe(4997);
+    });
+
+    test('should handle enhanced PR status states correctly', async () => {
+      // Test draft PR
+      const mockDraftPRData = {
+        number: 456,
+        title: 'Draft PR',
+        user: { login: 'testuser' },
+        state: 'open',
+        draft: true,
+        merged: false,
+        mergeable: null,
+        mergeable_state: 'unknown',
+        merged_at: null,
+        closed_at: null,
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+        html_url: 'https://github.com/owner/repo/pull/456',
+        base: { repo: { full_name: 'owner/repo' } },
+        requested_reviewers: [],
+        requested_teams: [],
+      };
+
+      const mockFilesData = [{ filename: 'test.js' }];
+      const mockReviewsData = [];
+      const mockCodeownersData = {
+        data: {
+          content: Buffer.from('* @owner1\n').toString('base64'),
+        },
+      };
+      const mockUserData = { name: 'Owner 1', avatar_url: 'https://github.com/avatar.jpg' };
+
+      axios.get
+        .mockResolvedValueOnce({
+          data: mockDraftPRData,
+          headers: { 'x-ratelimit-limit': '5000', 'x-ratelimit-remaining': '4999' },
+        })
+        .mockResolvedValueOnce({
+          data: mockFilesData,
+          headers: { 'x-ratelimit-limit': '5000', 'x-ratelimit-remaining': '4998' },
+        })
+        .mockResolvedValueOnce(mockCodeownersData)
+        .mockResolvedValueOnce({
+          data: mockReviewsData,
+          headers: { 'x-ratelimit-limit': '5000', 'x-ratelimit-remaining': '4997' },
+        })
+        .mockResolvedValue({ data: mockUserData });
+
+      const response = await request(app)
+        .post('/api/pr-approvers')
+        .send({ prUrl: 'https://github.com/owner/repo/pull/456' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.prInfo.state).toBe('draft');
+      expect(response.body.prInfo.statusDetails).toBeDefined();
+      expect(response.body.prInfo.statusDetails.isDraft).toBe(true);
+      expect(response.body.prInfo.statusDetails.isMerged).toBe(false);
     });
   });
 

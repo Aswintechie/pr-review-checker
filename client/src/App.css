@@ -1110,8 +1110,8 @@ body {
 }
 
 .pr-state[data-state='open'] {
-  background: var(--success-bg);
-  color: var(--success);
+  background: #dcfce7;
+  color: #16a34a;
 }
 
 .pr-state[data-state='closed'] {
@@ -1122,6 +1122,11 @@ body {
 .pr-state[data-state='merged'] {
   background: var(--purple-bg);
   color: var(--purple);
+}
+
+.pr-state[data-state='draft'] {
+  background: #fef3c7;
+  color: #92400e;
 }
 
 .pr-link-btn {
@@ -2369,4 +2374,19 @@ section h2 {
     height: 16px;
     font-size: 0.6rem;
   }
+}
+
+.pr-status-note {
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-primary);
+}
+
+.pr-status-note:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
 }
