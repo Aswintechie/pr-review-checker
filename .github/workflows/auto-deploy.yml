@@ -77,10 +77,33 @@ jobs:
           
           # Test SSH connection
           echo "🔍 Testing SSH connection..."
-          if ssh vm-deploy "echo 'SSH connection successful'"; then
+          echo "📋 SSH Config:"
+          cat ~/.ssh/config
+          
+          # Test cloudflared access first
+          echo "🔍 Testing Cloudflare Access connection..."
+          if cloudflared access ssh --hostname $CLOUDFLARE_HOSTNAME --dry-run; then
+            echo "✅ Cloudflare Access configuration looks good"
+          else
+            echo "❌ Cloudflare Access configuration issue detected"
+            echo "💡 Please check:"
+            echo "   - CLOUDFLARE_HOSTNAME secret is correct"
+            echo "   - Cloudflare Access is properly configured"
+            echo "   - The hostname is accessible via Cloudflare Access"
+          fi
+          
+          # Test SSH with verbose output
+          echo "🔍 Testing SSH connection with verbose output..."
+          if ssh -v vm-deploy "echo 'SSH connection successful'"; then
             echo "✅ SSH connection established"
           else
             echo "❌ SSH connection failed"
+            echo "💡 Troubleshooting steps:"
+            echo "   1. Verify CLOUDFLARE_HOSTNAME secret matches your Cloudflare Access hostname"
+            echo "   2. Check that Cloudflare Access SSH is enabled for this hostname"
+            echo "   3. Ensure the VM is accessible via Cloudflare Access"
+            echo "   4. Verify SSH_USER and SSH_PASSWORD secrets are correct"
+            echo "   5. Check if the VM's SSH service is running"
             exit 1
           fi
           
