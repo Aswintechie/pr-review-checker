@@ -1028,11 +1028,6 @@ app.post('/api/pr-approvers', async (req, res) => {
   }
 });
 
-// Fallback to index.html for non-API, non-health GET routes (SPA support)
-app.get(/^\/(?!api|health).*/, (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/build/index.html'));
-});
-
 // 404 handler for all other unmatched routes (including APIs)
 app.use((req, res, _next) => {
   res.status(404).json({ error: 'Not found' });
