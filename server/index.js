@@ -882,18 +882,19 @@ app.post('/api/pr-approvers', async (req, res) => {
     let rateLimitInfo = null;
 
     if (lastResponseHeaders['x-ratelimit-remaining'] !== undefined) {
-      const remaining = lastResponseHeaders['x-ratelimit-remaining'];
+      const remaining = parseInt(lastResponseHeaders['x-ratelimit-remaining']);
       const resetTimestamp = lastResponseHeaders['x-ratelimit-reset'];
-      const limit = lastResponseHeaders['x-ratelimit-limit'];
+      const limit = parseInt(lastResponseHeaders['x-ratelimit-limit']);
 
-      if (remaining !== undefined && resetTimestamp) {
+      // Only include rate limit info if remaining requests are less than 100
+      if (remaining < 100 && resetTimestamp) {
         const resetTime = new Date(parseInt(resetTimestamp) * 1000);
         const now = new Date();
         const minutesUntilReset = Math.ceil((resetTime - now) / (1000 * 60));
 
         rateLimitInfo = {
-          remaining: parseInt(remaining),
-          limit: parseInt(limit),
+          remaining,
+          limit,
           resetTime: resetTime.toISOString(),
           resetTimestamp: parseInt(resetTimestamp),
           minutesUntilReset: Math.max(0, minutesUntilReset),
@@ -989,15 +990,22 @@ app.post('/api/pr-approvers', async (req, res) => {
           }),
         };
 
-        if (minutesUntilReset > 0) {
-          userFriendlyError = `GitHub API rate limit exceeded (${remaining}/${limit} remaining). Rate limit resets in ${minutesUntilReset} minute${minutesUntilReset !== 1 ? 's' : ''} at ${rateLimitInfo.resetTimeFormatted}. Try adding a GitHub token for higher limits.`;
+        // Only show rate limit error if remaining requests are less than 100
+        if (parseInt(remaining) < 100) {
+          if (minutesUntilReset > 0) {
+            userFriendlyError = `GitHub API rate limit exceeded (${remaining}/${limit} remaining). Rate limit resets in ${minutesUntilReset} minute${minutesUntilReset !== 1 ? 's' : ''} at ${rateLimitInfo.resetTimeFormatted}. Try adding a GitHub token for higher limits.`;
+          } else {
+            userFriendlyError =
+              'GitHub API rate limit exceeded. Try adding a GitHub token for higher limits.';
+          }
         } else {
+          // If we have 100+ requests remaining, this might be a different 403 error
           userFriendlyError =
-            'GitHub API rate limit exceeded. Try adding a GitHub token for higher limits.';
+            'GitHub API access denied. This might be due to insufficient permissions or repository access restrictions.';
         }
       } else {
         userFriendlyError =
-          'GitHub API rate limit exceeded or insufficient permissions. Try adding a GitHub token.';
+          'GitHub API access denied. This might be due to insufficient permissions or repository access restrictions.';
       }
     } else if (error.response?.status === 404) {
       userFriendlyError =
