@@ -84,13 +84,41 @@ jobs:
             exit 1
           fi
           
-          # Run the auto-deploy script with environment variables
-          echo "🚀 Starting deployment..."
-          echo "📁 Executing: cd /home/aswin/pr-review-checker && DEPLOY_ENV=$DEPLOY_ENV FORCE_DEPLOY=$FORCE_DEPLOY ./auto-deploy.sh"
+          # Check if auto-deploy script exists and is executable
+          echo "🔍 Checking auto-deploy script..."
+          if ssh vm-deploy "test -x /home/aswin/pr-review-checker/auto-deploy.sh"; then
+            echo "✅ Auto-deploy script found and executable"
+          else
+            echo "❌ Auto-deploy script not found or not executable"
+            echo "💡 Please ensure /home/aswin/pr-review-checker/auto-deploy.sh exists and is executable"
+            exit 1
+          fi
           
-          if ssh vm-deploy "cd /home/aswin/pr-review-checker && DEPLOY_ENV=$DEPLOY_ENV FORCE_DEPLOY=$FORCE_DEPLOY ./auto-deploy.sh"; then
+          # Run the auto-deploy script
+          echo "🚀 Starting deployment..."
+          echo "📁 Executing: cd /home/aswin/pr-review-checker && ./auto-deploy.sh"
+          
+          if ssh vm-deploy "cd /home/aswin/pr-review-checker && ./auto-deploy.sh"; then
             echo "✅ Deployment completed successfully!"
+            
+            # Show recent deployment logs
+            echo "📋 Recent deployment logs:"
+            ssh vm-deploy "tail -20 /home/aswin/pr-review-checker/deploy.log" || echo "⚠️ Could not retrieve deployment logs"
+            
+            # Check service status
+            echo "🔍 Checking service status..."
+            ssh vm-deploy "sudo systemctl status pr-deploy --no-pager -l" || echo "⚠️ Could not check service status"
+            
           else
             echo "❌ Deployment failed"
+            
+            # Show recent deployment logs for debugging
+            echo "📋 Recent deployment logs (for debugging):"
+            ssh vm-deploy "tail -30 /home/aswin/pr-review-checker/deploy.log" || echo "⚠️ Could not retrieve deployment logs"
+            
+            # Show service status for debugging
+            echo "🔍 Service status (for debugging):"
+            ssh vm-deploy "sudo systemctl status pr-deploy --no-pager -l" || echo "⚠️ Could not check service status"
+            
             exit 1
           fi 

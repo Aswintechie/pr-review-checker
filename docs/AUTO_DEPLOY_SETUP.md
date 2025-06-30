@@ -9,6 +9,7 @@ The GitHub Action:
 2. **Manual Trigger**: Can be triggered manually with custom options
 3. **Connection**: Connects to your VM via Cloudflare Access SSH
 4. **Deployment**: Runs the auto-deploy script at `/home/aswin/pr-review-checker/auto-deploy.sh`
+5. **Monitoring**: Shows deployment logs and service status
 
 ## 🔧 Required GitHub Secrets
 
@@ -61,7 +62,41 @@ Make sure the script `/home/aswin/pr-review-checker/auto-deploy.sh` exists on yo
 chmod +x /home/aswin/pr-review-checker/auto-deploy.sh
 ```
 
-### 3. Test the Script
+### 3. Set Up Systemd Service
+Create a systemd service file for the application:
+
+```bash
+# Create service file
+sudo nano /etc/systemd/system/pr-deploy.service
+```
+
+Add the following content:
+```ini
+[Unit]
+Description=PR Review Checker Server
+After=network.target
+
+[Service]
+Type=simple
+User=aswin
+WorkingDirectory=/home/aswin/pr-review-checker/server
+ExecStart=/usr/bin/node index.js
+Restart=always
+RestartSec=10
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start the service:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable pr-deploy
+sudo systemctl start pr-deploy
+```
+
+### 4. Test the Script
 Test that your auto-deploy script works correctly:
 
 ```bash
@@ -69,6 +104,37 @@ Test that your auto-deploy script works correctly:
 cd /home/aswin/pr-review-checker
 ./auto-deploy.sh
 ```
+
+## 📊 Monitoring and Logs
+
+### Deployment Logs
+The auto-deploy script logs all activities to `/home/aswin/pr-review-checker/deploy.log`:
+
+```bash
+# View recent deployment logs
+tail -f /home/aswin/pr-review-checker/deploy.log
+
+# View all deployment logs
+cat /home/aswin/pr-review-checker/deploy.log
+```
+
+### Service Status
+Check the systemd service status:
+
+```bash
+# Check service status
+sudo systemctl status pr-deploy
+
+# View service logs
+sudo journalctl -u pr-deploy -f
+```
+
+### GitHub Actions Logs
+The GitHub Actions workflow will show:
+- Deployment progress
+- Recent deployment logs from your VM
+- Service status after deployment
+- Any errors or warnings
 
 ## 🔍 Troubleshooting
 
@@ -82,14 +148,21 @@ cd /home/aswin/pr-review-checker
 2. **Permission Denied**
    - Make sure the auto-deploy script is executable
    - Verify the SSH user has access to the directory
+   - Check sudo permissions for systemctl commands
 
 3. **Script Not Found**
    - Ensure the path `/home/aswin/pr-review-checker/auto-deploy.sh` is correct
    - Check that the script exists on the VM
 
-4. **No Changes to Deploy**
-   - This is normal behavior when no new commits exist
-   - Use "Force deploy" option to deploy anyway
+4. **Service Restart Failed**
+   - Check systemd service configuration
+   - Verify the service file syntax
+   - Check service logs: `sudo journalctl -u pr-deploy`
+
+5. **Build Failures**
+   - Check Node.js and npm versions
+   - Verify all dependencies are available
+   - Check disk space for builds
 
 ### Debugging
 
@@ -100,6 +173,7 @@ The GitHub Action includes detailed logging with emojis for easy identification:
 - 🔧 Configuration steps
 - 🔍 Connection testing
 - 🚀 Deployment execution
+- 📋 Log retrieval
 - ✅ Success indicators
 - ❌ Error indicators
 
@@ -109,48 +183,32 @@ The GitHub Action includes detailed logging with emojis for easy identification:
 - SSH key checking is disabled for automation
 - The connection uses Cloudflare Access for secure tunneling
 - All secrets are encrypted and not visible in logs
+- Systemd service runs with appropriate user permissions
 
-## 📝 Example Auto-Deploy Script
+## 📝 Auto-Deploy Script Structure
 
-The script handles both automatic and manual deployments:
+Your auto-deploy script includes:
 
 ```bash
 #!/bin/bash
-set -e
+# auto-deploy.sh - Production deployment script for pr-review-checker
 
-# Get deployment parameters (set by GitHub Actions)
-DEPLOY_ENV=${DEPLOY_ENV:-"production"}
-FORCE_DEPLOY=${FORCE_DEPLOY:-"false"}
+set -e  # Exit on error
 
-echo "🚀 Starting auto-deploy process for PR Review Checker..."
-echo "📋 Environment: $DEPLOY_ENV"
-echo "🔧 Force deploy: $FORCE_DEPLOY"
+LOG_FILE="/home/aswin/pr-review-checker/deploy.log"
+PROJECT_DIR="/home/aswin/pr-review-checker"
+APP_NAME="pr-deploy"
 
-# Check for changes (unless force deploy is enabled)
-if [ "$FORCE_DEPLOY" = "false" ]; then
-    echo "🔍 Checking for changes..."
-    git fetch origin
-    if git rev-list HEAD...origin/main --count | grep -q "^0$"; then
-        echo "✅ No new changes to deploy"
-        exit 0
-    fi
-fi
-
-# Pull latest changes and deploy
-git reset --hard origin/main
-npm install
-cd client && npm install && npm run build && cd ..
-
-# Environment-specific deployment
-if [ "$DEPLOY_ENV" = "staging" ]; then
-    PM2_APP_NAME="pr-review-checker-staging"
-else
-    PM2_APP_NAME="pr-review-checker"
-fi
-
-pm2 restart $PM2_APP_NAME || pm2 start server/index.js --name $PM2_APP_NAME
-
-echo "✅ Deployment completed successfully!"
+# Git pull, npm install, build, and service restart
+# All with comprehensive logging
 ```
+
+Key features:
+- **Comprehensive logging** to `deploy.log`
+- **Error handling** with `set -e`
+- **Dependency installation** with fallback to `npm install`
+- **Client build** process
+- **Systemd service restart**
+- **Health check** verification
 
 Make sure to make the script executable: `chmod +x auto-deploy.sh` 
