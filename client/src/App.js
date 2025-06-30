@@ -27,6 +27,7 @@ function App() {
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showCloudflareModal, setShowCloudflareModal] = useState(false);
   const [showDeveloperModal, setShowDeveloperModal] = useState(false);
+  const [mlPredictions, setMlPredictions] = useState(null);
 
   const themes = [
     { id: 'light', name: '☀️ Light', description: 'Clean and bright' },
@@ -136,6 +137,22 @@ function App() {
       localStorage.setItem('recentPRs', JSON.stringify(filtered));
       return filtered;
     });
+  const getMlPredictions = async (files, repoInfo) => {
+    try {
+      console.log('🧠 Fetching ML predictions for files:', files);
+      const response = await axios.post('/api/ml/predict', {
+        files,
+        confidence: 0.1, // Very low threshold to see more predictions
+        owner: repoInfo?.owner,
+        repo: repoInfo?.repo,
+        token: githubToken,
+      });
+      console.log('🧠 ML API response:', response.data);
+      return response.data.prediction; // Return the prediction object
+    } catch (error) {
+      console.error('ML prediction failed:', error);
+      return null;
+    }
   };
 
   const handleSubmit = async e => {
@@ -144,6 +161,7 @@ function App() {
     setError('');
     setRateLimitInfo(null);
     setResult(null);
+    setMlPredictions(null);
 
     try {
       const response = await axios.post('/api/pr-approvers', {
@@ -154,6 +172,22 @@ function App() {
       setResult(response.data);
       setRateLimitInfo(response.data.rateLimitInfo || null);
       addToRecentPRs(response.data);
+
+      // Get ML predictions for the PR files
+      if (response.data.fileApprovalDetails && response.data.fileApprovalDetails.length > 0) {
+        const files = response.data.fileApprovalDetails.map(detail => detail.file);
+        
+        // Extract repository info from PR URL
+        const urlMatch = prUrl.match(/github\.com\/([^\/]+)\/([^\/]+)\/pull\/(\d+)/);
+        const repoInfo = urlMatch ? {
+          owner: urlMatch[1],
+          repo: urlMatch[2],
+          prNumber: urlMatch[3]
+        } : null;
+        
+        const predictions = await getMlPredictions(files, repoInfo);
+        setMlPredictions(predictions);
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'An error occurred');
       setRateLimitInfo(err.response?.data?.rateLimitInfo || null);
@@ -448,7 +482,18 @@ function App() {
     );
   };
 
+  const getMLApprovalChance = (username) => {
+    if (!mlPredictions?.predictions) return null;
+    const prediction = mlPredictions.predictions.find(p => p.approver === username);
+    if (!prediction) return null;
+    
+    // Convert to percentage and round to 1 decimal place for better visibility
+    const percentage = (prediction.confidence * 100);
+    return percentage >= 1 ? Math.round(percentage) : Math.round(percentage * 10) / 10;
+  };
+
   const renderUserCard = (user, isApproved = false, approvedMembers = []) => {
+    const approvalPercentage = getMLApprovalChance(user.username);
     if (user.type === 'team') {
       return renderTeamCard(user, isApproved, approvedMembers);
     }
@@ -464,12 +509,21 @@ function App() {
         </div>
         <div className='user-info'>
           <div className='user-name'>{user.name}</div>
-          <div className='user-username'>@{user.username}</div>
+          <div className='user-username'>
+            @{user.username}
+            {approvalPercentage && (
+              <span className='ml-approval-chance'>
+                {approvalPercentage}% likely
+              </span>
+            )}
+          </div>
         </div>
         {isApproved && <div className='approval-badge'>✅</div>}
       </div>
     );
   };
+
+
 
   const renderThemeDropdown = () => {
     if (!showThemeDropdown) return null;
@@ -1021,6 +1075,7 @@ function App() {
               >
                 🔬 Advanced View
               </button>
+
             </div>
 
             {/* Progress Overview */}
@@ -1127,7 +1182,17 @@ function App() {
                           </div>
                           <div className='user-info'>
                             <div className='user-name'>{user.name}</div>
-                            <div className='user-username'>@{user.username}</div>
+                            <div className='user-username'>
+              @{user.username}
+              {(() => {
+                const approvalPercentage = getMLApprovalChance(user.username);
+                return approvalPercentage && (
+                  <span className='ml-approval-chance'>
+                    {approvalPercentage}% likely
+                  </span>
+                );
+              })()}
+            </div>
                             {isRequested && <div className='user-status'>Requested</div>}
                           </div>
                           {isApproved && <div className='approval-badge'>✅</div>}
@@ -1269,6 +1334,8 @@ function App() {
                 </section>
               </>
             )}
+
+
 
             {/* Feedback Call-to-Action Section */}
             <section className='feedback-cta-section'>

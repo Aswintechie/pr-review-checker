@@ -13,6 +13,8 @@ const fs = require('fs');
 const os = require('os');
 const crypto = require('crypto');
 const Codeowners = require('codeowners');
+const fs = require('fs').promises;
+const MLCodeownersTrainer = require('./ml-codeowners');
 require('dotenv').config();
 
 // Constants
@@ -24,12 +26,178 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+// Initialize ML CODEOWNERS trainer
+const mlTrainer = new MLCodeownersTrainer();
+const MODEL_FILE_PATH = path.join(__dirname, 'ml-model.json');
+
+// Load existing model if available
+async function loadModel() {
+  try {
+    const modelData = await fs.readFile(MODEL_FILE_PATH, 'utf8');
+    mlTrainer.importModel(JSON.parse(modelData));
+    console.log('✅ ML model loaded from storage');
+  } catch (error) {
+    console.log('📚 No existing ML model found, starting fresh');
+  }
+}
+
+// Save model to disk
+async function saveModel() {
+  try {
+    const modelData = mlTrainer.exportModel();
+    await fs.writeFile(MODEL_FILE_PATH, JSON.stringify(modelData, null, 2));
+    console.log('💾 ML model saved to storage');
+  } catch (error) {
+    console.error('❌ Error saving ML model:', error.message);
+  }
+}
+
+// Load model on startup
+loadModel();
+
 // Serve static files from the React build folder
 app.use(express.static(path.join(__dirname, '../client/build')));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', service: 'PR Approval Finder' });
+});
+
+// ML CODEOWNERS endpoints
+
+// Train the ML model
+app.post('/api/ml/train', async (req, res) => {
+  try {
+    const { owner, repo, token, prCount = 50 } = req.body;
+
+    if (!owner || !repo || !token) {
+      return res.status(400).json({
+        error: 'Missing required parameters',
+        required: ['owner', 'repo', 'token'],
+      });
+    }
+
+    console.log(`🤖 Starting ML training for ${owner}/${repo}`);
+    
+    // Train the model
+    const summary = await mlTrainer.trainModel(owner, repo, token, prCount);
+    
+    // Save the trained model
+    await saveModel();
+    
+    res.json({
+      success: true,
+      message: 'Model trained successfully',
+      summary,
+    });
+  } catch (error) {
+    console.error('❌ ML training error:', error.message);
+    res.status(500).json({
+      error: 'Training failed',
+      message: error.message,
+    });
+  }
+});
+
+// Predict approvers for given files
+app.post('/api/ml/predict', async (req, res) => {
+  try {
+    const { files, confidence = 0.3, owner, repo, token } = req.body;
+
+    if (!files || !Array.isArray(files) || files.length === 0) {
+      return res.status(400).json({
+        error: 'Missing or invalid files parameter',
+        message: 'Please provide an array of file paths',
+      });
+    }
+
+    // For group-based predictions, we need repository context
+    // If not provided, try to extract from a typical GitHub URL pattern
+    let repoOwner = owner;
+    let repoName = repo;
+    let authToken = token;
+
+    if (!repoOwner || !repoName) {
+      // Try to use a default or extract from context
+      // For now, we'll use a placeholder approach
+      repoOwner = 'tenstorrent';
+      repoName = 'tt-metal';
+    }
+
+    const prediction = await mlTrainer.predictApprovers(repoOwner, repoName, files, authToken, confidence);
+    
+    res.json({
+      success: true,
+      prediction,
+      requestedFiles: files,
+      confidenceThreshold: confidence,
+    });
+  } catch (error) {
+    console.error('❌ ML prediction error:', error.message);
+    res.status(500).json({
+      error: 'Prediction failed',
+      message: error.message,
+    });
+  }
+});
+
+// Get model statistics and summary
+app.get('/api/ml/stats', (req, res) => {
+  try {
+    const summary = mlTrainer.generateModelSummary();
+    
+    res.json({
+      success: true,
+      stats: summary,
+      isModelTrained: mlTrainer.isModelTrained,
+    });
+  } catch (error) {
+    console.error('❌ ML stats error:', error.message);
+    res.status(500).json({
+      error: 'Failed to get model stats',
+      message: error.message,
+    });
+  }
+});
+
+// Compare ML predictions with traditional CODEOWNERS
+app.post('/api/ml/compare', async (req, res) => {
+  try {
+    const { files, codeownersContent, confidence = 0.3 } = req.body;
+
+    if (!files || !Array.isArray(files) || files.length === 0) {
+      return res.status(400).json({
+        error: 'Missing or invalid files parameter',
+      });
+    }
+
+    // Get ML predictions
+    const mlPrediction = mlTrainer.predictApprovers(files, confidence);
+    
+    // Get traditional CODEOWNERS matches if provided
+    let traditionalOwners = [];
+    if (codeownersContent) {
+      const codeownersData = parseCodeowners(codeownersContent);
+      traditionalOwners = getMinimumApprovals(files, codeownersData, {}).requiredApprovers;
+    }
+
+    res.json({
+      success: true,
+      comparison: {
+        mlPredictions: mlPrediction.predictions,
+        traditionalOwners,
+        matchedPatterns: mlPrediction.matchedPatterns,
+        totalFiles: files.length,
+        confidenceThreshold: confidence,
+      },
+    });
+  } catch (error) {
+    console.error('❌ ML comparison error:', error.message);
+    res.status(500).json({
+      error: 'Comparison failed',
+      message: error.message,
+    });
+  }
 });
 
 // Feedback submission endpoint

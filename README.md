@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🚀 PR Approval Finder
 
 <div align="center">
@@ -15,6 +16,11 @@
 </div>
 
 
+=======
+# 🔍 PR Approval Finder v6.0
+
+A modern web application that analyzes GitHub Pull Requests to determine the minimum required approvals based on CODEOWNERS files. Now featuring **AI-powered approval predictions** that learn from your team's historical patterns. Built with React and Node.js, featuring a beautiful theme system and comprehensive PR analysis.
+>>>>>>> e3c1e43 (feat: Add ML-powered CODEOWNERS prediction system v2)
 
 ## ✨ Features
 
@@ -24,6 +30,13 @@
 - **📁 File-by-File Breakdown** - Shows which files require which approvers
 - **⚡ Real-time PR Status** - Displays current approval status and progress
 - **👥 Team Integration** - GitHub team support with member visualization
+
+### 🧠 **AI-Powered Features (NEW!)**
+- **Machine Learning Predictions**: Predicts approval likelihood based on historical patterns
+- **Smart Approval Chances**: Shows percentage likelihood next to each reviewer
+- **Pattern Recognition**: Learns from file types, directories, and past approvals
+- **Seamless Integration**: ML predictions appear inline with existing CODEOWNERS
+- **Auto-Training**: Continuously learns from your team's approval behavior
 
 ### 🎨 **Modern UI/UX**
 - **🎭 8 Beautiful Themes** - Light, Dark, Ocean, Forest, Sunset, Midnight, Arctic, Cherry
@@ -87,6 +100,7 @@ npm run dev
 
 🌐 **Open your browser**: [http://localhost:3000](http://localhost:3000)
 
+<<<<<<< HEAD
 ### Alternative Installation Methods
 
 <details>
@@ -125,6 +139,11 @@ npm run client  # Terminal 2
 ### Basic Usage
 
 1. **📝 Enter GitHub PR URL**
+=======
+### Basic Usage
+
+1. **Enter a GitHub PR URL**
+>>>>>>> e3c1e43 (feat: Add ML-powered CODEOWNERS prediction system v2)
    ```
    https://github.com/owner/repo/pull/123
    ```
@@ -139,7 +158,34 @@ npm run client  # Terminal 2
    - See detailed file-by-file breakdown
    - Track approval progress in real-time
 
+<<<<<<< HEAD
 ### Advanced Features
+=======
+### 🧠 AI Features Setup
+
+1. **Train the ML Model** (one-time setup)
+   ```bash
+   # Interactive demo script
+   ./ml-demo.js
+   
+   # Or set environment variable and use the web interface
+   export GITHUB_TOKEN=your_token_here
+   ```
+
+2. **See Smart Predictions**
+   - Approval percentages appear next to reviewers
+   - Higher percentages = more likely to approve
+   - Based on historical patterns from your repo
+
+3. **Model Management**
+   - Retrain periodically for best accuracy
+   - Model learns from the last 50 merged PRs
+   - Stored locally in `server/ml-model.json`
+
+For detailed ML setup, see [docs/ML_CODEOWNERS.md](docs/ML_CODEOWNERS.md)
+
+## 🎨 Theme System
+>>>>>>> e3c1e43 (feat: Add ML-powered CODEOWNERS prediction system v2)
 
 <details>
 <summary>🎨 Theme Customization</summary>
