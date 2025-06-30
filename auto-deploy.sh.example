@@ -1,0 +1,65 @@
+#!/bin/bash
+set -e
+
+echo "🚀 Starting auto-deploy process for PR Review Checker..."
+
+# Navigate to the project directory
+cd /home/aswin/pr-review-checker
+
+# Pull latest changes from main branch
+echo "📥 Pulling latest changes..."
+git fetch origin
+git reset --hard origin/main
+
+# Install/update dependencies
+echo "📦 Installing dependencies..."
+npm install
+
+# Build the client application
+echo "🔨 Building client application..."
+cd client
+npm install
+npm run build
+cd ..
+
+# Restart the application (choose one method based on your setup)
+
+# Option 1: If using PM2
+echo "🔄 Restarting with PM2..."
+if command -v pm2 &> /dev/null; then
+    pm2 restart pr-review-checker || pm2 start server/index.js --name pr-review-checker
+else
+    echo "⚠️ PM2 not found, skipping PM2 restart"
+fi
+
+# Option 2: If using systemd (uncomment if needed)
+# echo "🔄 Restarting with systemd..."
+# sudo systemctl restart pr-review-checker
+
+# Option 3: If using Docker (uncomment if needed)
+# echo "🔄 Restarting with Docker..."
+# docker-compose down
+# docker-compose up -d
+
+# Check if the application is running
+echo "🔍 Checking application status..."
+sleep 5
+
+# Test the health endpoint
+if curl -f http://localhost:3001/health > /dev/null 2>&1; then
+    echo "✅ Application is running successfully!"
+    echo "🌐 Health check passed: http://localhost:3001/health"
+else
+    echo "❌ Application health check failed!"
+    echo "🔍 Checking logs..."
+    
+    # Show recent logs if available
+    if command -v pm2 &> /dev/null; then
+        pm2 logs pr-review-checker --lines 20
+    fi
+    
+    exit 1
+fi
+
+echo "🎉 Auto-deploy completed successfully!"
+echo "📅 Deployment time: $(date)" 

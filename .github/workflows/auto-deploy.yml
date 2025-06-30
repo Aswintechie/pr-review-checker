@@ -1,0 +1,69 @@
+name: Auto Deploy to VM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup SSH and deploy
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+          CLOUDFLARE_HOSTNAME: ${{ secrets.CLOUDFLARE_HOSTNAME }}
+        run: |
+          # Install cloudflared if not available
+          if ! command -v cloudflared &> /dev/null; then
+            echo "📦 Installing cloudflared..."
+            wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+            sudo dpkg -i cloudflared-linux-amd64.deb
+            echo "✅ cloudflared installed successfully"
+          else
+            echo "✅ cloudflared already available"
+          fi
+          
+          # Create SSH config for Cloudflare Access
+          echo "🔧 Setting up SSH configuration..."
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          
+          cat > ~/.ssh/config << EOF
+          Host vm-deploy
+            HostName $SSH_HOST
+            User $SSH_USER
+            ProxyCommand cloudflared access ssh --hostname $CLOUDFLARE_HOSTNAME
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            ServerAliveInterval 60
+            ServerAliveCountMax 3
+          EOF
+          
+          chmod 600 ~/.ssh/config
+          
+          # Test SSH connection
+          echo "🔍 Testing SSH connection..."
+          if ssh vm-deploy "echo 'SSH connection successful'"; then
+            echo "✅ SSH connection established"
+          else
+            echo "❌ SSH connection failed"
+            exit 1
+          fi
+          
+          # Run the auto-deploy script
+          echo "🚀 Starting deployment..."
+          echo "📁 Executing: cd /home/aswin/pr-review-checker && ./auto-deploy.sh"
+          
+          if ssh vm-deploy "cd /home/aswin/pr-review-checker && ./auto-deploy.sh"; then
+            echo "✅ Deployment completed successfully!"
+          else
+            echo "❌ Deployment failed"
+            exit 1
+          fi 
