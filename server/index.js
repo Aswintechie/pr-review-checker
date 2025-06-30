@@ -8,6 +8,7 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const nodemailer = require('nodemailer');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -15,6 +16,9 @@ const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from the React build folder
+app.use(express.static(path.join(__dirname, '../client/build')));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -1022,6 +1026,11 @@ app.post('/api/pr-approvers', async (req, res) => {
       debug: errorDetails,
     });
   }
+});
+
+// 404 handler for all other unmatched routes (including APIs)
+app.use((req, res, _next) => {
+  res.status(404).json({ error: 'Not found' });
 });
 
 // Only start the server if this file is run directly (not imported for testing)
