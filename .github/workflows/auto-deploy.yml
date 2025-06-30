@@ -96,9 +96,9 @@ jobs:
           
           # Run the auto-deploy script
           echo "🚀 Starting deployment..."
-          echo "📁 Executing: cd /home/aswin/pr-review-checker && ./auto-deploy.sh"
+          echo "📁 Executing: cd /home/aswin/pr-review-checker && DEPLOY_ENV=$DEPLOY_ENV FORCE_DEPLOY=$FORCE_DEPLOY ./auto-deploy.sh"
           
-          if ssh vm-deploy "cd /home/aswin/pr-review-checker && ./auto-deploy.sh"; then
+          if ssh vm-deploy "cd /home/aswin/pr-review-checker && DEPLOY_ENV=$DEPLOY_ENV FORCE_DEPLOY=$FORCE_DEPLOY ./auto-deploy.sh"; then
             echo "✅ Deployment completed successfully!"
             
             # Show recent deployment logs

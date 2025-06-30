@@ -6,16 +6,22 @@ This document explains how to set up the auto-deploy GitHub Action that automati
 
 The GitHub Action:
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 91a4749 (🎛️ Add manual trigger support with environment and force deploy options)
 1. **Automatic Trigger**: Runs on every push to the `main` branch
 2. **Manual Trigger**: Can be triggered manually with custom options
 3. **Connection**: Connects to your VM via Cloudflare Access SSH
 4. **Deployment**: Runs the auto-deploy script at `/home/aswin/pr-review-checker/auto-deploy.sh`
+<<<<<<< HEAD
 5. **Monitoring**: Shows deployment logs and service status
 =======
 1. Triggers on every push to the `main` branch
 2. Connects to your VM via Cloudflare Access SSH
 3. Runs the auto-deploy script at `/home/aswin/pr-review-checker/auto-deploy.sh`
 >>>>>>> 40a43ce (🚀 Add auto-deploy GitHub Action for VM deployment)
+=======
+>>>>>>> 91a4749 (🎛️ Add manual trigger support with environment and force deploy options)
 
 ## 🔧 Required GitHub Secrets
 
@@ -37,6 +43,9 @@ You need to configure these secrets in your GitHub repository:
 | `CLOUDFLARE_HOSTNAME` | Cloudflare Access hostname | `ubuntu.aswinlocal.in` |
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 91a4749 (🎛️ Add manual trigger support with environment and force deploy options)
 ## 🎛️ Manual Deployment
 
 ### How to Trigger Manually
@@ -56,8 +65,11 @@ You need to configure these secrets in your GitHub repository:
 | **Environment** | Deployment environment | `production` |
 | **Force deploy** | Deploy even without changes | `false` |
 
+<<<<<<< HEAD
 =======
 >>>>>>> 40a43ce (🚀 Add auto-deploy GitHub Action for VM deployment)
+=======
+>>>>>>> 91a4749 (🎛️ Add manual trigger support with environment and force deploy options)
 ## 📋 Setup Steps
 
 ### 1. Configure GitHub Secrets
@@ -174,6 +186,7 @@ The GitHub Actions workflow will show:
    - Check that the script exists on the VM
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 4. **Service Restart Failed**
    - Check systemd service configuration
    - Verify the service file syntax
@@ -183,17 +196,25 @@ The GitHub Actions workflow will show:
    - Check Node.js and npm versions
    - Verify all dependencies are available
    - Check disk space for builds
+=======
+4. **No Changes to Deploy**
+   - This is normal behavior when no new commits exist
+   - Use "Force deploy" option to deploy anyway
+>>>>>>> 91a4749 (🎛️ Add manual trigger support with environment and force deploy options)
 
 ### Debugging
 
 The GitHub Action includes detailed logging with emojis for easy identification:
 - 🚀 Manual deployment triggered
 - 🔄 Automatic deployment triggered
+<<<<<<< HEAD
 =======
 ### Debugging
 
 The GitHub Action includes detailed logging with emojis for easy identification:
 >>>>>>> 40a43ce (🚀 Add auto-deploy GitHub Action for VM deployment)
+=======
+>>>>>>> 91a4749 (🎛️ Add manual trigger support with environment and force deploy options)
 - 📦 Installation steps
 - 🔧 Configuration steps
 - 🔍 Connection testing
@@ -244,29 +265,45 @@ Key features:
 
 ## 📝 Example Auto-Deploy Script
 
-Here's an example of what your `auto-deploy.sh` script might look like:
+The script handles both automatic and manual deployments:
 
 ```bash
 #!/bin/bash
 set -e
 
-echo "🚀 Starting auto-deploy process..."
+# Get deployment parameters (set by GitHub Actions)
+DEPLOY_ENV=${DEPLOY_ENV:-"production"}
+FORCE_DEPLOY=${FORCE_DEPLOY:-"false"}
 
-# Pull latest changes
-git pull origin main
+echo "🚀 Starting auto-deploy process for PR Review Checker..."
+echo "📋 Environment: $DEPLOY_ENV"
+echo "🔧 Force deploy: $FORCE_DEPLOY"
 
-# Install dependencies
+# Check for changes (unless force deploy is enabled)
+if [ "$FORCE_DEPLOY" = "false" ]; then
+    echo "🔍 Checking for changes..."
+    git fetch origin
+    if git rev-list HEAD...origin/main --count | grep -q "^0$"; then
+        echo "✅ No new changes to deploy"
+        exit 0
+    fi
+fi
+
+# Pull latest changes and deploy
+git reset --hard origin/main
 npm install
+cd client && npm install && npm run build && cd ..
 
-# Build the application
-npm run build
+# Environment-specific deployment
+if [ "$DEPLOY_ENV" = "staging" ]; then
+    PM2_APP_NAME="pr-review-checker-staging"
+else
+    PM2_APP_NAME="pr-review-checker"
+fi
 
-# Restart services (if using PM2, systemd, etc.)
-# pm2 restart pr-review-checker
-# or
-# sudo systemctl restart pr-review-checker
+pm2 restart $PM2_APP_NAME || pm2 start server/index.js --name $PM2_APP_NAME
 
-echo "✅ Auto-deploy completed successfully!"
+echo "✅ Deployment completed successfully!"
 ```
 
 >>>>>>> 40a43ce (🚀 Add auto-deploy GitHub Action for VM deployment)
