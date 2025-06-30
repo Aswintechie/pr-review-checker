@@ -1,0 +1,41 @@
+#!/bin/bash
+# auto-deploy.sh - Production deployment script for pr-review-checker
+
+set -e  # Exit on error
+
+LOG_FILE="/home/aswin/pr-review-checker/deploy.log"
+PROJECT_DIR="/home/aswin/pr-review-checker"
+APP_NAME="pr-deploy"
+
+echo "$(date): 🚀 Starting production auto-deployment..." | tee -a "$LOG_FILE"
+cd "$PROJECT_DIR"
+
+echo "$(date): 📥 Pulling latest changes from Git..." | tee -a "$LOG_FILE"
+git pull origin main 2>&1 | tee -a "$LOG_FILE"
+
+echo "$(date): 📦 Installing root dependencies..." | tee -a "$LOG_FILE"
+npm ci 2>&1 | tee -a "$LOG_FILE" || npm install 2>&1 | tee -a "$LOG_FILE"
+
+echo "$(date): 🎨 Installing client dependencies..." | tee -a "$LOG_FILE"
+cd client && npm ci 2>&1 | tee -a "$LOG_FILE" || npm install 2>&1 | tee -a "$LOG_FILE"
+echo "$(date): 🔨 Building client app..." | tee -a "$LOG_FILE"
+npm run build 2>&1 | tee -a "$LOG_FILE"
+cd ..
+
+echo "$(date): ⚙️ Installing server dependencies..." | tee -a "$LOG_FILE"
+cd server && npm ci 2>&1 | tee -a "$LOG_FILE" || npm install 2>&1 | tee -a "$LOG_FILE"
+cd ..
+
+echo "$(date): 🔄 Restarting backend service..." | tee -a "$LOG_FILE"
+sudo systemctl restart "$APP_NAME" 2>&1 | tee -a "$LOG_FILE"
+
+echo "$(date): ✅ Deployment completed successfully!" | tee -a "$LOG_FILE"
+
+# Optional: Add health check
+echo "$(date): 🔍 Performing health check..." | tee -a "$LOG_FILE"
+sleep 5
+if curl -f http://localhost:3001/health > /dev/null 2>&1; then
+    echo "$(date): ✅ Health check passed" | tee -a "$LOG_FILE"
+else
+    echo "$(date): ⚠️ Health check failed - service may still be starting" | tee -a "$LOG_FILE"
+fi 

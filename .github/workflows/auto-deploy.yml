@@ -1,0 +1,124 @@
+name: Auto Deploy to VM
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+      force_deploy:
+        description: 'Force deployment even if no changes'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup SSH and deploy
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+          CLOUDFLARE_HOSTNAME: ${{ secrets.CLOUDFLARE_HOSTNAME }}
+          DEPLOY_ENV: ${{ github.event.inputs.environment || 'production' }}
+          FORCE_DEPLOY: ${{ github.event.inputs.force_deploy || 'false' }}
+        run: |
+          # Show deployment info
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "🚀 Manual deployment triggered!"
+            echo "📋 Environment: $DEPLOY_ENV"
+            echo "🔧 Force deploy: $FORCE_DEPLOY"
+          else
+            echo "🔄 Automatic deployment triggered by push to main"
+            echo "📋 Environment: $DEPLOY_ENV"
+          fi
+          
+          # Install cloudflared if not available
+          if ! command -v cloudflared &> /dev/null; then
+            echo "📦 Installing cloudflared..."
+            wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+            sudo dpkg -i cloudflared-linux-amd64.deb
+            echo "✅ cloudflared installed successfully"
+          else
+            echo "✅ cloudflared already available"
+          fi
+          
+          # Create SSH config for Cloudflare Access
+          echo "🔧 Setting up SSH configuration..."
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          
+          cat > ~/.ssh/config << EOF
+          Host vm-deploy
+            HostName $SSH_HOST
+            User $SSH_USER
+            ProxyCommand cloudflared access ssh --hostname $CLOUDFLARE_HOSTNAME
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            ServerAliveInterval 60
+            ServerAliveCountMax 3
+          EOF
+          
+          chmod 600 ~/.ssh/config
+          
+          # Test SSH connection
+          echo "🔍 Testing SSH connection..."
+          if ssh vm-deploy "echo 'SSH connection successful'"; then
+            echo "✅ SSH connection established"
+          else
+            echo "❌ SSH connection failed"
+            exit 1
+          fi
+          
+          # Check if auto-deploy script exists and is executable
+          echo "🔍 Checking auto-deploy script..."
+          if ssh vm-deploy "test -x /home/aswin/pr-review-checker/auto-deploy.sh"; then
+            echo "✅ Auto-deploy script found and executable"
+          else
+            echo "❌ Auto-deploy script not found or not executable"
+            echo "💡 Please ensure /home/aswin/pr-review-checker/auto-deploy.sh exists and is executable"
+            exit 1
+          fi
+          
+          # Run the auto-deploy script
+          echo "🚀 Starting deployment..."
+          echo "📁 Executing: cd /home/aswin/pr-review-checker && ./auto-deploy.sh"
+          
+          if ssh vm-deploy "cd /home/aswin/pr-review-checker && ./auto-deploy.sh"; then
+            echo "✅ Deployment completed successfully!"
+            
+            # Show recent deployment logs
+            echo "📋 Recent deployment logs:"
+            ssh vm-deploy "tail -20 /home/aswin/pr-review-checker/deploy.log" || echo "⚠️ Could not retrieve deployment logs"
+            
+            # Check service status
+            echo "🔍 Checking service status..."
+            ssh vm-deploy "sudo systemctl status pr-deploy --no-pager -l" || echo "⚠️ Could not check service status"
+            
+          else
+            echo "❌ Deployment failed"
+            
+            # Show recent deployment logs for debugging
+            echo "📋 Recent deployment logs (for debugging):"
+            ssh vm-deploy "tail -30 /home/aswin/pr-review-checker/deploy.log" || echo "⚠️ Could not retrieve deployment logs"
+            
+            # Show service status for debugging
+            echo "🔍 Service status (for debugging):"
+            ssh vm-deploy "sudo systemctl status pr-deploy --no-pager -l" || echo "⚠️ Could not check service status"
+            
+            exit 1
+          fi 
