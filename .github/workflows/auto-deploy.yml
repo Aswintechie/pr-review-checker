@@ -88,7 +88,7 @@ jobs:
           
           # Test cloudflared access first
           echo "🔍 Testing Cloudflare Access connection..."
-          if cloudflared access ssh --hostname $CLOUDFLARE_HOSTNAME --dry-run; then
+          if cloudflared access ssh --hostname $CLOUDFLARE_HOSTNAME; then
             echo "✅ Cloudflare Access configuration looks good"
           else
             echo "❌ Cloudflare Access configuration issue detected"
