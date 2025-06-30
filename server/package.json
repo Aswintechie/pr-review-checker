@@ -16,10 +16,10 @@
   },
   "dependencies": {
     "axios": "^1.4.0",
+    "codeowners": "^5.1.1",
     "cors": "^2.8.5",
     "dotenv": "^16.6.0",
     "express": "^4.21.2",
-    "minimatch": "^9.0.3",
     "nodemailer": "^6.10.1"
   },
   "devDependencies": {

@@ -9,6 +9,7 @@ const cors = require('cors');
 const axios = require('axios');
 const nodemailer = require('nodemailer');
 const path = require('path');
+const Codeowners = require('codeowners');
 require('dotenv').config();
 
 const app = express();
@@ -295,70 +296,6 @@ if (process.env.SMTP_USER && process.env.SMTP_PASS) {
   console.log('📧 No email configuration found - feedback will only be logged to console');
 }
 
-// Helper function to parse CODEOWNERS file
-function parseCodeowners(codeownersContent) {
-  const lines = codeownersContent.split('\n');
-  const rules = [];
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-
-    // Skip empty lines and comments
-    if (!trimmed || trimmed.startsWith('#')) continue;
-
-    // Handle inline comments - split on # and take only the part before it
-    const lineWithoutComments = trimmed.split('#')[0].trim();
-    if (!lineWithoutComments) continue;
-
-    const parts = lineWithoutComments.split(/\s+/);
-    if (parts.length >= 2) {
-      const pattern = parts[0];
-      const owners = parts
-        .slice(1)
-        .map(owner => owner.replace('@', '').trim())
-        .filter(owner => owner && !owner.startsWith('#')); // Filter out any remaining comments
-
-      if (owners.length > 0) {
-        rules.push({ pattern, owners });
-      }
-    }
-  }
-
-  return rules;
-}
-
-// Helper function to match file paths against CODEOWNERS patterns
-function matchPattern(pattern, filePath) {
-  // Handle different CODEOWNERS pattern types
-
-  // Root-level pattern (starts with /)
-  if (pattern.startsWith('/')) {
-    pattern = pattern.substring(1);
-  }
-
-  // Directory pattern (ends with /)
-  if (pattern.endsWith('/')) {
-    return filePath.startsWith(pattern) || filePath.startsWith(`${pattern.slice(0, -1)}/`);
-  }
-
-  // Exact file match
-  if (!pattern.includes('*') && !pattern.includes('?')) {
-    return filePath === pattern || filePath.endsWith(`/${pattern}`);
-  }
-
-  // Glob pattern matching
-  // First escape dots, then handle ** and * carefully to avoid conflicts
-  const regexPattern = pattern
-    .replace(/\./g, '\\.')
-    .replace(/\*\*/g, '__DOUBLE_STAR__') // Temporary placeholder
-    .replace(/\*/g, '[^/]*') // * matches anything except directory separator
-    .replace(/__DOUBLE_STAR__/g, '.*') // ** matches any number of directories
-    .replace(/\?/g, '[^/]'); // ? matches single character except directory separator
-
-  const regex = new RegExp(`^${regexPattern}$`);
-  return regex.test(filePath);
-}
-
 // GitHub Teams Support Functions
 // fetchTeamMembers function removed (not currently used)
 
@@ -566,42 +503,100 @@ app.post('/api/pr-approvers', async (req, res) => {
     const fileApprovalDetails = [];
 
     if (codeownersContent) {
-      // Parse CODEOWNERS and find required approvers
-      const rules = parseCodeowners(codeownersContent);
+      // Create temporary codeowners instance for this analysis
+      const fs = require('fs');
+      const tempDir = require('os').tmpdir();
+      const tempCodeownersDir = path.join(tempDir, `codeowners-analysis-${Date.now()}`);
+      const tempCodeownersFile = path.join(tempCodeownersDir, 'CODEOWNERS');
 
-      // IMPORTANT: GitHub CODEOWNERS uses "last matching rule wins" behavior
-      // This means if multiple patterns match a file, the pattern that appears
-      // later in the CODEOWNERS file takes precedence (similar to .gitignore)
+      try {
+        // Create temporary directory and CODEOWNERS file
+        fs.mkdirSync(tempCodeownersDir, { recursive: true });
+        fs.writeFileSync(tempCodeownersFile, codeownersContent);
 
-      // For each changed file, find the last matching rule (GitHub CODEOWNERS behavior)
-      for (const file of changedFiles) {
-        let lastMatchingRule = null;
+        // Create codeowners instance
+        const codeowners = new Codeowners(tempCodeownersDir);
 
-        // Iterate through rules in order and keep track of the last one that matches
-        for (let i = 0; i < rules.length; i++) {
-          const rule = rules[i];
-          if (matchPattern(rule.pattern, file)) {
-            lastMatchingRule = { ...rule, ruleIndex: i };
+        // For each changed file, get owners using the library
+        for (const file of changedFiles) {
+          try {
+            // Get owners for this file (library handles "last matching rule wins" automatically)
+            const owners = codeowners.getOwner(file);
+
+            if (owners && owners.length > 0) {
+              // Only accept entries that originally started with @ (valid CODEOWNERS entries)
+              const cleanOwners = owners
+                .filter(owner => {
+                  // Must start with @ to be a valid CODEOWNERS entry
+                  return owner && owner.startsWith('@');
+                })
+                .map(owner => owner.replace('@', '').trim())
+                .filter(owner => {
+                  // Additional validation for cleaned owner names
+                  return (
+                    owner &&
+                    owner.length > 0 &&
+                    // Valid GitHub usernames/teams contain only alphanumeric, hyphens, underscores, and forward slashes
+                    /^[a-zA-Z0-9\-_/]+$/.test(owner)
+                  );
+                });
+
+              if (cleanOwners.length > 0) {
+                fileApprovalDetails.push({
+                  file,
+                  pattern: 'Matched by codeowners library', // Library abstracts the pattern matching
+                  owners: cleanOwners,
+                  ruleIndex: -1, // Library doesn't expose rule index
+                });
+
+                // Add owners to the global set
+                cleanOwners.forEach(owner => requiredApprovers.add(owner));
+              } else {
+                fileApprovalDetails.push({
+                  file,
+                  pattern: 'No valid owners found',
+                  owners: [],
+                  ruleIndex: -1,
+                });
+              }
+            } else {
+              fileApprovalDetails.push({
+                file,
+                pattern: 'No matching rule',
+                owners: [],
+                ruleIndex: -1,
+              });
+            }
+          } catch (fileError) {
+            console.warn(`Error getting owners for file ${file}:`, fileError.message);
+            fileApprovalDetails.push({
+              file,
+              pattern: 'Error processing file',
+              owners: [],
+              ruleIndex: -1,
+            });
           }
         }
 
-        // Use the last matching rule (this follows GitHub CODEOWNERS specification)
-        const selectedRule = lastMatchingRule;
+        // Clean up temporary files
+        fs.rmSync(tempCodeownersDir, { recursive: true, force: true });
+      } catch (error) {
+        console.warn('Error using codeowners library, falling back to no analysis:', error.message);
 
-        if (selectedRule) {
+        // Clean up temp directory if it exists
+        try {
+          if (fs.existsSync(tempCodeownersDir)) {
+            fs.rmSync(tempCodeownersDir, { recursive: true, force: true });
+          }
+        } catch (cleanupError) {
+          console.warn('Error cleaning up temp directory:', cleanupError.message);
+        }
+
+        // Add all files as having no owners if library fails
+        for (const file of changedFiles) {
           fileApprovalDetails.push({
             file,
-            pattern: selectedRule.pattern,
-            owners: selectedRule.owners,
-            ruleIndex: selectedRule.ruleIndex,
-          });
-
-          // Add owners to the global set
-          selectedRule.owners.forEach(owner => requiredApprovers.add(owner));
-        } else {
-          fileApprovalDetails.push({
-            file,
-            pattern: 'No matching rule',
+            pattern: 'Library error - no analysis',
             owners: [],
             ruleIndex: -1,
           });
