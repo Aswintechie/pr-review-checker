@@ -625,18 +625,15 @@ function App() {
                     </span>
                     {result.prInfo.statusDetails && (
                       <>
-                        {result.prInfo.statusDetails.isDraft && (
-                          <span className='pr-status-note'>📝 Draft PR</span>
+                        {result.prInfo.statusDetails.isMerged && result.prInfo.statusDetails.mergedAt && (
+                          <span className='pr-status-note'>
+                            ✅ Merged{' '}
+                            {new Date(result.prInfo.statusDetails.mergedAt).toLocaleDateString()}
+                          </span>
                         )}
-                        {result.prInfo.statusDetails.isMerged &&
-                          result.prInfo.statusDetails.mergedAt && (
-                            <span className='pr-status-note'>
-                              ✅ Merged{' '}
-                              {new Date(result.prInfo.statusDetails.mergedAt).toLocaleDateString()}
-                            </span>
-                          )}
                         {result.prInfo.statusDetails.mergeableState &&
-                          result.prInfo.statusDetails.mergeableState !== 'unknown' && (
+                          result.prInfo.statusDetails.mergeableState !== 'unknown' &&
+                          result.prInfo.statusDetails.mergeableState !== 'clean' && (
                             <span className='pr-status-note'>
                               🔄 {result.prInfo.statusDetails.mergeableState}
                             </span>
