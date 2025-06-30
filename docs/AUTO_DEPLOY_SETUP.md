@@ -5,11 +5,17 @@ This document explains how to set up the auto-deploy GitHub Action that automati
 ## 🚀 How It Works
 
 The GitHub Action:
+<<<<<<< HEAD
 1. **Automatic Trigger**: Runs on every push to the `main` branch
 2. **Manual Trigger**: Can be triggered manually with custom options
 3. **Connection**: Connects to your VM via Cloudflare Access SSH
 4. **Deployment**: Runs the auto-deploy script at `/home/aswin/pr-review-checker/auto-deploy.sh`
 5. **Monitoring**: Shows deployment logs and service status
+=======
+1. Triggers on every push to the `main` branch
+2. Connects to your VM via Cloudflare Access SSH
+3. Runs the auto-deploy script at `/home/aswin/pr-review-checker/auto-deploy.sh`
+>>>>>>> 40a43ce (🚀 Add auto-deploy GitHub Action for VM deployment)
 
 ## 🔧 Required GitHub Secrets
 
@@ -30,6 +36,7 @@ You need to configure these secrets in your GitHub repository:
 | `SSH_PASSWORD` | SSH password for the VM | `your_password_here` |
 | `CLOUDFLARE_HOSTNAME` | Cloudflare Access hostname | `ubuntu.aswinlocal.in` |
 
+<<<<<<< HEAD
 ## 🎛️ Manual Deployment
 
 ### How to Trigger Manually
@@ -49,6 +56,8 @@ You need to configure these secrets in your GitHub repository:
 | **Environment** | Deployment environment | `production` |
 | **Force deploy** | Deploy even without changes | `false` |
 
+=======
+>>>>>>> 40a43ce (🚀 Add auto-deploy GitHub Action for VM deployment)
 ## 📋 Setup Steps
 
 ### 1. Configure GitHub Secrets
@@ -62,6 +71,7 @@ Make sure the script `/home/aswin/pr-review-checker/auto-deploy.sh` exists on yo
 chmod +x /home/aswin/pr-review-checker/auto-deploy.sh
 ```
 
+<<<<<<< HEAD
 ### 3. Set Up Systemd Service
 Create a systemd service file for the application:
 
@@ -97,6 +107,9 @@ sudo systemctl start pr-deploy
 ```
 
 ### 4. Test the Script
+=======
+### 3. Test the Script
+>>>>>>> 40a43ce (🚀 Add auto-deploy GitHub Action for VM deployment)
 Test that your auto-deploy script works correctly:
 
 ```bash
@@ -105,6 +118,7 @@ cd /home/aswin/pr-review-checker
 ./auto-deploy.sh
 ```
 
+<<<<<<< HEAD
 ## 📊 Monitoring and Logs
 
 ### Deployment Logs
@@ -136,6 +150,8 @@ The GitHub Actions workflow will show:
 - Service status after deployment
 - Any errors or warnings
 
+=======
+>>>>>>> 40a43ce (🚀 Add auto-deploy GitHub Action for VM deployment)
 ## 🔍 Troubleshooting
 
 ### Common Issues
@@ -148,12 +164,16 @@ The GitHub Actions workflow will show:
 2. **Permission Denied**
    - Make sure the auto-deploy script is executable
    - Verify the SSH user has access to the directory
+<<<<<<< HEAD
    - Check sudo permissions for systemctl commands
+=======
+>>>>>>> 40a43ce (🚀 Add auto-deploy GitHub Action for VM deployment)
 
 3. **Script Not Found**
    - Ensure the path `/home/aswin/pr-review-checker/auto-deploy.sh` is correct
    - Check that the script exists on the VM
 
+<<<<<<< HEAD
 4. **Service Restart Failed**
    - Check systemd service configuration
    - Verify the service file syntax
@@ -169,11 +189,19 @@ The GitHub Actions workflow will show:
 The GitHub Action includes detailed logging with emojis for easy identification:
 - 🚀 Manual deployment triggered
 - 🔄 Automatic deployment triggered
+=======
+### Debugging
+
+The GitHub Action includes detailed logging with emojis for easy identification:
+>>>>>>> 40a43ce (🚀 Add auto-deploy GitHub Action for VM deployment)
 - 📦 Installation steps
 - 🔧 Configuration steps
 - 🔍 Connection testing
 - 🚀 Deployment execution
+<<<<<<< HEAD
 - 📋 Log retrieval
+=======
+>>>>>>> 40a43ce (🚀 Add auto-deploy GitHub Action for VM deployment)
 - ✅ Success indicators
 - ❌ Error indicators
 
@@ -183,6 +211,7 @@ The GitHub Action includes detailed logging with emojis for easy identification:
 - SSH key checking is disabled for automation
 - The connection uses Cloudflare Access for secure tunneling
 - All secrets are encrypted and not visible in logs
+<<<<<<< HEAD
 - Systemd service runs with appropriate user permissions
 
 ## 📝 Auto-Deploy Script Structure
@@ -211,4 +240,34 @@ Key features:
 - **Systemd service restart**
 - **Health check** verification
 
+=======
+
+## 📝 Example Auto-Deploy Script
+
+Here's an example of what your `auto-deploy.sh` script might look like:
+
+```bash
+#!/bin/bash
+set -e
+
+echo "🚀 Starting auto-deploy process..."
+
+# Pull latest changes
+git pull origin main
+
+# Install dependencies
+npm install
+
+# Build the application
+npm run build
+
+# Restart services (if using PM2, systemd, etc.)
+# pm2 restart pr-review-checker
+# or
+# sudo systemctl restart pr-review-checker
+
+echo "✅ Auto-deploy completed successfully!"
+```
+
+>>>>>>> 40a43ce (🚀 Add auto-deploy GitHub Action for VM deployment)
 Make sure to make the script executable: `chmod +x auto-deploy.sh` 
