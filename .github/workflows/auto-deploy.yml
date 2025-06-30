@@ -4,6 +4,21 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+      force_deploy:
+        description: 'Force deployment even if no changes'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   deploy:
@@ -19,7 +34,19 @@ jobs:
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
           CLOUDFLARE_HOSTNAME: ${{ secrets.CLOUDFLARE_HOSTNAME }}
+          DEPLOY_ENV: ${{ github.event.inputs.environment || 'production' }}
+          FORCE_DEPLOY: ${{ github.event.inputs.force_deploy || 'false' }}
         run: |
+          # Show deployment info
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "🚀 Manual deployment triggered!"
+            echo "📋 Environment: $DEPLOY_ENV"
+            echo "🔧 Force deploy: $FORCE_DEPLOY"
+          else
+            echo "🔄 Automatic deployment triggered by push to main"
+            echo "📋 Environment: $DEPLOY_ENV"
+          fi
+          
           # Install cloudflared if not available
           if ! command -v cloudflared &> /dev/null; then
             echo "📦 Installing cloudflared..."
@@ -57,11 +84,11 @@ jobs:
             exit 1
           fi
           
-          # Run the auto-deploy script
+          # Run the auto-deploy script with environment variables
           echo "🚀 Starting deployment..."
-          echo "📁 Executing: cd /home/aswin/pr-review-checker && ./auto-deploy.sh"
+          echo "📁 Executing: cd /home/aswin/pr-review-checker && DEPLOY_ENV=$DEPLOY_ENV FORCE_DEPLOY=$FORCE_DEPLOY ./auto-deploy.sh"
           
-          if ssh vm-deploy "cd /home/aswin/pr-review-checker && ./auto-deploy.sh"; then
+          if ssh vm-deploy "cd /home/aswin/pr-review-checker && DEPLOY_ENV=$DEPLOY_ENV FORCE_DEPLOY=$FORCE_DEPLOY ./auto-deploy.sh"; then
             echo "✅ Deployment completed successfully!"
           else
             echo "❌ Deployment failed"

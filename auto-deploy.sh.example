@@ -1,15 +1,37 @@
 #!/bin/bash
 set -e
 
+# Get deployment parameters (set by GitHub Actions)
+DEPLOY_ENV=${DEPLOY_ENV:-"production"}
+FORCE_DEPLOY=${FORCE_DEPLOY:-"false"}
+
 echo "🚀 Starting auto-deploy process for PR Review Checker..."
+echo "📋 Environment: $DEPLOY_ENV"
+echo "🔧 Force deploy: $FORCE_DEPLOY"
 
 # Navigate to the project directory
 cd /home/aswin/pr-review-checker
+
+# Check if there are changes to deploy (unless force deploy is enabled)
+if [ "$FORCE_DEPLOY" = "false" ]; then
+    echo "🔍 Checking for changes..."
+    git fetch origin
+    
+    # Check if local is behind remote
+    if git rev-list HEAD...origin/main --count | grep -q "^0$"; then
+        echo "✅ No new changes to deploy"
+        echo "💡 Use 'Force deploy' option to deploy anyway"
+        exit 0
+    fi
+fi
 
 # Pull latest changes from main branch
 echo "📥 Pulling latest changes..."
 git fetch origin
 git reset --hard origin/main
+
+# Show current commit info
+echo "📝 Current commit: $(git log -1 --oneline)"
 
 # Install/update dependencies
 echo "📦 Installing dependencies..."
@@ -22,12 +44,23 @@ npm install
 npm run build
 cd ..
 
+# Environment-specific deployment logic
+if [ "$DEPLOY_ENV" = "staging" ]; then
+    echo "🔄 Deploying to staging environment..."
+    # Add staging-specific logic here
+    # e.g., different ports, different PM2 app name, etc.
+    PM2_APP_NAME="pr-review-checker-staging"
+else
+    echo "🔄 Deploying to production environment..."
+    PM2_APP_NAME="pr-review-checker"
+fi
+
 # Restart the application (choose one method based on your setup)
 
 # Option 1: If using PM2
 echo "🔄 Restarting with PM2..."
 if command -v pm2 &> /dev/null; then
-    pm2 restart pr-review-checker || pm2 start server/index.js --name pr-review-checker
+    pm2 restart $PM2_APP_NAME || pm2 start server/index.js --name $PM2_APP_NAME
 else
     echo "⚠️ PM2 not found, skipping PM2 restart"
 fi
@@ -49,17 +82,19 @@ sleep 5
 if curl -f http://localhost:3001/health > /dev/null 2>&1; then
     echo "✅ Application is running successfully!"
     echo "🌐 Health check passed: http://localhost:3001/health"
+    echo "📊 Environment: $DEPLOY_ENV"
 else
     echo "❌ Application health check failed!"
     echo "🔍 Checking logs..."
     
     # Show recent logs if available
     if command -v pm2 &> /dev/null; then
-        pm2 logs pr-review-checker --lines 20
+        pm2 logs $PM2_APP_NAME --lines 20
     fi
     
     exit 1
 fi
 
 echo "🎉 Auto-deploy completed successfully!"
-echo "📅 Deployment time: $(date)" 
+echo "📅 Deployment time: $(date)"
+echo "🌍 Environment: $DEPLOY_ENV" 
