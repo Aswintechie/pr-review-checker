@@ -14,6 +14,7 @@ The GitHub Action:
 3. **Connection**: Connects to your VM via Cloudflare Access SSH
 4. **Deployment**: Runs the auto-deploy script at `/home/aswin/pr-review-checker/auto-deploy.sh`
 <<<<<<< HEAD
+<<<<<<< HEAD
 5. **Monitoring**: Shows deployment logs and service status
 =======
 1. Triggers on every push to the `main` branch
@@ -22,6 +23,9 @@ The GitHub Action:
 >>>>>>> 40a43ce (🚀 Add auto-deploy GitHub Action for VM deployment)
 =======
 >>>>>>> 91a4749 (🎛️ Add manual trigger support with environment and force deploy options)
+=======
+5. **Monitoring**: Shows deployment logs and service status
+>>>>>>> e3d2023 (🔧 Update auto-deploy workflow to match actual VM script with systemd and logging)
 
 ## 🔧 Required GitHub Secrets
 
@@ -84,6 +88,9 @@ chmod +x /home/aswin/pr-review-checker/auto-deploy.sh
 ```
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> e3d2023 (🔧 Update auto-deploy workflow to match actual VM script with systemd and logging)
 ### 3. Set Up Systemd Service
 Create a systemd service file for the application:
 
@@ -119,9 +126,12 @@ sudo systemctl start pr-deploy
 ```
 
 ### 4. Test the Script
+<<<<<<< HEAD
 =======
 ### 3. Test the Script
 >>>>>>> 40a43ce (🚀 Add auto-deploy GitHub Action for VM deployment)
+=======
+>>>>>>> e3d2023 (🔧 Update auto-deploy workflow to match actual VM script with systemd and logging)
 Test that your auto-deploy script works correctly:
 
 ```bash
@@ -131,6 +141,9 @@ cd /home/aswin/pr-review-checker
 ```
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> e3d2023 (🔧 Update auto-deploy workflow to match actual VM script with systemd and logging)
 ## 📊 Monitoring and Logs
 
 ### Deployment Logs
@@ -162,8 +175,11 @@ The GitHub Actions workflow will show:
 - Service status after deployment
 - Any errors or warnings
 
+<<<<<<< HEAD
 =======
 >>>>>>> 40a43ce (🚀 Add auto-deploy GitHub Action for VM deployment)
+=======
+>>>>>>> e3d2023 (🔧 Update auto-deploy workflow to match actual VM script with systemd and logging)
 ## 🔍 Troubleshooting
 
 ### Common Issues
@@ -177,9 +193,13 @@ The GitHub Actions workflow will show:
    - Make sure the auto-deploy script is executable
    - Verify the SSH user has access to the directory
 <<<<<<< HEAD
+<<<<<<< HEAD
    - Check sudo permissions for systemctl commands
 =======
 >>>>>>> 40a43ce (🚀 Add auto-deploy GitHub Action for VM deployment)
+=======
+   - Check sudo permissions for systemctl commands
+>>>>>>> e3d2023 (🔧 Update auto-deploy workflow to match actual VM script with systemd and logging)
 
 3. **Script Not Found**
    - Ensure the path `/home/aswin/pr-review-checker/auto-deploy.sh` is correct
@@ -187,6 +207,9 @@ The GitHub Actions workflow will show:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> e3d2023 (🔧 Update auto-deploy workflow to match actual VM script with systemd and logging)
 4. **Service Restart Failed**
    - Check systemd service configuration
    - Verify the service file syntax
@@ -196,11 +219,14 @@ The GitHub Actions workflow will show:
    - Check Node.js and npm versions
    - Verify all dependencies are available
    - Check disk space for builds
+<<<<<<< HEAD
 =======
 4. **No Changes to Deploy**
    - This is normal behavior when no new commits exist
    - Use "Force deploy" option to deploy anyway
 >>>>>>> 91a4749 (🎛️ Add manual trigger support with environment and force deploy options)
+=======
+>>>>>>> e3d2023 (🔧 Update auto-deploy workflow to match actual VM script with systemd and logging)
 
 ### Debugging
 
@@ -220,9 +246,13 @@ The GitHub Action includes detailed logging with emojis for easy identification:
 - 🔍 Connection testing
 - 🚀 Deployment execution
 <<<<<<< HEAD
+<<<<<<< HEAD
 - 📋 Log retrieval
 =======
 >>>>>>> 40a43ce (🚀 Add auto-deploy GitHub Action for VM deployment)
+=======
+- 📋 Log retrieval
+>>>>>>> e3d2023 (🔧 Update auto-deploy workflow to match actual VM script with systemd and logging)
 - ✅ Success indicators
 - ❌ Error indicators
 
@@ -232,6 +262,7 @@ The GitHub Action includes detailed logging with emojis for easy identification:
 - SSH key checking is disabled for automation
 - The connection uses Cloudflare Access for secure tunneling
 - All secrets are encrypted and not visible in logs
+<<<<<<< HEAD
 <<<<<<< HEAD
 - Systemd service runs with appropriate user permissions
 
@@ -262,49 +293,38 @@ Key features:
 - **Health check** verification
 
 =======
+=======
+- Systemd service runs with appropriate user permissions
+>>>>>>> e3d2023 (🔧 Update auto-deploy workflow to match actual VM script with systemd and logging)
 
-## 📝 Example Auto-Deploy Script
+## 📝 Auto-Deploy Script Structure
 
-The script handles both automatic and manual deployments:
+Your auto-deploy script includes:
 
 ```bash
 #!/bin/bash
-set -e
+# auto-deploy.sh - Production deployment script for pr-review-checker
 
-# Get deployment parameters (set by GitHub Actions)
-DEPLOY_ENV=${DEPLOY_ENV:-"production"}
-FORCE_DEPLOY=${FORCE_DEPLOY:-"false"}
+set -e  # Exit on error
 
-echo "🚀 Starting auto-deploy process for PR Review Checker..."
-echo "📋 Environment: $DEPLOY_ENV"
-echo "🔧 Force deploy: $FORCE_DEPLOY"
+LOG_FILE="/home/aswin/pr-review-checker/deploy.log"
+PROJECT_DIR="/home/aswin/pr-review-checker"
+APP_NAME="pr-deploy"
 
-# Check for changes (unless force deploy is enabled)
-if [ "$FORCE_DEPLOY" = "false" ]; then
-    echo "🔍 Checking for changes..."
-    git fetch origin
-    if git rev-list HEAD...origin/main --count | grep -q "^0$"; then
-        echo "✅ No new changes to deploy"
-        exit 0
-    fi
-fi
-
-# Pull latest changes and deploy
-git reset --hard origin/main
-npm install
-cd client && npm install && npm run build && cd ..
-
-# Environment-specific deployment
-if [ "$DEPLOY_ENV" = "staging" ]; then
-    PM2_APP_NAME="pr-review-checker-staging"
-else
-    PM2_APP_NAME="pr-review-checker"
-fi
-
-pm2 restart $PM2_APP_NAME || pm2 start server/index.js --name $PM2_APP_NAME
-
-echo "✅ Deployment completed successfully!"
+# Git pull, npm install, build, and service restart
+# All with comprehensive logging
 ```
 
+<<<<<<< HEAD
 >>>>>>> 40a43ce (🚀 Add auto-deploy GitHub Action for VM deployment)
+=======
+Key features:
+- **Comprehensive logging** to `deploy.log`
+- **Error handling** with `set -e`
+- **Dependency installation** with fallback to `npm install`
+- **Client build** process
+- **Systemd service restart**
+- **Health check** verification
+
+>>>>>>> e3d2023 (🔧 Update auto-deploy workflow to match actual VM script with systemd and logging)
 Make sure to make the script executable: `chmod +x auto-deploy.sh` 

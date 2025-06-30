@@ -1,5 +1,6 @@
 #!/bin/bash
 <<<<<<< HEAD
+<<<<<<< HEAD
 # auto-deploy.sh - Production deployment script for pr-review-checker
 
 set -e  # Exit on error
@@ -42,90 +43,47 @@ else
 fi 
 =======
 set -e
+=======
+# auto-deploy.sh - Production deployment script for pr-review-checker
+>>>>>>> e3d2023 (🔧 Update auto-deploy workflow to match actual VM script with systemd and logging)
 
-# Get deployment parameters (set by GitHub Actions)
-DEPLOY_ENV=${DEPLOY_ENV:-"production"}
-FORCE_DEPLOY=${FORCE_DEPLOY:-"false"}
+set -e  # Exit on error
 
-echo "🚀 Starting auto-deploy process for PR Review Checker..."
-echo "📋 Environment: $DEPLOY_ENV"
-echo "🔧 Force deploy: $FORCE_DEPLOY"
+LOG_FILE="/home/aswin/pr-review-checker/deploy.log"
+PROJECT_DIR="/home/aswin/pr-review-checker"
+APP_NAME="pr-deploy"
 
-# Navigate to the project directory
-cd /home/aswin/pr-review-checker
+echo "$(date): Starting production auto-deployment..." | tee -a "$LOG_FILE"
+cd "$PROJECT_DIR"
 
-# Check if there are changes to deploy (unless force deploy is enabled)
-if [ "$FORCE_DEPLOY" = "false" ]; then
-    echo "🔍 Checking for changes..."
-    git fetch origin
-    
-    # Check if local is behind remote
-    if git rev-list HEAD...origin/main --count | grep -q "^0$"; then
-        echo "✅ No new changes to deploy"
-        echo "💡 Use 'Force deploy' option to deploy anyway"
-        exit 0
-    fi
-fi
+echo "$(date): Pulling latest changes from Git..." | tee -a "$LOG_FILE"
+git pull origin main 2>&1 | tee -a "$LOG_FILE"
 
-# Pull latest changes from main branch
-echo "📥 Pulling latest changes..."
-git fetch origin
-git reset --hard origin/main
+echo "$(date): Installing root dependencies..." | tee -a "$LOG_FILE"
+npm ci 2>&1 | tee -a "$LOG_FILE" || npm install 2>&1 | tee -a "$LOG_FILE"
 
-# Show current commit info
-echo "📝 Current commit: $(git log -1 --oneline)"
-
-# Install/update dependencies
-echo "📦 Installing dependencies..."
-npm install
-
-# Build the client application
-echo "🔨 Building client application..."
-cd client
-npm install
-npm run build
+echo "$(date): Installing client dependencies..." | tee -a "$LOG_FILE"
+cd client && npm ci 2>&1 | tee -a "$LOG_FILE" || npm install 2>&1 | tee -a "$LOG_FILE"
+echo "$(date): Building client app..." | tee -a "$LOG_FILE"
+npm run build 2>&1 | tee -a "$LOG_FILE"
 cd ..
 
-# Environment-specific deployment logic
-if [ "$DEPLOY_ENV" = "staging" ]; then
-    echo "🔄 Deploying to staging environment..."
-    # Add staging-specific logic here
-    # e.g., different ports, different PM2 app name, etc.
-    PM2_APP_NAME="pr-review-checker-staging"
-else
-    echo "🔄 Deploying to production environment..."
-    PM2_APP_NAME="pr-review-checker"
-fi
+echo "$(date): Installing server dependencies..." | tee -a "$LOG_FILE"
+cd server && npm ci 2>&1 | tee -a "$LOG_FILE" || npm install 2>&1 | tee -a "$LOG_FILE"
+cd ..
 
-# Restart the application (choose one method based on your setup)
+echo "$(date): Restarting backend service..." | tee -a "$LOG_FILE"
+sudo systemctl restart "$APP_NAME" 2>&1 | tee -a "$LOG_FILE"
 
-# Option 1: If using PM2
-echo "🔄 Restarting with PM2..."
-if command -v pm2 &> /dev/null; then
-    pm2 restart $PM2_APP_NAME || pm2 start server/index.js --name $PM2_APP_NAME
-else
-    echo "⚠️ PM2 not found, skipping PM2 restart"
-fi
+echo "$(date): ✅ Deployment completed successfully!" | tee -a "$LOG_FILE"
 
-# Option 2: If using systemd (uncomment if needed)
-# echo "🔄 Restarting with systemd..."
-# sudo systemctl restart pr-review-checker
-
-# Option 3: If using Docker (uncomment if needed)
-# echo "🔄 Restarting with Docker..."
-# docker-compose down
-# docker-compose up -d
-
-# Check if the application is running
-echo "🔍 Checking application status..."
+# Optional: Add health check
+echo "$(date): Performing health check..." | tee -a "$LOG_FILE"
 sleep 5
-
-# Test the health endpoint
 if curl -f http://localhost:3001/health > /dev/null 2>&1; then
-    echo "✅ Application is running successfully!"
-    echo "🌐 Health check passed: http://localhost:3001/health"
-    echo "📊 Environment: $DEPLOY_ENV"
+    echo "$(date): ✅ Health check passed" | tee -a "$LOG_FILE"
 else
+<<<<<<< HEAD
     echo "❌ Application health check failed!"
     echo "🔍 Checking logs..."
     
@@ -145,3 +103,7 @@ echo "📅 Deployment time: $(date)"
 echo "📅 Deployment time: $(date)"
 echo "🌍 Environment: $DEPLOY_ENV" 
 >>>>>>> 91a4749 (🎛️ Add manual trigger support with environment and force deploy options)
+=======
+    echo "$(date): ⚠️ Health check failed - service may still be starting" | tee -a "$LOG_FILE"
+fi 
+>>>>>>> e3d2023 (🔧 Update auto-deploy workflow to match actual VM script with systemd and logging)
