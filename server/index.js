@@ -429,12 +429,12 @@ function getTokenForOperation(userToken, operation = 'repo') {
   if (userToken) {
     return userToken;
   }
-  
+
   // Fallback to .env tokens based on operation
   if (operation === 'teams' && GITHUB_TEAMS_TOKEN) {
     return GITHUB_TEAMS_TOKEN;
   }
-  
+
   return GITHUB_TOKEN;
 }
 
