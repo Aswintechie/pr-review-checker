@@ -396,7 +396,7 @@ function cleanupSharedTempDir(isSync = false) {
 }
 
 // Consolidated process cleanup handlers
-const handleGracefulShutdown = async (signal) => {
+const handleGracefulShutdown = async signal => {
   console.log(`📤 Received ${signal}, cleaning up...`);
   await cleanupSharedTempDir(false);
   process.exit(0);
