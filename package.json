@@ -30,7 +30,8 @@
     "docker:run": "docker run -p 3000:3000 pr-approval-finder",
     "docker:dev": "docker-compose up --build",
     "vercel:dev": "vercel dev",
-    "vercel:deploy": "vercel --prod"
+    "vercel:deploy": "vercel --prod",
+    "sync-version": "node scripts/sync-version.js"
   },
   "keywords": [
     "github",

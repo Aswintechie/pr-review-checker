@@ -1,5 +1,5 @@
 /**
- * PR Approval Finder v7.0
+ * PR Approval Finder
  * Copyright (c) 2025 Aswin
  * Licensed under MIT License
  */
@@ -8,6 +8,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
 import FeedbackForm from './FeedbackForm';
+import { APP_VERSION_SHORT } from './version';
 
 function App() {
   const [prUrl, setPrUrl] = useState('');
@@ -711,7 +712,7 @@ function App() {
               <h4>👨‍💻 Current Status</h4>
               <ul>
                 <li>
-                  <strong>Version:</strong> v7.0 - Actively under development
+                  <strong>Version:</strong> v{APP_VERSION_SHORT} - Actively under development
                 </li>
                 <li>
                   <strong>Features:</strong> Core functionality is stable and tested
@@ -1322,7 +1323,7 @@ function App() {
               aria-label='Developer Info & Status'
               type='button'
             >
-              v7.0
+              v{APP_VERSION_SHORT}
             </button>
           </div>
         </div>
