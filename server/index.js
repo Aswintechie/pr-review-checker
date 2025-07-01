@@ -9,7 +9,14 @@ const cors = require('cors');
 const axios = require('axios');
 const nodemailer = require('nodemailer');
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
+const crypto = require('crypto');
+const Codeowners = require('codeowners');
 require('dotenv').config();
+
+// Constants
+const MATCHED_BY_CODEOWNERS = 'Matched by codeowners library';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -295,69 +302,143 @@ if (process.env.SMTP_USER && process.env.SMTP_PASS) {
   console.log('📧 No email configuration found - feedback will only be logged to console');
 }
 
-// Helper function to parse CODEOWNERS file
-function parseCodeowners(codeownersContent) {
-  const lines = codeownersContent.split('\n');
-  const rules = [];
+// Optimized temp directory management with shared base directory
+let sharedBaseTempDir = null;
+let initializationPromise = null;
 
-  for (const line of lines) {
-    const trimmed = line.trim();
+// Initialize shared base directory at startup for optimal performance
+// This function uses a caching mechanism with 'initializationPromise' to ensure
+// that the shared base directory is initialized only once. If multiple calls
+// are made concurrently, they will share the same promise to prevent race conditions.
+async function initializeSharedBaseDir() {
+  // If already initialized, return immediately
+  if (sharedBaseTempDir) {
+    return Promise.resolve();
+  }
 
-    // Skip empty lines and comments
-    if (!trimmed || trimmed.startsWith('#')) continue;
+  // Return existing promise if initialization is already in progress
+  if (initializationPromise) {
+    return initializationPromise;
+  }
 
-    // Handle inline comments - split on # and take only the part before it
-    const lineWithoutComments = trimmed.split('#')[0].trim();
-    if (!lineWithoutComments) continue;
+  // Create and store the initialization promise to prevent race conditions
+  initializationPromise = (async () => {
+    const tempDir = os.tmpdir();
+    const proposedDir = path.join(tempDir, 'codeowners-base');
 
-    const parts = lineWithoutComments.split(/\s+/);
-    if (parts.length >= 2) {
-      const pattern = parts[0];
-      const owners = parts
-        .slice(1)
-        .map(owner => owner.replace('@', '').trim())
-        .filter(owner => owner && !owner.startsWith('#')); // Filter out any remaining comments
+    try {
+      await fs.promises.mkdir(proposedDir, { recursive: true });
+      sharedBaseTempDir = proposedDir;
+    } catch (error) {
+      console.warn('Could not create shared base temp directory:');
+      console.warn('  Error Message:', error.message);
+      console.warn('  Error Stack:', error.stack);
+      console.warn('  Attempted Path:', proposedDir);
+      console.warn('  Fallback: Using system temp directory directly');
+      // Fallback to using system temp directory directly
+      sharedBaseTempDir = tempDir;
+    }
+  })();
 
-      if (owners.length > 0) {
-        rules.push({ pattern, owners });
+  return initializationPromise;
+}
+
+// Thread-safe CODEOWNERS analysis with optimized directory management
+async function analyzeCodeownersContent(codeownersContent, changedFiles) {
+  // Ensure shared base directory exists
+  await initializeSharedBaseDir();
+
+  // Create unique subdirectory for this request to avoid race conditions
+  const requestId = `${Date.now()}-${crypto.randomUUID()}`;
+  const tempCodeownersDir = path.join(sharedBaseTempDir, `req-${requestId}`);
+  const tempCodeownersFile = path.join(tempCodeownersDir, 'CODEOWNERS');
+
+  try {
+    // Create unique subdirectory and CODEOWNERS file for this request
+    await fs.promises.mkdir(tempCodeownersDir, { recursive: true });
+    await fs.promises.writeFile(tempCodeownersFile, codeownersContent);
+
+    // Create codeowners instance (requires exact "CODEOWNERS" filename)
+    const codeowners = new Codeowners(tempCodeownersDir);
+
+    // Process all files and return results
+    const results = [];
+    for (const file of changedFiles) {
+      try {
+        const owners = codeowners.getOwner(file);
+        results.push({ file, owners });
+      } catch (fileError) {
+        console.warn(`Error getting owners for file ${file}:`);
+        console.warn('  File Error Message:', fileError.message);
+        console.warn('  File Error Stack:', fileError.stack);
+        console.warn('  Request ID:', requestId);
+        results.push({ file, owners: [] });
       }
     }
-  }
 
-  return rules;
+    return results;
+  } catch (error) {
+    console.warn('Error in analyzeCodeownersContent:');
+    console.warn('  Message:', error.message);
+    console.warn('  Stack:', error.stack);
+    console.warn('  Request ID:', requestId);
+    console.warn('  Temp Directory:', tempCodeownersDir);
+    console.warn('  Changed Files Count:', changedFiles.length);
+    console.warn('  CODEOWNERS Content Length:', codeownersContent.length);
+
+    // Return empty results for all files if there's an error
+    return changedFiles.map(file => ({ file, owners: [] }));
+  } finally {
+    // Clean up request-specific directory - this always runs regardless of success or error
+    try {
+      await fs.promises.rm(tempCodeownersDir, { recursive: true, force: true });
+    } catch (cleanupError) {
+      console.info(
+        `Cleanup failed for Request ID ${requestId} - Temp Directory: ${tempCodeownersDir}`
+      );
+    }
+  }
 }
 
-// Helper function to match file paths against CODEOWNERS patterns
-function matchPattern(pattern, filePath) {
-  // Handle different CODEOWNERS pattern types
-
-  // Root-level pattern (starts with /)
-  if (pattern.startsWith('/')) {
-    pattern = pattern.substring(1);
+// Shared cleanup function for consistent behavior
+function cleanupSharedTempDir(isSync = false) {
+  if (sharedBaseTempDir && sharedBaseTempDir !== os.tmpdir()) {
+    try {
+      if (isSync) {
+        fs.rmSync(sharedBaseTempDir, { recursive: true, force: true });
+      } else {
+        return fs.promises.rm(sharedBaseTempDir, { recursive: true, force: true });
+      }
+    } catch (error) {
+      // Silently ignore cleanup errors - errors are now handled by callers where appropriate
+    }
   }
-
-  // Directory pattern (ends with /)
-  if (pattern.endsWith('/')) {
-    return filePath.startsWith(pattern) || filePath.startsWith(`${pattern.slice(0, -1)}/`);
-  }
-
-  // Exact file match
-  if (!pattern.includes('*') && !pattern.includes('?')) {
-    return filePath === pattern || filePath.endsWith(`/${pattern}`);
-  }
-
-  // Glob pattern matching
-  // First escape dots, then handle ** and * carefully to avoid conflicts
-  const regexPattern = pattern
-    .replace(/\./g, '\\.')
-    .replace(/\*\*/g, '__DOUBLE_STAR__') // Temporary placeholder
-    .replace(/\*/g, '[^/]*') // * matches anything except directory separator
-    .replace(/__DOUBLE_STAR__/g, '.*') // ** matches any number of directories
-    .replace(/\?/g, '[^/]'); // ? matches single character except directory separator
-
-  const regex = new RegExp(`^${regexPattern}$`);
-  return regex.test(filePath);
 }
+
+// Process exit cleanup (synchronous - no async allowed in 'exit' event)
+process.on('exit', () => {
+  try {
+    cleanupSharedTempDir(true);
+    console.log('🧹 Process exit cleanup completed successfully');
+  } catch (error) {
+    console.error('❌ Process exit cleanup failed:', error.message);
+  }
+});
+
+// Graceful shutdown on termination signals (synchronous for reliability)
+function handleTerminationSignal(signal) {
+  console.log(`📤 Received ${signal}, cleaning up...`);
+  try {
+    cleanupSharedTempDir(true);
+    console.log(`🧹 ${signal} cleanup completed successfully`);
+  } catch (error) {
+    console.error(`❌ ${signal} cleanup failed:`, error.message);
+  }
+  process.exit(0);
+}
+
+process.on('SIGINT', () => handleTerminationSignal('SIGINT'));
+process.on('SIGTERM', () => handleTerminationSignal('SIGTERM'));
 
 // GitHub Teams Support Functions
 // fetchTeamMembers function removed (not currently used)
@@ -566,42 +647,65 @@ app.post('/api/pr-approvers', async (req, res) => {
     const fileApprovalDetails = [];
 
     if (codeownersContent) {
-      // Parse CODEOWNERS and find required approvers
-      const rules = parseCodeowners(codeownersContent);
+      // Use optimized codeowners analysis with reusable temp directory
+      try {
+        const fileOwnerResults = await analyzeCodeownersContent(codeownersContent, changedFiles);
 
-      // IMPORTANT: GitHub CODEOWNERS uses "last matching rule wins" behavior
-      // This means if multiple patterns match a file, the pattern that appears
-      // later in the CODEOWNERS file takes precedence (similar to .gitignore)
+        // Process each file's owners
+        for (const { file, owners: fileOwners } of fileOwnerResults) {
+          if (fileOwners && fileOwners.length > 0) {
+            // Only accept entries that originally started with @ (valid CODEOWNERS entries)
+            const cleanOwners = fileOwners
+              .filter(owner => {
+                // Must start with @ to be a valid CODEOWNERS entry
+                return owner && owner.startsWith('@');
+              })
+              .map(owner => owner.replace('@', '').trim())
+              .filter(owner => {
+                // Additional validation for cleaned owner names
+                return (
+                  owner &&
+                  owner.length > 0 &&
+                  // Valid GitHub usernames/teams contain only alphanumeric, hyphens, underscores, and forward slashes
+                  /^[a-zA-Z0-9\-_/]+$/.test(owner)
+                );
+              });
 
-      // For each changed file, find the last matching rule (GitHub CODEOWNERS behavior)
-      for (const file of changedFiles) {
-        let lastMatchingRule = null;
+            if (cleanOwners.length > 0) {
+              fileApprovalDetails.push({
+                file,
+                pattern: MATCHED_BY_CODEOWNERS,
+                owners: cleanOwners,
+                ruleIndex: -1,
+              });
 
-        // Iterate through rules in order and keep track of the last one that matches
-        for (let i = 0; i < rules.length; i++) {
-          const rule = rules[i];
-          if (matchPattern(rule.pattern, file)) {
-            lastMatchingRule = { ...rule, ruleIndex: i };
+              // Add owners to the global set
+              cleanOwners.forEach(owner => requiredApprovers.add(owner));
+            } else {
+              fileApprovalDetails.push({
+                file,
+                pattern: 'No valid owners found',
+                owners: [],
+                ruleIndex: -1,
+              });
+            }
+          } else {
+            fileApprovalDetails.push({
+              file,
+              pattern: 'No matching rule',
+              owners: [],
+              ruleIndex: -1,
+            });
           }
         }
+      } catch (error) {
+        console.warn('Error using codeowners library, falling back to no analysis:', error.message);
 
-        // Use the last matching rule (this follows GitHub CODEOWNERS specification)
-        const selectedRule = lastMatchingRule;
-
-        if (selectedRule) {
+        // Add all files as having no owners if library fails
+        for (const file of changedFiles) {
           fileApprovalDetails.push({
             file,
-            pattern: selectedRule.pattern,
-            owners: selectedRule.owners,
-            ruleIndex: selectedRule.ruleIndex,
-          });
-
-          // Add owners to the global set
-          selectedRule.owners.forEach(owner => requiredApprovers.add(owner));
-        } else {
-          fileApprovalDetails.push({
-            file,
-            pattern: 'No matching rule',
+            pattern: 'Library error - no analysis',
             owners: [],
             ruleIndex: -1,
           });
