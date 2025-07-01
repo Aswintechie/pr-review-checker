@@ -506,6 +506,36 @@ body {
   color: var(--warning);
 }
 
+.history-delete-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  opacity: 0;
+  transform: scale(0.8);
+  margin-left: 0.5rem;
+  flex-shrink: 0;
+}
+
+.history-item:hover .history-delete-btn {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.history-delete-btn:hover {
+  background: var(--error-bg);
+  color: var(--error);
+  transform: scale(1.1);
+}
+
+.history-delete-btn:active {
+  transform: scale(0.95);
+}
+
 .no-history {
   padding: 2rem;
   text-align: center;
