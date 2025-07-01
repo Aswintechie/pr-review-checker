@@ -14,39 +14,7 @@
 
 </div>
 
-## 📸 Screenshots
 
-### 🏠 Main Interface
-> **Recommended Screenshot**: Show the clean main interface with the URL input field, GitHub token field, and the beautiful "Analyze PR" button. Include the header with theme toggle and history buttons.
-
-<!-- ![Main Interface](./docs/images/main-interface.png) -->
-
-### 📊 Analysis Results - Quick View  
-> **Recommended Screenshot**: Display the results page showing the progress ring, PR information, and the basic approval summary. Show the toggle between Basic/Advanced views.
-
-<!-- ![Quick View Results](./docs/images/quick-view-results.png) -->
-
-### 🔍 Analysis Results - Advanced View
-> **Recommended Screenshot**: Show the detailed advanced view with file-by-file analysis, team member cards, and the comprehensive breakdown of required approvals.
-
-<!-- ![Advanced View Results](./docs/images/advanced-view-results.png) -->
-
-### 🎨 Theme Gallery
-> **Recommended Screenshot**: Create a collage showing 4-5 different themes (Light, Dark, Ocean, Forest, Sunset) to showcase the theme variety.
-
-<!-- ![Theme Gallery](./docs/images/theme-gallery.png) -->
-
-### 🔒 Privacy & Security Modals
-> **Recommended Screenshot**: Show both the privacy modal and Cloudflare modal side by side to highlight the transparency features we just added.
-
-<!-- ![Privacy Security Modals](./docs/images/privacy-security-modals.png) -->
-
-### 📱 Mobile Responsive Design
-> **Recommended Screenshot**: Show the app on mobile devices demonstrating the responsive footer with privacy and Cloudflare buttons.
-
-<!-- ![Mobile Design](./docs/images/mobile-responsive.png) -->
-
----
 
 ## ✨ Features
 
