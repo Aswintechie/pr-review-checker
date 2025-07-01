@@ -84,53 +84,75 @@
 
 Our application follows a simple yet powerful workflow to analyze your Pull Requests:
 
-```mermaid
-graph TD
-    A["🔗 Enter GitHub PR URL"] --> B["🔑 Add GitHub Token<br/>(Optional)"]
-    B --> C["🚀 Click Analyze PR"]
-    C --> D["📡 Fetch PR Data from GitHub API"]
-    D --> E["📄 Get Changed Files"]
-    E --> F["👥 Parse CODEOWNERS"]
-    F --> G["🔍 Match Files to Owners"]
-    G --> H["📊 Calculate Required Approvals"]
-    H --> I["✅ Show Results<br/>• Quick View<br/>• Advanced View"]
-    I --> J["💾 Save to Local History"]
-    
-    K["🔒 Privacy Modal"] --> L["📋 Data Handling Info"]
-    M["🛡️ Cloudflare Modal"] --> N["⚡ Security & Performance"]
-    
-    style A fill:#e1f5fe
-    style C fill:#c8e6c9
-    style I fill:#fff3e0
-    style K fill:#f3e5f5
-    style M fill:#fff8e1
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                       🚀 PR Approval Finder Workflow                │
+└─────────────────────────────────────────────────────────────────────┘
+
+    🔗 Enter GitHub PR URL
+              │
+              ▼
+    🔑 Add GitHub Token (Optional)
+              │
+              ▼
+         🚀 Click Analyze PR
+              │
+              ▼
+    📡 Fetch PR Data from GitHub API
+              │
+              ▼
+         📄 Get Changed Files
+              │
+              ▼
+        👥 Parse CODEOWNERS
+              │
+              ▼
+       🔍 Match Files to Owners
+              │
+              ▼
+    📊 Calculate Required Approvals
+              │
+              ▼
+      ✅ Show Results (Quick/Advanced)
+              │
+              ▼
+        💾 Save to Local History
+
+┌─────────────────────────────────────────────────────────────────────┐
+│  Additional Features: 🔒 Privacy Modal  🛡️ Cloudflare Modal        │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ### CODEOWNERS Analysis Process
 
 Here's how we intelligently group files and determine required approvals:
 
-```mermaid
-graph LR
-    A["📁 Changed Files<br/>• src/components/App.js<br/>• docs/README.md<br/>• server/index.js"] --> B["📋 CODEOWNERS<br/>• src/ @frontend-team<br/>• docs/ @docs-team<br/>• server/ @backend-team"]
-    
-    B --> C["🎯 Group by Required<br/>Approvals"]
-    
-    C --> D["📊 Minimum Required<br/>Approvals"]
-    
-    D --> E["Group 1: Frontend<br/>✅ Need: @frontend-team<br/>❌ Status: Needs Approval"]
-    
-    D --> F["Group 2: Documentation<br/>✅ Need: @docs-team<br/>✅ Status: Approved by @john"]
-    
-    D --> G["Group 3: Backend<br/>✅ Need: @backend-team<br/>❌ Status: Needs Approval"]
-    
-    style A fill:#e3f2fd
-    style B fill:#f1f8e9
-    style C fill:#fff3e0
-    style D fill:#fce4ec
-    style E fill:#ffebee
-    style F fill:#e8f5e8
-    style G fill:#ffebee
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                      📁 CODEOWNERS Analysis Process                  │
+└─────────────────────────────────────────────────────────────────────┘
+
+📁 Changed Files:                📋 CODEOWNERS Rules:
+• src/components/App.js      →   • src/ @frontend-team
+• docs/README.md             →   • docs/ @docs-team  
+• server/index.js            →   • server/ @backend-team
+                                      │
+                                      ▼
+                          🎯 Group by Required Approvals
+                                      │
+                                      ▼
+                          📊 Minimum Required Approvals
+
+┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐
+│    Group 1: Frontend │  │ Group 2: Docs      │  │ Group 3: Backend    │
+│                     │  │                     │  │                     │
+│ Files: App.js       │  │ Files: README.md    │  │ Files: index.js     │
+│ Need: @frontend-team│  │ Need: @docs-team    │  │ Need: @backend-team │
+│ Status: ❌ Pending  │  │ Status: ✅ Approved │  │ Status: ❌ Pending  │
+│                     │  │ By: @john           │  │                     │
+└─────────────────────┘  └─────────────────────┘  └─────────────────────┘
+
+                    📊 Result: 2 more approvals needed
 ```
 
 ---
@@ -234,31 +256,29 @@ Choose from 8 professionally designed themes:
 
 Our application prioritizes your privacy and security with comprehensive protection:
 
-```mermaid
-graph TB
-    A["🔍 PR Approval Finder"] --> B["🔒 Privacy Protection"]
-    A --> C["🛡️ Cloudflare Security"]
-    A --> D["🎨 User Experience"]
-    
-    B --> B1["📱 Local Storage Only"]
-    B --> B2["🔑 Client-Side Token Processing"]
-    B --> B3["🚫 No Server Storage"]
-    B --> B4["📊 No Analytics/Tracking"]
-    
-    C --> C1["⚡ DDoS Protection"]
-    C --> C2["🔥 Web Application Firewall"]
-    C --> C3["🔐 SSL/TLS Encryption"]
-    C --> C4["🌐 Global CDN"]
-    
-    D --> D1["🎯 Responsive Design"]
-    D --> D2["🌙 Multiple Themes"]
-    D --> D3["📝 Local History"]
-    D --> D4["💬 Feedback System"]
-    
-    style A fill:#e1f5fe
-    style B fill:#f3e5f5
-    style C fill:#fff8e1
-    style D fill:#e8f5e8
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                🔍 PR Approval Finder - Security & Features          │
+└─────────────────────────────────────────────────────────────────────┘
+
+                           🔍 PR Approval Finder
+                                      │
+                   ┌──────────────────┼──────────────────┐
+                   │                  │                  │
+                   ▼                  ▼                  ▼
+          🔒 Privacy Protection  🛡️ Cloudflare Security  🎨 User Experience
+
+┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐
+│ 📱 Local Storage    │  │ ⚡ DDoS Protection  │  │ 🎯 Responsive Design│
+│ 🔑 Client-Side      │  │ 🔥 Web Firewall     │  │ 🌙 Multiple Themes  │
+│ 🚫 No Server Storage│  │ 🔐 SSL/TLS Encrypt  │  │ 📝 Local History    │
+│ 📊 No Analytics     │  │ 🌐 Global CDN       │  │ 💬 Feedback System  │
+└─────────────────────┘  └─────────────────────┘  └─────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│  🔒 Footer Privacy Modal: Complete data handling transparency       │
+│  🛡️ Footer Cloudflare Modal: Security & performance details        │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 **Click the 🔒 Privacy and 🛡️ Cloudflare buttons in the app footer** to view detailed information about:
