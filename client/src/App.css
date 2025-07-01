@@ -387,6 +387,7 @@ body {
   overflow: hidden;
   z-index: 9999;
   animation: slideInDown 0.3s ease-out;
+  transform-origin: top right;
 }
 
 .history-header {
@@ -537,6 +538,7 @@ body {
   overflow: hidden;
   z-index: 9999;
   animation: slideInDown 0.3s ease-out;
+  transform-origin: top right;
 }
 
 .theme-header {
@@ -892,6 +894,17 @@ body {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -2897,5 +2910,33 @@ section h2 {
 
   .cloudflare-modal-footer p {
     font-size: 0.85rem;
+  }
+}
+
+/* Mobile dropdown positioning adjustments */
+@media (max-width: 768px) {
+  .theme-dropdown,
+  .history-dropdown {
+    right: -10px;
+    min-width: 280px;
+    max-width: calc(100vw - 2rem);
+  }
+}
+
+@media (max-width: 480px) {
+  .theme-dropdown,
+  .history-dropdown {
+    right: -20px;
+    min-width: 260px;
+    max-width: calc(100vw - 1rem);
+  }
+  
+  .theme-dropdown {
+    max-width: 300px;
+  }
+  
+  .history-dropdown {
+    max-width: 320px;
+    max-height: 350px;
   }
 }
