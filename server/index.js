@@ -307,6 +307,9 @@ let sharedBaseTempDir = null;
 let initializationPromise = null;
 
 // Initialize shared base directory at startup for optimal performance
+// This function uses a caching mechanism with 'initializationPromise' to ensure
+// that the shared base directory is initialized only once. If multiple calls
+// are made concurrently, they will share the same promise to prevent race conditions.
 async function initializeSharedBaseDir() {
   // If already initialized, return immediately
   if (sharedBaseTempDir) {
@@ -423,26 +426,19 @@ process.on('exit', () => {
 });
 
 // Graceful shutdown on termination signals (synchronous for reliability)
-process.on('SIGINT', () => {
-  console.log('📤 Received SIGINT, cleaning up...');
+function handleTerminationSignal(signal) {
+  console.log(`📤 Received ${signal}, cleaning up...`);
   try {
     cleanupSharedTempDir(true);
-    console.log('🧹 SIGINT cleanup completed successfully');
+    console.log(`🧹 ${signal} cleanup completed successfully`);
   } catch (error) {
-    console.error('❌ SIGINT cleanup failed:', error.message);
+    console.error(`❌ ${signal} cleanup failed:`, error.message);
   }
   process.exit(0);
-});
-process.on('SIGTERM', () => {
-  console.log('📤 Received SIGTERM, cleaning up...');
-  try {
-    cleanupSharedTempDir(true);
-    console.log('🧹 SIGTERM cleanup completed successfully');
-  } catch (error) {
-    console.error('❌ SIGTERM cleanup failed:', error.message);
-  }
-  process.exit(0);
-});
+}
+
+process.on('SIGINT', () => handleTerminationSignal('SIGINT'));
+process.on('SIGTERM', () => handleTerminationSignal('SIGTERM'));
 
 // GitHub Teams Support Functions
 // fetchTeamMembers function removed (not currently used)
