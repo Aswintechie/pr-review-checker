@@ -308,14 +308,14 @@ let initializationPromise = null;
 
 // Initialize shared base directory at startup for optimal performance
 async function initializeSharedBaseDir() {
-  // Return existing promise if initialization is already in progress
-  if (initializationPromise) {
-    return initializationPromise;
-  }
-
   // If already initialized, return immediately
   if (sharedBaseTempDir) {
     return Promise.resolve();
+  }
+
+  // Return existing promise if initialization is already in progress
+  if (initializationPromise) {
+    return initializationPromise;
   }
 
   // Create and store the initialization promise to prevent race conditions
