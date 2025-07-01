@@ -296,6 +296,64 @@ if (process.env.SMTP_USER && process.env.SMTP_PASS) {
   console.log('📧 No email configuration found - feedback will only be logged to console');
 }
 
+// Optimized CODEOWNERS analysis with reusable temp directory
+let sharedCodeownersDir = null;
+
+async function analyzeCodeownersContent(codeownersContent, changedFiles) {
+  const fs = require('fs');
+  const tempDir = require('os').tmpdir();
+  
+  // Create or reuse shared temp directory
+  if (!sharedCodeownersDir) {
+    sharedCodeownersDir = path.join(tempDir, 'codeowners-shared');
+    try {
+      fs.mkdirSync(sharedCodeownersDir, { recursive: true });
+    } catch (error) {
+      // Directory might already exist, which is fine
+    }
+  }
+  
+  const tempCodeownersFile = path.join(sharedCodeownersDir, 'CODEOWNERS');
+  
+  try {
+    // Update the CODEOWNERS file content (reuse directory, just update file)
+    fs.writeFileSync(tempCodeownersFile, codeownersContent);
+    
+    // Create codeowners instance
+    const codeowners = new Codeowners(sharedCodeownersDir);
+    
+    // Process all files and return results
+    const results = [];
+    for (const file of changedFiles) {
+      try {
+        const owners = codeowners.getOwner(file);
+        results.push({ file, owners });
+      } catch (fileError) {
+        console.warn(`Error getting owners for file ${file}:`, fileError.message);
+        results.push({ file, owners: [] });
+      }
+    }
+    
+    return results;
+  } catch (error) {
+    console.warn('Error in analyzeCodeownersContent:', error.message);
+    // Return empty results for all files if there's an error
+    return changedFiles.map(file => ({ file, owners: [] }));
+  }
+}
+
+// Cleanup function for graceful shutdown
+process.on('exit', () => {
+  if (sharedCodeownersDir) {
+    const fs = require('fs');
+    try {
+      fs.rmSync(sharedCodeownersDir, { recursive: true, force: true });
+    } catch (error) {
+      // Ignore cleanup errors
+    }
+  }
+});
+
 // GitHub Teams Support Functions
 // fetchTeamMembers function removed (not currently used)
 
@@ -503,95 +561,61 @@ app.post('/api/pr-approvers', async (req, res) => {
     const fileApprovalDetails = [];
 
     if (codeownersContent) {
-      // Create temporary codeowners instance for this analysis
-      const fs = require('fs');
-      const tempDir = require('os').tmpdir();
-      const tempCodeownersDir = path.join(tempDir, `codeowners-analysis-${Date.now()}`);
-      const tempCodeownersFile = path.join(tempCodeownersDir, 'CODEOWNERS');
-
+      // Use optimized codeowners analysis with reusable temp directory
       try {
-        // Create temporary directory and CODEOWNERS file
-        fs.mkdirSync(tempCodeownersDir, { recursive: true });
-        fs.writeFileSync(tempCodeownersFile, codeownersContent);
+        const fileOwnerResults = await analyzeCodeownersContent(codeownersContent, changedFiles);
+        
+        // Process each file's owners
+        for (const { file, owners: fileOwners } of fileOwnerResults) {
+          if (fileOwners && fileOwners.length > 0) {
+            // Only accept entries that originally started with @ (valid CODEOWNERS entries)
+            const cleanOwners = fileOwners
+              .filter(owner => {
+                // Must start with @ to be a valid CODEOWNERS entry
+                return owner && owner.startsWith('@');
+              })
+              .map(owner => owner.replace('@', '').trim())
+              .filter(owner => {
+                // Additional validation for cleaned owner names
+                return (
+                  owner &&
+                  owner.length > 0 &&
+                  // Valid GitHub usernames/teams contain only alphanumeric, hyphens, underscores, and forward slashes
+                  /^[a-zA-Z0-9\-_/]+$/.test(owner)
+                );
+              });
+            
+            if (cleanOwners.length > 0) {
+              fileApprovalDetails.push({
+                file,
+                pattern: 'Matched by codeowners library',
+                owners: cleanOwners,
+                ruleIndex: -1,
+              });
 
-        // Create codeowners instance
-        const codeowners = new Codeowners(tempCodeownersDir);
-
-        // For each changed file, get owners using the library
-        for (const file of changedFiles) {
-          try {
-            // Get owners for this file (library handles "last matching rule wins" automatically)
-            const owners = codeowners.getOwner(file);
-
-            if (owners && owners.length > 0) {
-              // Only accept entries that originally started with @ (valid CODEOWNERS entries)
-              const cleanOwners = owners
-                .filter(owner => {
-                  // Must start with @ to be a valid CODEOWNERS entry
-                  return owner && owner.startsWith('@');
-                })
-                .map(owner => owner.replace('@', '').trim())
-                .filter(owner => {
-                  // Additional validation for cleaned owner names
-                  return (
-                    owner &&
-                    owner.length > 0 &&
-                    // Valid GitHub usernames/teams contain only alphanumeric, hyphens, underscores, and forward slashes
-                    /^[a-zA-Z0-9\-_/]+$/.test(owner)
-                  );
-                });
-
-              if (cleanOwners.length > 0) {
-                fileApprovalDetails.push({
-                  file,
-                  pattern: 'Matched by codeowners library', // Library abstracts the pattern matching
-                  owners: cleanOwners,
-                  ruleIndex: -1, // Library doesn't expose rule index
-                });
-
-                // Add owners to the global set
-                cleanOwners.forEach(owner => requiredApprovers.add(owner));
-              } else {
-                fileApprovalDetails.push({
-                  file,
-                  pattern: 'No valid owners found',
-                  owners: [],
-                  ruleIndex: -1,
-                });
-              }
+              // Add owners to the global set
+              cleanOwners.forEach(owner => requiredApprovers.add(owner));
             } else {
               fileApprovalDetails.push({
                 file,
-                pattern: 'No matching rule',
+                pattern: 'No valid owners found',
                 owners: [],
                 ruleIndex: -1,
               });
             }
-          } catch (fileError) {
-            console.warn(`Error getting owners for file ${file}:`, fileError.message);
+          } else {
             fileApprovalDetails.push({
               file,
-              pattern: 'Error processing file',
+              pattern: 'No matching rule',
               owners: [],
               ruleIndex: -1,
             });
           }
         }
-
-        // Clean up temporary files
-        fs.rmSync(tempCodeownersDir, { recursive: true, force: true });
+        
       } catch (error) {
         console.warn('Error using codeowners library, falling back to no analysis:', error.message);
-
-        // Clean up temp directory if it exists
-        try {
-          if (fs.existsSync(tempCodeownersDir)) {
-            fs.rmSync(tempCodeownersDir, { recursive: true, force: true });
-          }
-        } catch (cleanupError) {
-          console.warn('Error cleaning up temp directory:', cleanupError.message);
-        }
-
+        
         // Add all files as having no owners if library fails
         for (const file of changedFiles) {
           fileApprovalDetails.push({
