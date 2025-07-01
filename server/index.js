@@ -367,25 +367,35 @@ async function analyzeCodeownersContent(codeownersContent, changedFiles) {
   }
 }
 
-// Cleanup shared base directory on process exit
-process.on('exit', () => {
+// Shared cleanup function for consistent behavior
+function cleanupSharedTempDir(isSync = false) {
   if (sharedBaseTempDir && sharedBaseTempDir !== os.tmpdir()) {
     try {
-      fs.rmSync(sharedBaseTempDir, { recursive: true, force: true });
+      if (isSync) {
+        fs.rmSync(sharedBaseTempDir, { recursive: true, force: true });
+      } else {
+        return fs.promises.rm(sharedBaseTempDir, { recursive: true, force: true });
+      }
     } catch (error) {
-      // Ignore cleanup errors during exit
+      // Ignore cleanup errors during exit/shutdown
     }
   }
+}
+
+// Cleanup shared base directory on process exit (synchronous)
+process.on('exit', () => {
+  cleanupSharedTempDir(true);
 });
 
+// Cleanup shared base directory on SIGINT (asynchronous)
 process.on('SIGINT', async () => {
-  if (sharedBaseTempDir && sharedBaseTempDir !== os.tmpdir()) {
-    try {
-      await fs.promises.rm(sharedBaseTempDir, { recursive: true, force: true });
-    } catch (error) {
-      // Ignore cleanup errors during shutdown
-    }
-  }
+  await cleanupSharedTempDir(false);
+  process.exit(0);
+});
+
+// Cleanup on other termination signals for robustness
+process.on('SIGTERM', async () => {
+  await cleanupSharedTempDir(false);
   process.exit(0);
 });
 
