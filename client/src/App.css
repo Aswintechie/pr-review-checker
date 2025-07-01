@@ -1891,17 +1891,23 @@ section h2 {
 }
 
 .version-info {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  opacity: 0.8;
-  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: #888;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  margin-top: 0.5rem;
   font-family: 'Courier New', monospace;
   letter-spacing: 0.5px;
-  transition: opacity 0.3s ease;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: inline-block;
 }
 
 .version-info:hover {
-  opacity: 1;
+  color: #aaa;
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
 }
 
 .cloudflare-badge {
