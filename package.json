@@ -1,31 +1,64 @@
 {
   "name": "pr-approval-finder",
   "version": "6.0.0",
-  "description": "Find minimum required approvals for GitHub Pull Requests",
+  "description": "🔍 Analyze GitHub Pull Requests to determine minimum required approvals based on CODEOWNERS files",
   "main": "index.js",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "cd server && npm run dev",
     "client": "cd client && npm start",
     "build": "cd client && npm run build",
     "start": "cd server && npm start",
+    "install:all": "npm ci && cd client && npm ci && cd ../server && npm ci",
+    "clean": "rm -rf node_modules client/node_modules server/node_modules client/build",
+    "clean:install": "npm run clean && npm run install:all",
     "lint": "concurrently \"cd client && npm run lint\" \"cd server && npm run lint\"",
     "lint:fix": "concurrently \"cd client && npm run lint:fix\" \"cd server && npm run lint:fix\"",
     "format": "concurrently \"cd client && npm run format\" \"cd server && npm run format\"",
     "format:check": "concurrently \"cd client && npm run format:check\" \"cd server && npm run format:check\"",
-    "code:fix": "concurrently \"cd client && npm run code:fix\" \"cd server && npm run code:fix\"",
-    "test": "concurrently \"cd client && npm test\" \"cd server && npm test\"",
-    "pre-commit": "npm run format && npm run lint"
+    "code:fix": "npm run format && npm run lint:fix",
+    "test": "concurrently \"cd client && npm test -- --watchAll=false\" \"cd server && npm test\"",
+    "test:watch": "concurrently \"cd client && npm run test\" \"cd server && npm run test:watch\"",
+    "test:coverage": "concurrently \"cd client && npm test -- --coverage --watchAll=false\" \"cd server && npm run test -- --coverage\"",
+    "pre-commit": "npm run format && npm run lint && npm run test",
+    "prepare": "husky install",
+    "docker:build": "docker build -t pr-approval-finder .",
+    "docker:run": "docker run -p 3000:3000 pr-approval-finder",
+    "docker:dev": "docker-compose up --build",
+    "vercel:dev": "vercel dev",
+    "vercel:deploy": "vercel --prod"
   },
   "keywords": [
     "github",
+    "pull-request",
     "pr",
     "approval",
     "codeowners",
-    "review"
+    "code-review",
+    "analysis",
+    "developer-tools",
+    "react",
+    "nodejs",
+    "open-source"
   ],
-  "author": "Aswin",
+  "author": {
+    "name": "Aswin",
+    "email": "your.email@example.com",
+    "url": "https://github.com/yourusername"
+  },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/pr-approval-finder.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/pr-approval-finder/issues"
+  },
+  "homepage": "https://pr-approval-finder.vercel.app",
   "devDependencies": {
     "concurrently": "^8.2.2",
     "husky": "^9.1.7",
@@ -33,5 +66,20 @@
   },
   "dependencies": {
     "axios": "^1.10.0"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{json,css,scss,md}": [
+      "prettier --write"
+    ]
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged",
+      "pre-push": "npm run test"
+    }
   }
 }
