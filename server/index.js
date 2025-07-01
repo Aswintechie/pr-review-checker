@@ -1165,7 +1165,7 @@ app.use((req, res, _next) => {
 
 // Cleanup function for tests
 const cleanup = async () => {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     if (emailTransporter && typeof emailTransporter.close === 'function') {
       // Set a timeout to prevent hanging
       const timeout = setTimeout(() => {
