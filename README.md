@@ -10,7 +10,7 @@
 
 **A modern web application that analyzes GitHub Pull Requests to determine minimum required approvals based on CODEOWNERS files**
 
-[🚀 Live Demo](https://pr-approval-finder.vercel.app) • [📖 Documentation](./docs) • [🐛 Report Bug](https://github.com/Aswin-coder/pr-review-checker/issues) • [💡 Request Feature](https://github.com/Aswin-coder/pr-review-checker/issues)
+[🚀 Live Demo](https://pr-reviewer.aswinlocal.in/) • [📖 Documentation](./docs) • [🐛 Report Bug](https://github.com/Aswin-coder/pr-review-checker/issues) • [💡 Request Feature](https://github.com/Aswin-coder/pr-review-checker/issues)
 
 </div>
 
