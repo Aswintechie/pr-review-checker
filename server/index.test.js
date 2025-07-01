@@ -1,4 +1,5 @@
 const request = require('supertest');
+const { cleanup } = require('./index');
 const app = require('./index');
 
 // Mock axios to prevent actual GitHub API calls during tests
@@ -9,6 +10,13 @@ describe('PR Approval Server', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
+
+  // Clean up email transporter after all tests complete
+  afterAll(async () => {
+    await cleanup();
+    // Give a small delay to ensure cleanup completes
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }, 10000);
 
   describe('Health Check', () => {
     test('GET /health should return 200', async () => {

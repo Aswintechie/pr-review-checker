@@ -1,0 +1,41 @@
+# Development Dockerfile for PR Approval Finder
+FROM node:18-alpine
+
+# Install development tools
+RUN apk add --no-cache git
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY client/package*.json ./client/
+COPY server/package*.json ./server/
+
+# Install all dependencies (including dev dependencies)
+RUN npm install && \
+    cd client && npm install && \
+    cd ../server && npm install
+
+# Copy source code
+COPY . .
+
+# Expose ports
+EXPOSE 3000 3001
+
+# Set development environment
+ENV NODE_ENV=development
+ENV CHOKIDAR_USEPOLLING=true
+
+# Create non-root user for development
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S developer -u 1001 -G nodejs
+
+# Change ownership of app directory
+RUN chown -R developer:nodejs /app
+
+# Switch to non-root user
+USER developer
+
+# Start development server
+CMD ["npm", "run", "dev"] 

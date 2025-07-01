@@ -1,6 +1,72 @@
 {
   "version": 2,
+  "name": "pr-approval-finder",
   "buildCommand": "cd client && npm run build",
   "outputDirectory": "client/build",
-  "installCommand": "npm install && cd client && npm install && cd ../server && npm install"
+  "installCommand": "npm install && cd client && npm install && cd ../server && npm install",
+  "framework": "create-react-app",
+  "headers": [
+    {
+      "source": "/static/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.github.com https://github.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self';"
+        }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/github",
+      "destination": "https://github.com/yourusername/pr-approval-finder",
+      "permanent": false
+    },
+    {
+      "source": "/docs",
+      "destination": "/README.md",
+      "permanent": false
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/server/index.js"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production",
+    "REACT_APP_VERSION": "6.0.0"
+  },
+  "build": {
+    "env": {
+      "GENERATE_SOURCEMAP": "false",
+      "DISABLE_ESLINT_PLUGIN": "true"
+    }
+  }
 } 
