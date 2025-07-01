@@ -354,9 +354,6 @@ async function analyzeCodeownersContent(codeownersContent, changedFiles) {
       }
     }
 
-    // Clean up request-specific directory immediately after use
-    await fs.promises.rm(tempCodeownersDir, { recursive: true, force: true });
-
     return results;
   } catch (error) {
     console.warn('Error in analyzeCodeownersContent:');
@@ -367,16 +364,17 @@ async function analyzeCodeownersContent(codeownersContent, changedFiles) {
     console.warn('  Changed Files Count:', changedFiles.length);
     console.warn('  CODEOWNERS Content Length:', codeownersContent.length);
 
-    // Clean up request-specific directory on error
-    try {
-      await fs.promises.rm(tempCodeownersDir, { recursive: true, force: true });
-      console.warn('  Cleanup: Successfully removed temp directory');
-    } catch (cleanupError) {
-      console.warn('  Cleanup: Failed to remove temp directory:', cleanupError.message);
-    }
-
     // Return empty results for all files if there's an error
     return changedFiles.map(file => ({ file, owners: [] }));
+  } finally {
+    // Clean up request-specific directory - this always runs regardless of success or error
+    try {
+      await fs.promises.rm(tempCodeownersDir, { recursive: true, force: true });
+    } catch (cleanupError) {
+      console.warn('  Cleanup: Failed to remove temp directory:', cleanupError.message);
+      console.warn('  Request ID:', requestId);
+      console.warn('  Temp Directory:', tempCodeownersDir);
+    }
   }
 }
 
