@@ -369,7 +369,6 @@ async function analyzeCodeownersContent(codeownersContent, changedFiles) {
 
     // Clean up request-specific directory on error
     try {
-      await fs.promises.access(tempCodeownersDir);
       await fs.promises.rm(tempCodeownersDir, { recursive: true, force: true });
       console.warn('  Cleanup: Successfully removed temp directory');
     } catch (cleanupError) {
