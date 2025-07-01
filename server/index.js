@@ -390,7 +390,7 @@ function cleanupSharedTempDir(isSync = false) {
         return fs.promises.rm(sharedBaseTempDir, { recursive: true, force: true });
       }
     } catch (error) {
-      // Ignore cleanup errors during exit/shutdown
+      // Silently ignore cleanup errors - errors are now handled by callers where appropriate
     }
   }
 }
@@ -404,12 +404,19 @@ const handleGracefulShutdown = async signal => {
 
 // Process exit cleanup (synchronous - no async allowed in 'exit' event)
 process.on('exit', () => {
-  cleanupSharedTempDir(true);
+  if (sharedBaseTempDir && sharedBaseTempDir !== os.tmpdir()) {
+    try {
+      fs.rmSync(sharedBaseTempDir, { recursive: true, force: true });
+      console.log('🧹 Process exit cleanup completed successfully');
+    } catch (error) {
+      console.error('❌ Process exit cleanup failed:', error.message);
+    }
+  }
 });
 
 // Graceful shutdown on termination signals (asynchronous)
-process.on('SIGINT', () => handleGracefulShutdown('SIGINT'));
-process.on('SIGTERM', () => handleGracefulShutdown('SIGTERM'));
+process.on('SIGINT', async () => await handleGracefulShutdown('SIGINT'));
+process.on('SIGTERM', async () => await handleGracefulShutdown('SIGTERM'));
 
 // GitHub Teams Support Functions
 // fetchTeamMembers function removed (not currently used)
