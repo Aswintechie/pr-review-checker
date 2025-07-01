@@ -23,6 +23,7 @@ function App() {
   const [showThemeDropdown, setShowThemeDropdown] = useState(false);
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [feedbackPrefillData, setFeedbackPrefillData] = useState({});
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
 
   const themes = [
     { id: 'light', name: '☀️ Light', description: 'Clean and bright' },
@@ -62,13 +63,16 @@ function App() {
       if (showThemeDropdown && !event.target.closest('.theme-container')) {
         setShowThemeDropdown(false);
       }
+      if (showPrivacyModal && !event.target.closest('.privacy-modal-content')) {
+        setShowPrivacyModal(false);
+      }
     };
 
-    if (showHistory || showThemeDropdown) {
+    if (showHistory || showThemeDropdown || showPrivacyModal) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showHistory, showThemeDropdown]);
+  }, [showHistory, showThemeDropdown, showPrivacyModal]);
 
   const changeTheme = themeId => {
     setCurrentTheme(themeId);
@@ -449,22 +453,86 @@ function App() {
         <div className='theme-header'>
           <h3>🎨 Choose Theme</h3>
         </div>
-        <div className='theme-content'>
-          <div className='theme-grid'>
-            {themes.map(theme => (
-              <div
-                key={theme.id}
-                className={`theme-option ${currentTheme === theme.id ? 'active' : ''}`}
-                onClick={() => changeTheme(theme.id)}
-              >
-                <div className={`theme-preview theme-${theme.id}`}></div>
-                <div className='theme-info'>
-                  <div className='theme-name'>{theme.name}</div>
-                  <div className='theme-description'>{theme.description}</div>
-                </div>
-                {currentTheme === theme.id && <div className='theme-check'>✓</div>}
-              </div>
-            ))}
+        <div className='theme-options'>
+          {themes.map(theme => (
+            <button
+              key={theme.id}
+              className={`theme-option ${currentTheme === theme.id ? 'active' : ''}`}
+              onClick={() => changeTheme(theme.id)}
+              type='button'
+              data-1p-ignore
+              autoComplete='off'
+            >
+              <span className='theme-name'>{theme.name}</span>
+              <span className='theme-description'>{theme.description}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderPrivacyModal = () => {
+    if (!showPrivacyModal) return null;
+
+    return (
+      <div className='privacy-modal-overlay'>
+        <div className='privacy-modal-content'>
+          <div className='privacy-modal-header'>
+            <h3>🔒 Privacy & Security Information</h3>
+            <button
+              className='privacy-modal-close'
+              onClick={() => setShowPrivacyModal(false)}
+              type='button'
+              aria-label='Close privacy modal'
+            >
+              ✕
+            </button>
+          </div>
+          <div className='privacy-modal-body'>
+            <div className='privacy-section'>
+              <h4>🛡️ Data Storage & Security</h4>
+              <ul>
+                <li><strong>No Server Storage:</strong> This application does not store any of your data on our servers.</li>
+                <li><strong>Local Storage Only:</strong> Your GitHub tokens and recent PR history are stored locally in your browser's localStorage.</li>
+                <li><strong>Automatic Cleanup:</strong> All data is automatically cleared when you clear your browser data or use incognito mode.</li>
+                <li><strong>No Tracking:</strong> We don't track your usage or collect any personal information.</li>
+              </ul>
+            </div>
+            <div className='privacy-section'>
+              <h4>🔑 GitHub Token Handling</h4>
+              <ul>
+                <li><strong>Client-Side Only:</strong> Your GitHub token is processed entirely in your browser.</li>
+                <li><strong>Direct API Calls:</strong> Tokens are sent directly to GitHub's API, never to our servers.</li>
+                <li><strong>No Persistence:</strong> Tokens are not permanently stored and are cleared when you close the browser.</li>
+                <li><strong>Your Control:</strong> You can clear stored tokens anytime by clearing browser data.</li>
+              </ul>
+            </div>
+            <div className='privacy-section'>
+              <h4>🌐 Third-Party Connections</h4>
+              <ul>
+                <li><strong>GitHub API:</strong> Direct connection to GitHub's public API for PR analysis.</li>
+                <li><strong>Cloudflare:</strong> Used for security and performance (no data storage).</li>
+                <li><strong>No Analytics:</strong> No Google Analytics, tracking pixels, or other monitoring tools.</li>
+              </ul>
+            </div>
+            <div className='privacy-section'>
+              <h4>🧹 How to Clear Your Data</h4>
+              <ul>
+                <li>Clear your browser's localStorage</li>
+                <li>Use incognito/private browsing mode</li>
+                <li>Clear site data in your browser settings</li>
+                <li>Use the "Clear History" button in the recent PRs dropdown</li>
+              </ul>
+            </div>
+          </div>
+          <div className='privacy-modal-footer'>
+            <p>
+              <strong>Open Source:</strong> This project is open source. You can review the code on{' '}
+              <a href='https://github.com/Aswin-coder/pr-review-checker' target='_blank' rel='noopener noreferrer'>
+                GitHub
+              </a> to verify these privacy practices.
+            </p>
           </div>
         </div>
       </div>
@@ -494,6 +562,16 @@ function App() {
               </button>
               {renderHistoryDropdown()}
             </div>
+            <button
+              className='privacy-btn'
+              onClick={() => setShowPrivacyModal(true)}
+              title='Privacy & Security info'
+              type='button'
+              data-1p-ignore
+              autoComplete='off'
+            >
+              🔒
+            </button>
             <button
               className='feedback-btn'
               onClick={() => setShowFeedbackForm(true)}
@@ -998,6 +1076,7 @@ function App() {
           prefillData={feedbackPrefillData}
         />
       )}
+      {renderPrivacyModal()}
     </div>
   );
 }
