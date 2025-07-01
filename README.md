@@ -14,6 +14,38 @@
 
 </div>
 
+## 📸 Screenshots
+
+### 🏠 Main Interface
+> **Recommended Screenshot**: Show the clean main interface with the URL input field, GitHub token field, and the beautiful "Analyze PR" button. Include the header with theme toggle and history buttons.
+
+<!-- ![Main Interface](./docs/images/main-interface.png) -->
+
+### 📊 Analysis Results - Quick View  
+> **Recommended Screenshot**: Display the results page showing the progress ring, PR information, and the basic approval summary. Show the toggle between Basic/Advanced views.
+
+<!-- ![Quick View Results](./docs/images/quick-view-results.png) -->
+
+### 🔍 Analysis Results - Advanced View
+> **Recommended Screenshot**: Show the detailed advanced view with file-by-file analysis, team member cards, and the comprehensive breakdown of required approvals.
+
+<!-- ![Advanced View Results](./docs/images/advanced-view-results.png) -->
+
+### 🎨 Theme Gallery
+> **Recommended Screenshot**: Create a collage showing 4-5 different themes (Light, Dark, Ocean, Forest, Sunset) to showcase the theme variety.
+
+<!-- ![Theme Gallery](./docs/images/theme-gallery.png) -->
+
+### 🔒 Privacy & Security Modals
+> **Recommended Screenshot**: Show both the privacy modal and Cloudflare modal side by side to highlight the transparency features we just added.
+
+<!-- ![Privacy Security Modals](./docs/images/privacy-security-modals.png) -->
+
+### 📱 Mobile Responsive Design
+> **Recommended Screenshot**: Show the app on mobile devices demonstrating the responsive footer with privacy and Cloudflare buttons.
+
+<!-- ![Mobile Design](./docs/images/mobile-responsive.png) -->
+
 ---
 
 ## ✨ Features
@@ -45,6 +77,61 @@
 - **🚫 No Tracking** - No analytics, cookies, or personal data collection
 - **🔒 Secure Communication** - HTTPS only with direct GitHub API calls
 - **⚙️ Rate Limit Handling** - Smart retry logic with rate limit visualization
+
+---
+
+## 🔄 How It Works
+
+Our application follows a simple yet powerful workflow to analyze your Pull Requests:
+
+```mermaid
+graph TD
+    A["🔗 Enter GitHub PR URL"] --> B["🔑 Add GitHub Token<br/>(Optional)"]
+    B --> C["🚀 Click Analyze PR"]
+    C --> D["📡 Fetch PR Data from GitHub API"]
+    D --> E["📄 Get Changed Files"]
+    E --> F["👥 Parse CODEOWNERS"]
+    F --> G["🔍 Match Files to Owners"]
+    G --> H["📊 Calculate Required Approvals"]
+    H --> I["✅ Show Results<br/>• Quick View<br/>• Advanced View"]
+    I --> J["💾 Save to Local History"]
+    
+    K["🔒 Privacy Modal"] --> L["📋 Data Handling Info"]
+    M["🛡️ Cloudflare Modal"] --> N["⚡ Security & Performance"]
+    
+    style A fill:#e1f5fe
+    style C fill:#c8e6c9
+    style I fill:#fff3e0
+    style K fill:#f3e5f5
+    style M fill:#fff8e1
+```
+
+### CODEOWNERS Analysis Process
+
+Here's how we intelligently group files and determine required approvals:
+
+```mermaid
+graph LR
+    A["📁 Changed Files<br/>• src/components/App.js<br/>• docs/README.md<br/>• server/index.js"] --> B["📋 CODEOWNERS<br/>• src/ @frontend-team<br/>• docs/ @docs-team<br/>• server/ @backend-team"]
+    
+    B --> C["🎯 Group by Required<br/>Approvals"]
+    
+    C --> D["📊 Minimum Required<br/>Approvals"]
+    
+    D --> E["Group 1: Frontend<br/>✅ Need: @frontend-team<br/>❌ Status: Needs Approval"]
+    
+    D --> F["Group 2: Documentation<br/>✅ Need: @docs-team<br/>✅ Status: Approved by @john"]
+    
+    D --> G["Group 3: Backend<br/>✅ Need: @backend-team<br/>❌ Status: Needs Approval"]
+    
+    style A fill:#e3f2fd
+    style B fill:#f1f8e9
+    style C fill:#fff3e0
+    style D fill:#fce4ec
+    style E fill:#ffebee
+    style F fill:#e8f5e8
+    style G fill:#ffebee
+```
 
 ---
 
@@ -145,10 +232,40 @@ Choose from 8 professionally designed themes:
 <details>
 <summary>🔒 Privacy & Security</summary>
 
-Click the 🔒 button in the app to view detailed privacy information:
+Our application prioritizes your privacy and security with comprehensive protection:
+
+```mermaid
+graph TB
+    A["🔍 PR Approval Finder"] --> B["🔒 Privacy Protection"]
+    A --> C["🛡️ Cloudflare Security"]
+    A --> D["🎨 User Experience"]
+    
+    B --> B1["📱 Local Storage Only"]
+    B --> B2["🔑 Client-Side Token Processing"]
+    B --> B3["🚫 No Server Storage"]
+    B --> B4["📊 No Analytics/Tracking"]
+    
+    C --> C1["⚡ DDoS Protection"]
+    C --> C2["🔥 Web Application Firewall"]
+    C --> C3["🔐 SSL/TLS Encryption"]
+    C --> C4["🌐 Global CDN"]
+    
+    D --> D1["🎯 Responsive Design"]
+    D --> D2["🌙 Multiple Themes"]
+    D --> D3["📝 Local History"]
+    D --> D4["💬 Feedback System"]
+    
+    style A fill:#e1f5fe
+    style B fill:#f3e5f5
+    style C fill:#fff8e1
+    style D fill:#e8f5e8
+```
+
+**Click the 🔒 Privacy and 🛡️ Cloudflare buttons in the app footer** to view detailed information about:
 - **No Server Storage** - All data stays in your browser
-- **Local Storage Only** - Tokens and history stored locally
+- **Local Storage Only** - Tokens and history stored locally  
 - **No Tracking** - Zero analytics or data collection
+- **Cloudflare Protection** - Enterprise-grade security and performance
 - **Open Source** - Full code transparency
 
 </details>
