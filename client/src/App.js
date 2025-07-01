@@ -25,6 +25,7 @@ function App() {
   const [feedbackPrefillData, setFeedbackPrefillData] = useState({});
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showCloudflareModal, setShowCloudflareModal] = useState(false);
+  const [showDeveloperModal, setShowDeveloperModal] = useState(false);
 
   const themes = [
     { id: 'light', name: '☀️ Light', description: 'Clean and bright' },
@@ -67,13 +68,16 @@ function App() {
       if (showPrivacyModal && !event.target.closest('.privacy-modal-content')) {
         setShowPrivacyModal(false);
       }
+      if (showDeveloperModal && !event.target.closest('.developer-modal-content')) {
+        setShowDeveloperModal(false);
+      }
     };
 
-    if (showHistory || showThemeDropdown || showPrivacyModal) {
+    if (showHistory || showThemeDropdown || showPrivacyModal || showDeveloperModal) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showHistory, showThemeDropdown, showPrivacyModal]);
+  }, [showHistory, showThemeDropdown, showPrivacyModal, showDeveloperModal]);
 
   const changeTheme = themeId => {
     setCurrentTheme(themeId);
@@ -684,6 +688,100 @@ function App() {
     );
   };
 
+  const renderDeveloperModal = () => {
+    if (!showDeveloperModal) return null;
+
+    return (
+      <div className='developer-modal-overlay'>
+        <div className='developer-modal-content'>
+          <div className='developer-modal-header'>
+            <h3>🚧 Development Status</h3>
+            <button
+              className='developer-modal-close'
+              onClick={() => setShowDeveloperModal(false)}
+              type='button'
+              aria-label='Close'
+            >
+              ×
+            </button>
+          </div>
+          <div className='developer-modal-body'>
+            <div className='developer-section'>
+              <h4>👨‍💻 Current Status</h4>
+              <ul>
+                <li>
+                  <strong>Version:</strong> v7.0 - Actively under development
+                </li>
+                <li>
+                  <strong>Features:</strong> Core functionality is stable and tested
+                </li>
+                <li>
+                  <strong>Updates:</strong> Regular improvements and bug fixes
+                </li>
+                <li>
+                  <strong>Feedback:</strong> User suggestions help drive development priorities
+                </li>
+              </ul>
+            </div>
+
+            <div className='developer-section'>
+              <h4>🐛 Known Areas</h4>
+              <ul>
+                <li>
+                  <strong>CODEOWNERS parsing:</strong> Complex patterns may need refinement
+                </li>
+                <li>
+                  <strong>Team detection:</strong> Some edge cases in team member resolution
+                </li>
+                <li>
+                  <strong>UI/UX:</strong> Continuously improving based on user feedback
+                </li>
+                <li>
+                  <strong>Performance:</strong> Optimizing for large repositories
+                </li>
+              </ul>
+            </div>
+
+            <div className='developer-section'>
+              <h4>💬 Help Us Improve</h4>
+              <p>
+                Your feedback is invaluable! If you encounter any issues, have suggestions, or
+                want to report bugs, please let us know:
+              </p>
+              <button
+                className='developer-feedback-btn'
+                onClick={() => {
+                  setFeedbackPrefillData({
+                    type: 'bug',
+                    subject: 'Bug Report / Feature Request',
+                    message: 'I found an issue or have a suggestion:\n\n',
+                  });
+                  setShowFeedbackForm(true);
+                  setShowDeveloperModal(false);
+                }}
+                type='button'
+              >
+                🚀 Share Feedback
+              </button>
+            </div>
+          </div>
+          <div className='developer-modal-footer'>
+            <p>
+              Built with ❤️ by{' '}
+              <a
+                href='https://github.com/Aswin-coder'
+                target='_blank'
+                rel='noopener noreferrer'
+              >
+                Aswin
+              </a>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className={`App theme-${currentTheme}`}>
       <header className='App-header'>
@@ -1194,7 +1292,6 @@ function App() {
             <div className='copyright' title='Assisted with Cursor AI'>
               © 2025 Aswin
             </div>
-            <div className='version-info'>v7.0</div>
           </div>
           <div className='footer-center'>
             <button
@@ -1215,6 +1312,14 @@ function App() {
             >
               🛡️ Protected by Cloudflare
             </button>
+            <button
+              className='version-info'
+              onClick={() => setShowDeveloperModal(true)}
+              title='Developer Info & Status'
+              type='button'
+            >
+              v7.0
+            </button>
           </div>
         </div>
       </footer>
@@ -1229,6 +1334,7 @@ function App() {
       )}
       {renderPrivacyModal()}
       {renderCloudflareModal()}
+      {renderDeveloperModal()}
     </div>
   );
 }
