@@ -298,21 +298,40 @@ if (process.env.SMTP_USER && process.env.SMTP_PASS) {
   console.log('📧 No email configuration found - feedback will only be logged to console');
 }
 
-// Thread-safe CODEOWNERS analysis with per-request directories
-async function analyzeCodeownersContent(codeownersContent, changedFiles) {
-  const tempDir = os.tmpdir();
+// Optimized temp directory management with shared base directory
+let sharedBaseTempDir = null;
 
-  // Create unique directory per request to avoid race conditions
+// Initialize shared base directory at startup for optimal performance
+async function initializeSharedBaseDir() {
+  if (!sharedBaseTempDir) {
+    const tempDir = os.tmpdir();
+    sharedBaseTempDir = path.join(tempDir, 'codeowners-base');
+    try {
+      await fs.promises.mkdir(sharedBaseTempDir, { recursive: true });
+    } catch (error) {
+      console.warn('Could not create shared base temp directory:', error.message);
+      // Fallback to using system temp directory directly
+      sharedBaseTempDir = tempDir;
+    }
+  }
+}
+
+// Thread-safe CODEOWNERS analysis with optimized directory management
+async function analyzeCodeownersContent(codeownersContent, changedFiles) {
+  // Ensure shared base directory exists
+  await initializeSharedBaseDir();
+
+  // Create unique subdirectory for this request to avoid race conditions
   const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  const tempCodeownersDir = path.join(tempDir, `codeowners-${requestId}`);
+  const tempCodeownersDir = path.join(sharedBaseTempDir, `req-${requestId}`);
   const tempCodeownersFile = path.join(tempCodeownersDir, 'CODEOWNERS');
 
   try {
-    // Create unique directory and CODEOWNERS file for this request (non-blocking)
+    // Create unique subdirectory and CODEOWNERS file for this request
     await fs.promises.mkdir(tempCodeownersDir, { recursive: true });
     await fs.promises.writeFile(tempCodeownersFile, codeownersContent);
 
-    // Create codeowners instance for this request
+    // Create codeowners instance (requires exact "CODEOWNERS" filename)
     const codeowners = new Codeowners(tempCodeownersDir);
 
     // Process all files and return results
@@ -327,25 +346,47 @@ async function analyzeCodeownersContent(codeownersContent, changedFiles) {
       }
     }
 
-    // Clean up temp directory immediately after use (non-blocking)
+    // Clean up request-specific directory immediately after use
     await fs.promises.rm(tempCodeownersDir, { recursive: true, force: true });
 
     return results;
   } catch (error) {
     console.warn('Error in analyzeCodeownersContent:', error.message);
 
-    // Clean up temp directory if it exists (non-blocking)
+    // Clean up request-specific directory on error
     try {
       await fs.promises.access(tempCodeownersDir);
       await fs.promises.rm(tempCodeownersDir, { recursive: true, force: true });
     } catch (cleanupError) {
-      // Directory doesn't exist or cleanup failed, which is fine for cleanup
+      // Cleanup failed, which is fine
     }
 
     // Return empty results for all files if there's an error
     return changedFiles.map(file => ({ file, owners: [] }));
   }
 }
+
+// Cleanup shared base directory on process exit
+process.on('exit', () => {
+  if (sharedBaseTempDir && sharedBaseTempDir !== os.tmpdir()) {
+    try {
+      fs.rmSync(sharedBaseTempDir, { recursive: true, force: true });
+    } catch (error) {
+      // Ignore cleanup errors during exit
+    }
+  }
+});
+
+process.on('SIGINT', async () => {
+  if (sharedBaseTempDir && sharedBaseTempDir !== os.tmpdir()) {
+    try {
+      await fs.promises.rm(sharedBaseTempDir, { recursive: true, force: true });
+    } catch (error) {
+      // Ignore cleanup errors during shutdown
+    }
+  }
+  process.exit(0);
+});
 
 // GitHub Teams Support Functions
 // fetchTeamMembers function removed (not currently used)
