@@ -210,7 +210,7 @@ REACT_APP_API_URL=http://localhost:3001
 - 📧 Nodemailer for feedback system
 
 **DevOps**
-- 🔧 Vercel for deployment
+- 🚀 VPS server for production deployment
 - 📦 npm for package management
 - 🧪 Jest for testing
 - 📝 ESLint + Prettier
@@ -258,17 +258,7 @@ npm run test:server
 
 ## 🚀 Deployment
 
-### Vercel (Recommended)
-
-```bash
-# Deploy to Vercel
-vercel
-
-# Deploy to production
-vercel --prod
-```
-
-### Docker
+### Docker (Recommended for Production)
 
 ```bash
 # Build production image
@@ -276,9 +266,12 @@ docker build -t pr-approval-finder .
 
 # Run production container
 docker run -p 3000:3000 pr-approval-finder
+
+# Or use docker-compose
+docker-compose up --build
 ```
 
-### Manual Deployment
+### VPS Server Deployment
 
 ```bash
 # Build for production
@@ -286,6 +279,21 @@ npm run build
 
 # Start production server
 npm start
+
+# Or use PM2 for process management
+pm2 start server/index.js --name pr-approval-finder
+```
+
+### Branch Preview (Vercel)
+
+> **Note**: Vercel is used exclusively for PR branch previews and development testing, not for production deployment.
+
+```bash
+# Deploy PR preview to Vercel
+vercel
+
+# Preview branch deployment
+vercel --prod
 ```
 
 ---
@@ -396,7 +404,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 🔗 GitHub API for PR and CODEOWNERS data
 - 🎨 Modern CSS techniques for beautiful UI
 - 🔍 Minimatch library for glob pattern matching
-- 🚀 Vercel for hosting and deployment
+- 🚀 VPS server for production hosting
+- 🔧 Vercel for PR branch previews
 - 🤖 Cursor AI for development assistance
 
 ---
