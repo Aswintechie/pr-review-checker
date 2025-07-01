@@ -1,5 +1,5 @@
 /**
- * PR Approval Finder v6.0
+ * PR Approval Finder v7.0
  * Copyright (c) 2025 Aswin
  * Licensed under MIT License
  */
@@ -689,7 +689,7 @@ function App() {
       <header className='App-header'>
         <div className='header-content'>
           <div>
-            <h1>🔍 PR Approval Finder v6.0</h1>
+            <h1>🔍 PR Approval Finder</h1>
             <p>Find minimum required approvals for your Pull Request</p>
           </div>
           <div className='header-controls'>

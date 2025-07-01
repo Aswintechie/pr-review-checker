@@ -61,7 +61,7 @@
   ],
   "env": {
     "NODE_ENV": "production",
-    "REACT_APP_VERSION": "6.0.0"
+    "REACT_APP_VERSION": "7.0.0"
   },
   "build": {
     "env": {
