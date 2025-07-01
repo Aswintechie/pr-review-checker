@@ -1883,6 +1883,7 @@ section h2 {
   backdrop-filter: blur(10px);
   transition: all 0.3s ease;
   cursor: pointer;
+  font-family: inherit;
 }
 
 .cloudflare-badge:hover {
@@ -1909,59 +1910,59 @@ section h2 {
   font-weight: 500;
 }
 
-  .footer-privacy-btn:hover {
-    color: white;
-    background: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.3);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+.footer-privacy-btn:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive Footer Design */
+@media (max-width: 768px) {
+  .footer-content {
+    flex-direction: column;
+    text-align: center;
+    gap: 1.5rem;
   }
 
-  /* Responsive Footer Design */
-  @media (max-width: 768px) {
-    .footer-content {
-      flex-direction: column;
-      text-align: center;
-      gap: 1.5rem;
-    }
-
-    .footer-left,
-    .footer-center,
-    .footer-right {
-      justify-content: center;
-    }
-
-    .footer-privacy-btn {
-      font-size: 0.85rem;
-      padding: 0.6rem 1.2rem;
-    }
-
-    .cloudflare-badge {
-      font-size: 0.75rem;
-      padding: 0.3rem 0.8rem;
-    }
+  .footer-left,
+  .footer-center,
+  .footer-right {
+    justify-content: center;
   }
 
-  @media (max-width: 480px) {
-    .footer-content {
-      gap: 1rem;
-    }
-
-    .footer-privacy-btn {
-      font-size: 0.8rem;
-      padding: 0.5rem 1rem;
-      gap: 0.4rem;
-    }
-
-    .cloudflare-badge {
-      font-size: 0.7rem;
-      padding: 0.25rem 0.7rem;
-    }
-
-    .copyright {
-      font-size: 0.8rem;
-    }
+  .footer-privacy-btn {
+    font-size: 0.85rem;
+    padding: 0.6rem 1.2rem;
   }
+
+  .cloudflare-badge {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .footer-content {
+    gap: 1rem;
+  }
+
+  .footer-privacy-btn {
+    font-size: 0.8rem;
+    padding: 0.5rem 1rem;
+    gap: 0.4rem;
+  }
+
+  .cloudflare-badge {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.7rem;
+  }
+
+  .copyright {
+    font-size: 0.8rem;
+  }
+}
 
 /* ===============================================
    FEEDBACK FORM STYLES
@@ -2678,6 +2679,223 @@ section h2 {
   }
 
   .privacy-modal-footer p {
+    font-size: 0.85rem;
+  }
+}
+
+/* Cloudflare Info Modal Styles */
+.cloudflare-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--overlay-bg);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease;
+}
+
+.cloudflare-modal-content {
+  background: var(--modal-bg);
+  border-radius: 16px;
+  box-shadow: var(--shadow-xl);
+  max-width: 650px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  border: 1px solid var(--border-primary);
+  animation: slideInBottom 0.3s ease;
+}
+
+.cloudflare-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 24px 16px 24px;
+  border-bottom: 1px solid var(--border-primary);
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(255, 149, 0, 0.05) 100%);
+  border-radius: 16px 16px 0 0;
+}
+
+.cloudflare-modal-header h3 {
+  color: var(--text-primary);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cloudflare-modal-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 1.25rem;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.cloudflare-modal-close:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  transform: scale(1.1);
+}
+
+.cloudflare-modal-body {
+  padding: 24px;
+}
+
+.cloudflare-section {
+  margin-bottom: 24px;
+}
+
+.cloudflare-section:last-child {
+  margin-bottom: 0;
+}
+
+.cloudflare-section h4 {
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--border-primary);
+}
+
+.cloudflare-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.cloudflare-section li {
+  padding: 8px 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  position: relative;
+  padding-left: 24px;
+}
+
+.cloudflare-section li::before {
+  content: '⚡';
+  position: absolute;
+  left: 0;
+  color: #ff9500;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.cloudflare-section li strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.cloudflare-modal-footer {
+  padding: 16px 24px 24px 24px;
+  border-top: 1px solid var(--border-primary);
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(255, 149, 0, 0.03) 100%);
+  border-radius: 0 0 16px 16px;
+}
+
+.cloudflare-modal-footer p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.cloudflare-modal-footer a {
+  color: #ff9500;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid transparent;
+}
+
+.cloudflare-modal-footer a:hover {
+  color: #ffb84d;
+  border-bottom-color: #ffb84d;
+}
+
+/* Responsive Design for Cloudflare Modal */
+@media (max-width: 768px) {
+  .cloudflare-modal-overlay {
+    padding: 16px;
+  }
+
+  .cloudflare-modal-content {
+    max-height: 85vh;
+  }
+
+  .cloudflare-modal-header {
+    padding: 20px 20px 16px 20px;
+  }
+
+  .cloudflare-modal-header h3 {
+    font-size: 1.1rem;
+  }
+
+  .cloudflare-modal-body {
+    padding: 20px;
+  }
+
+  .cloudflare-section {
+    margin-bottom: 20px;
+  }
+
+  .cloudflare-section h4 {
+    font-size: 1rem;
+  }
+
+  .cloudflare-modal-footer {
+    padding: 16px 20px 20px 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .cloudflare-modal-overlay {
+    padding: 12px;
+  }
+
+  .cloudflare-modal-header {
+    padding: 16px 16px 12px 16px;
+  }
+
+  .cloudflare-modal-body {
+    padding: 16px;
+  }
+
+  .cloudflare-section {
+    margin-bottom: 16px;
+  }
+
+  .cloudflare-section h4 {
+    font-size: 0.95rem;
+    margin-bottom: 10px;
+  }
+
+  .cloudflare-section li {
+    padding: 6px 0;
+    font-size: 0.9rem;
+  }
+
+  .cloudflare-modal-footer {
+    padding: 12px 16px 16px 16px;
+  }
+
+  .cloudflare-modal-footer p {
     font-size: 0.85rem;
   }
 }

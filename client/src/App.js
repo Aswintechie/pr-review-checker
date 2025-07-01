@@ -24,6 +24,7 @@ function App() {
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [feedbackPrefillData, setFeedbackPrefillData] = useState({});
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [showCloudflareModal, setShowCloudflareModal] = useState(false);
 
   const themes = [
     { id: 'light', name: '☀️ Light', description: 'Clean and bright' },
@@ -576,6 +577,107 @@ function App() {
     );
   };
 
+  const renderCloudflareModal = () => {
+    if (!showCloudflareModal) return null;
+
+    return (
+      <div className='cloudflare-modal-overlay' onClick={() => setShowCloudflareModal(false)}>
+        <div className='cloudflare-modal-content' onClick={e => e.stopPropagation()}>
+          <div className='cloudflare-modal-header'>
+            <h3>🛡️ Cloudflare Security & Performance</h3>
+            <button
+              className='cloudflare-modal-close'
+              onClick={() => setShowCloudflareModal(false)}
+              type='button'
+              aria-label='Close Cloudflare info modal'
+            >
+              ✕
+            </button>
+          </div>
+          <div className='cloudflare-modal-body'>
+            <div className='cloudflare-section'>
+              <h4>🔒 Security Protection</h4>
+              <ul>
+                <li>
+                  <strong>DDoS Protection:</strong> Advanced protection against distributed
+                  denial-of-service attacks and malicious traffic.
+                </li>
+                <li>
+                  <strong>Web Application Firewall:</strong> Filters malicious requests and blocks
+                  common web threats before they reach our servers.
+                </li>
+                <li>
+                  <strong>SSL/TLS Encryption:</strong> All data transmitted between your browser and
+                  our site is encrypted with industry-standard protocols.
+                </li>
+                <li>
+                  <strong>Bot Protection:</strong> Intelligent filtering of malicious bots and
+                  automated attacks while allowing legitimate traffic.
+                </li>
+              </ul>
+            </div>
+            <div className='cloudflare-section'>
+              <h4>⚡ Performance Benefits</h4>
+              <ul>
+                <li>
+                  <strong>Global CDN:</strong> Content delivered from 300+ data centers worldwide
+                  for faster loading times.
+                </li>
+                <li>
+                  <strong>Smart Caching:</strong> Static assets cached globally to reduce server
+                  load and improve response times.
+                </li>
+                <li>
+                  <strong>Image Optimization:</strong> Automatic image compression and format
+                  optimization for faster loading.
+                </li>
+                <li>
+                  <strong>Bandwidth Optimization:</strong> Intelligent compression reduces bandwidth
+                  usage without sacrificing quality.
+                </li>
+              </ul>
+            </div>
+            <div className='cloudflare-section'>
+              <h4>🌐 Reliability Features</h4>
+              <ul>
+                <li>
+                  <strong>99.99% Uptime:</strong> Enterprise-grade infrastructure ensuring maximum
+                  availability and reliability.
+                </li>
+                <li>
+                  <strong>Load Balancing:</strong> Traffic intelligently distributed across multiple
+                  servers for optimal performance.
+                </li>
+                <li>
+                  <strong>Always Online™:</strong> Serves cached versions of your content if the
+                  origin server is temporarily unavailable.
+                </li>
+                <li>
+                  <strong>Real-time Monitoring:</strong> Continuous monitoring and automatic
+                  mitigation of potential issues.
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div className='cloudflare-modal-footer'>
+            <p>
+              <strong>Learn More:</strong> Visit{' '}
+              <a
+                href='https://www.cloudflare.com/security/'
+                target='_blank'
+                rel='noopener noreferrer'
+              >
+                Cloudflare Security
+              </a>{' '}
+              to learn more about how these features protect and accelerate your browsing
+              experience.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className={`App theme-${currentTheme}`}>
       <header className='App-header'>
@@ -610,7 +712,7 @@ function App() {
               >
                 🎨
               </button>
-                            {renderThemeDropdown()}
+              {renderThemeDropdown()}
             </div>
             <button
               className='feedback-btn'
@@ -1098,9 +1200,14 @@ function App() {
             </button>
           </div>
           <div className='footer-right'>
-            <div className='cloudflare-badge' title='Secured and accelerated by Cloudflare'>
+            <button
+              className='cloudflare-badge'
+              onClick={() => setShowCloudflareModal(true)}
+              title='Learn about Cloudflare security & performance'
+              type='button'
+            >
               🛡️ Protected by Cloudflare
-            </div>
+            </button>
           </div>
         </div>
       </footer>
@@ -1114,6 +1221,7 @@ function App() {
         />
       )}
       {renderPrivacyModal()}
+      {renderCloudflareModal()}
     </div>
   );
 }
