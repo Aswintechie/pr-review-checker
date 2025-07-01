@@ -493,45 +493,82 @@ function App() {
             <div className='privacy-section'>
               <h4>🛡️ Data Storage & Security</h4>
               <ul>
-                <li><strong>No Server Storage:</strong> This application does not store any of your data on our servers.</li>
-                <li><strong>Local Storage Only:</strong> Your GitHub tokens and recent PR history are stored locally in your browser's localStorage.</li>
-                <li><strong>Automatic Cleanup:</strong> All data is automatically cleared when you clear your browser data or use incognito mode.</li>
-                <li><strong>No Tracking:</strong> We don't track your usage or collect any personal information.</li>
+                <li>
+                  <strong>No Server Storage:</strong> This application does not store any of your
+                  data on our servers.
+                </li>
+                <li>
+                  <strong>Local Storage Only:</strong> Your GitHub tokens and recent PR history are
+                  stored locally in your browser&apos;s localStorage.
+                </li>
+                <li>
+                  <strong>Automatic Cleanup:</strong> All data is automatically cleared when you
+                  clear your browser data or use incognito mode.
+                </li>
+                <li>
+                  <strong>No Tracking:</strong> We don&apos;t track your usage or collect any
+                  personal information.
+                </li>
               </ul>
             </div>
             <div className='privacy-section'>
               <h4>🔑 GitHub Token Handling</h4>
               <ul>
-                <li><strong>Client-Side Only:</strong> Your GitHub token is processed entirely in your browser.</li>
-                <li><strong>Direct API Calls:</strong> Tokens are sent directly to GitHub's API, never to our servers.</li>
-                <li><strong>No Persistence:</strong> Tokens are not permanently stored and are cleared when you close the browser.</li>
-                <li><strong>Your Control:</strong> You can clear stored tokens anytime by clearing browser data.</li>
+                <li>
+                  <strong>Client-Side Only:</strong> Your GitHub token is processed entirely in your
+                  browser.
+                </li>
+                <li>
+                  <strong>Direct API Calls:</strong> Tokens are sent directly to GitHub&apos;s API,
+                  never to our servers.
+                </li>
+                <li>
+                  <strong>No Persistence:</strong> Tokens are not permanently stored and are cleared
+                  when you close the browser.
+                </li>
+                <li>
+                  <strong>Your Control:</strong> You can clear stored tokens anytime by clearing
+                  browser data.
+                </li>
               </ul>
             </div>
             <div className='privacy-section'>
               <h4>🌐 Third-Party Connections</h4>
               <ul>
-                <li><strong>GitHub API:</strong> Direct connection to GitHub's public API for PR analysis.</li>
-                <li><strong>Cloudflare:</strong> Used for security and performance (no data storage).</li>
-                <li><strong>No Analytics:</strong> No Google Analytics, tracking pixels, or other monitoring tools.</li>
+                <li>
+                  <strong>GitHub API:</strong> Direct connection to GitHub&apos;s public API for PR
+                  analysis.
+                </li>
+                <li>
+                  <strong>Cloudflare:</strong> Used for security and performance (no data storage).
+                </li>
+                <li>
+                  <strong>No Analytics:</strong> No Google Analytics, tracking pixels, or other
+                  monitoring tools.
+                </li>
               </ul>
             </div>
             <div className='privacy-section'>
               <h4>🧹 How to Clear Your Data</h4>
               <ul>
-                <li>Clear your browser's localStorage</li>
+                <li>Clear your browser&apos;s localStorage</li>
                 <li>Use incognito/private browsing mode</li>
                 <li>Clear site data in your browser settings</li>
-                <li>Use the "Clear History" button in the recent PRs dropdown</li>
+                <li>Use the &quot;Clear History&quot; button in the recent PRs dropdown</li>
               </ul>
             </div>
           </div>
           <div className='privacy-modal-footer'>
             <p>
               <strong>Open Source:</strong> This project is open source. You can review the code on{' '}
-              <a href='https://github.com/Aswin-coder/pr-review-checker' target='_blank' rel='noopener noreferrer'>
+              <a
+                href='https://github.com/Aswin-coder/pr-review-checker'
+                target='_blank'
+                rel='noopener noreferrer'
+              >
                 GitHub
-              </a> to verify these privacy practices.
+              </a>{' '}
+              to verify these privacy practices.
             </p>
           </div>
         </div>
