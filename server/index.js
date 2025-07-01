@@ -15,6 +15,9 @@ const crypto = require('crypto');
 const Codeowners = require('codeowners');
 require('dotenv').config();
 
+// Constants
+const MATCHED_BY_CODEOWNERS = 'Matched by codeowners library';
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -409,13 +412,6 @@ function cleanupSharedTempDir(isSync = false) {
   }
 }
 
-// Consolidated process cleanup handlers
-const handleGracefulShutdown = async signal => {
-  console.log(`📤 Received ${signal}, cleaning up...`);
-  await cleanupSharedTempDir(false);
-  process.exit(0);
-};
-
 // Process exit cleanup (synchronous - no async allowed in 'exit' event)
 process.on('exit', () => {
   try {
@@ -426,9 +422,27 @@ process.on('exit', () => {
   }
 });
 
-// Graceful shutdown on termination signals (asynchronous)
-process.on('SIGINT', async () => await handleGracefulShutdown('SIGINT'));
-process.on('SIGTERM', async () => await handleGracefulShutdown('SIGTERM'));
+// Graceful shutdown on termination signals (synchronous for reliability)
+process.on('SIGINT', () => {
+  console.log('📤 Received SIGINT, cleaning up...');
+  try {
+    cleanupSharedTempDir(true);
+    console.log('🧹 SIGINT cleanup completed successfully');
+  } catch (error) {
+    console.error('❌ SIGINT cleanup failed:', error.message);
+  }
+  process.exit(0);
+});
+process.on('SIGTERM', () => {
+  console.log('📤 Received SIGTERM, cleaning up...');
+  try {
+    cleanupSharedTempDir(true);
+    console.log('🧹 SIGTERM cleanup completed successfully');
+  } catch (error) {
+    console.error('❌ SIGTERM cleanup failed:', error.message);
+  }
+  process.exit(0);
+});
 
 // GitHub Teams Support Functions
 // fetchTeamMembers function removed (not currently used)
@@ -664,7 +678,7 @@ app.post('/api/pr-approvers', async (req, res) => {
             if (cleanOwners.length > 0) {
               fileApprovalDetails.push({
                 file,
-                pattern: 'Matched by codeowners library',
+                pattern: MATCHED_BY_CODEOWNERS,
                 owners: cleanOwners,
                 ruleIndex: -1,
               });
