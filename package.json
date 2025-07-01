@@ -1,6 +1,6 @@
 {
   "name": "pr-approval-finder",
-  "version": "6.0.0",
+  "version": "7.0.0",
   "description": "🔍 Analyze GitHub Pull Requests to determine minimum required approvals based on CODEOWNERS files",
   "main": "index.js",
   "engines": {
@@ -30,7 +30,8 @@
     "docker:run": "docker run -p 3000:3000 pr-approval-finder",
     "docker:dev": "docker-compose up --build",
     "vercel:dev": "vercel dev",
-    "vercel:deploy": "vercel --prod"
+    "vercel:deploy": "vercel --prod",
+    "sync-version": "node scripts/sync-version.js"
   },
   "keywords": [
     "github",

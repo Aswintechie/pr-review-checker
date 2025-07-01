@@ -1,8 +1,8 @@
-# �� PR Approval Finder
+# 🚀 PR Approval Finder
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-6.0.0-blue.svg?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-7.0.0-blue.svg?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-green.svg?style=for-the-badge)
 ![React](https://img.shields.io/badge/React-18.2.0-61DAFB.svg?style=for-the-badge&logo=react)
 ![Node](https://img.shields.io/badge/Node.js-18+-green.svg?style=for-the-badge&logo=node.js)
@@ -10,30 +10,26 @@
 
 **A modern web application that analyzes GitHub Pull Requests to determine minimum required approvals based on CODEOWNERS files**
 
-[🚀 Live Demo](https://pr-approval-finder.vercel.app) • [📖 Documentation](./docs) • [🐛 Report Bug](https://github.com/yourusername/pr-approval-finder/issues) • [💡 Request Feature](https://github.com/yourusername/pr-approval-finder/issues)
+[🚀 Live Demo](https://pr-reviewer.aswinlocal.in/) • [📖 Documentation](./docs) • [🐛 Report Bug](https://github.com/Aswin-coder/pr-review-checker/issues) • [💡 Request Feature](https://github.com/Aswin-coder/pr-review-checker/issues)
 
 </div>
 
----
+
 
 ## ✨ Features
-
-<div align="center">
-  <img src="https://via.placeholder.com/800x400/667eea/ffffff?text=PR+Approval+Finder+Screenshot" alt="PR Approval Finder Screenshot" width="800" />
-</div>
 
 ### 🎯 **Core Functionality**
 - **🔍 Smart CODEOWNERS Analysis** - Parses CODEOWNERS files with advanced glob pattern matching
 - **📊 Minimum Approval Calculation** - Determines exact number of approvals needed
 - **📁 File-by-File Breakdown** - Shows which files require which approvers
 - **⚡ Real-time PR Status** - Displays current approval status and progress
-- **🔄 Batch Processing** - Analyze multiple PRs simultaneously
+- **👥 Team Integration** - GitHub team support with member visualization
 
 ### 🎨 **Modern UI/UX**
 - **🎭 8 Beautiful Themes** - Light, Dark, Ocean, Forest, Sunset, Midnight, Arctic, Cherry
 - **📱 Fully Responsive** - Perfect experience on desktop, tablet, and mobile
 - **💫 Smooth Animations** - Skeleton loaders, slide effects, and micro-interactions
-- **🌟 Glassmorphism Design** - Modern UI with backdrop blur and transparency
+- **🌟 Modern Design** - Clean UI with backdrop blur and smooth transitions
 - **🎯 Accessibility First** - WCAG 2.1 compliant with keyboard navigation
 
 ### 🚀 **Advanced Features**
@@ -41,13 +37,28 @@
 - **📚 PR History** - Local storage of recent PRs with quick access
 - **🔀 Basic/Advanced Views** - Toggle between simplified and detailed analysis
 - **👥 Team Management** - GitHub team integration with member visualization
-- **⚙️ Custom Configuration** - Flexible settings for different workflows
+- **💬 Feedback System** - Built-in feedback form for user suggestions
 
 ### 🔒 **Security & Privacy**
+- **🛡️ Privacy First** - No server storage, all data kept locally
 - **🔐 Optional GitHub Tokens** - Works with public repos, supports private with tokens
-- **🚫 No Server Storage** - Tokens never stored, history kept locally only
-- **🛡️ HTTPS Only** - Secure communication with GitHub API
-- **🔒 Rate Limit Handling** - Smart retry logic with rate limit visualization
+- **🚫 No Tracking** - No analytics, cookies, or personal data collection
+- **🔒 Secure Communication** - HTTPS only with direct GitHub API calls
+- **⚙️ Rate Limit Handling** - Smart retry logic with rate limit visualization
+
+---
+
+## 🔄 How It Works
+
+Our application follows a simple yet powerful workflow to analyze your Pull Requests:
+
+![Application Workflow](./docs/images/workflow-diagram.svg)
+
+### CODEOWNERS Analysis Process
+
+Here's how we intelligently group files and determine required approvals:
+
+![CODEOWNERS Analysis Process](./docs/images/codeowners-analysis.svg)
 
 ---
 
@@ -64,8 +75,8 @@ npm >= 8.0.0
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/pr-approval-finder.git
-cd pr-approval-finder
+git clone https://github.com/Aswin-coder/pr-review-checker.git
+cd pr-review-checker
 
 # Install dependencies
 npm install
@@ -146,6 +157,22 @@ Choose from 8 professionally designed themes:
 </details>
 
 <details>
+<summary>🔒 Privacy & Security</summary>
+
+Our application prioritizes your privacy and security with comprehensive protection:
+
+![Security & Privacy Features](./docs/images/security-features.svg)
+
+**Click the 🔒 Privacy and 🛡️ Cloudflare buttons in the app footer** to view detailed information about:
+- **No Server Storage** - All data stays in your browser
+- **Local Storage Only** - Tokens and history stored locally  
+- **No Tracking** - Zero analytics or data collection
+- **Cloudflare Protection** - Enterprise-grade security and performance
+- **Open Source** - Full code transparency
+
+</details>
+
+<details>
 <summary>⚙️ Configuration Options</summary>
 
 Create `.env` files for customization:
@@ -158,7 +185,6 @@ NODE_ENV=production
 
 # Client configuration
 REACT_APP_API_URL=http://localhost:3001
-REACT_APP_GITHUB_CLIENT_ID=your_client_id
 ```
 
 </details>
@@ -167,29 +193,28 @@ REACT_APP_GITHUB_CLIENT_ID=your_client_id
 
 ## 🏗️ Architecture
 
-<div align="center">
-  <img src="https://via.placeholder.com/600x400/764ba2/ffffff?text=Architecture+Diagram" alt="Architecture Diagram" width="600" />
-</div>
-
 ### Tech Stack
 
 **Frontend**
 - ⚛️ React 18 with Hooks
-- 🎨 CSS3 with Custom Properties
-- 📱 Responsive Design
-- 🌐 Axios for HTTP requests
+- 🎨 CSS3 with Custom Properties (CSS Variables)
+- 📱 Responsive Design with CSS Grid/Flexbox
+- 🌐 Axios for API requests
+- 🎭 8-theme system with persistence
 
 **Backend**
 - 🚀 Node.js + Express
 - 🔗 GitHub REST API v3
 - 🔍 Minimatch for glob patterns
 - 🛡️ CORS enabled
+- 📧 Nodemailer for feedback system
 
 **DevOps**
-- 🔧 Vercel for deployment
+- 🚀 VPS server for production deployment
 - 📦 npm for package management
 - 🧪 Jest for testing
 - 📝 ESLint + Prettier
+- 🐳 Docker support
 
 ### Key Components
 
@@ -199,6 +224,8 @@ REACT_APP_GITHUB_CLIENT_ID=your_client_id
 ├── 📊 Progress Visualization # SVG-based progress rings
 ├── 📱 Responsive Grid       # CSS Grid for adaptive layouts
 ├── 🔍 Pattern Matching      # Advanced glob pattern support
+├── 🔒 Privacy Modal         # Comprehensive privacy information
+├── 💬 Feedback System       # User feedback collection
 └── 🚀 Performance Optimized # Lazy loading and memoization
 ```
 
@@ -221,21 +248,17 @@ npm run test:client
 npm run test:server
 ```
 
+### Test Coverage
+- ✅ Component testing with React Testing Library
+- ✅ API endpoint testing with Supertest
+- ✅ Integration testing for core workflows
+- ✅ GitHub API mocking for reliable tests
+
 ---
 
 ## 🚀 Deployment
 
-### Vercel (Recommended)
-
-```bash
-# Deploy to Vercel
-vercel
-
-# Deploy to production
-vercel --prod
-```
-
-### Docker
+### Docker (Recommended for Production)
 
 ```bash
 # Build production image
@@ -243,9 +266,12 @@ docker build -t pr-approval-finder .
 
 # Run production container
 docker run -p 3000:3000 pr-approval-finder
+
+# Or use docker-compose
+docker-compose up --build
 ```
 
-### Manual Deployment
+### VPS Server Deployment
 
 ```bash
 # Build for production
@@ -253,6 +279,21 @@ npm run build
 
 # Start production server
 npm start
+
+# Or use PM2 for process management
+pm2 start server/index.js --name pr-approval-finder
+```
+
+### Branch Preview (Vercel)
+
+> **Note**: Vercel is used exclusively for PR branch previews and development testing, not for production deployment.
+
+```bash
+# Deploy PR preview to Vercel
+vercel
+
+# Preview branch deployment
+vercel --prod
 ```
 
 ---
@@ -290,11 +331,11 @@ npm run lint:fix
 
 ## 📊 Performance
 
-- ⚡ **Lighthouse Score**: 95+ on all metrics
-- 🚀 **First Contentful Paint**: <1.5s
-- 📱 **Mobile Optimized**: Perfect mobile experience
-- 🔄 **Offline Support**: Service worker enabled
-- 📈 **Bundle Size**: <500KB gzipped
+- ⚡ **Optimized Bundle** - Tree shaking and code splitting
+- 🚀 **Fast Loading** - Skeleton loaders for perceived performance
+- 📱 **Mobile Optimized** - Touch-friendly interface
+- 🔄 **Efficient Caching** - Smart API response caching
+- 📈 **Lightweight** - Minimal dependencies
 
 ---
 
@@ -318,11 +359,25 @@ POST /api/pr-approvers
     "title": "PR Title",
     "number": 123,
     "author": "username",
-    "state": "open"
+    "state": "open",
+    "url": "https://github.com/owner/repo/pull/123"
   },
-  "minRequiredApprovals": [...],
+  "minRequiredApprovals": [
+    {
+      "files": ["src/component.js"],
+      "ownerDetails": [...],
+      "needsApproval": true,
+      "approvedBy": null
+    }
+  ],
   "totalGroupsNeedingApproval": 2,
-  "rateLimitInfo": {...}
+  "approvals": ["reviewer1"],
+  "requestedReviewers": ["reviewer2"],
+  "rateLimitInfo": {
+    "limit": 5000,
+    "remaining": 4999,
+    "resetTime": "2025-01-01T12:00:00Z"
+  }
 }
 ```
 
@@ -330,9 +385,9 @@ POST /api/pr-approvers
 
 ## 📞 Support
 
-- 📧 **Email**: support@pr-approval-finder.com
-- 💬 **Discord**: [Join our community](https://discord.gg/pr-approval-finder)
-- 🐛 **Issues**: [GitHub Issues](https://github.com/yourusername/pr-approval-finder/issues)
+- 🐛 **Issues**: [GitHub Issues](https://github.com/Aswin-coder/pr-review-checker/issues)
+- 💡 **Feature Requests**: [GitHub Issues](https://github.com/Aswin-coder/pr-review-checker/issues)
+- 💬 **Feedback**: Use the feedback button in the app
 - 📖 **Documentation**: [Full Documentation](./docs)
 
 ---
@@ -349,15 +404,30 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 🔗 GitHub API for PR and CODEOWNERS data
 - 🎨 Modern CSS techniques for beautiful UI
 - 🔍 Minimatch library for glob pattern matching
-- 🚀 Vercel for hosting and deployment
+- 🚀 VPS server for production hosting
+- 🔧 Vercel for PR branch previews
+- 🤖 Cursor AI for development assistance
+
+---
+
+## 🔍 How It Works
+
+1. **📥 Input Processing** - Validates GitHub PR URL format
+2. **🔗 API Integration** - Fetches PR data and CODEOWNERS from GitHub
+3. **🧮 Pattern Matching** - Uses minimatch to match files against CODEOWNERS patterns
+4. **👥 Team Resolution** - Resolves GitHub teams to individual members
+5. **📊 Analysis** - Calculates minimum required approvals based on file changes
+6. **🎨 Visualization** - Presents results with interactive progress indicators
 
 ---
 
 <div align="center">
 
-**© 2025 [Your Name](https://github.com/yourusername)** • *Crafted with Cursor AI*
+**© 2025 [Aswin](https://github.com/Aswin-coder)** • *Crafted with Cursor AI*
 
-[![GitHub stars](https://img.shields.io/github/stars/yourusername/pr-approval-finder?style=social)](https://github.com/yourusername/pr-approval-finder/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/yourusername/pr-approval-finder?style=social)](https://github.com/yourusername/pr-approval-finder/network/members)
+[![GitHub stars](https://img.shields.io/github/stars/Aswin-coder/pr-review-checker?style=social)](https://github.com/Aswin-coder/pr-review-checker/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/Aswin-coder/pr-review-checker?style=social)](https://github.com/Aswin-coder/pr-review-checker/network/members)
+
+**⭐ Star this repo if you find it helpful!**
 
 </div> 

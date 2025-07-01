@@ -1,0 +1,51 @@
+<svg aria-roledescription="flowchart-v2" role="graphics-document document" viewBox="-8 -8 800 400" style="max-width: 800px;" xmlns="http://www.w3.org/2000/svg" width="100%" id="codeowners-analysis">
+<style>
+#codeowners-analysis{font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:14px;fill:#333;}
+.node-rect{fill:#f9f9f9;stroke:#333;stroke-width:1px;rx:5px;}
+.node-text{text-anchor:middle;font-size:12px;fill:#333;}
+.edge-path{stroke:#666;stroke-width:2px;fill:none;marker-end:url(#arrow);}
+.phase-input{fill:#e1f5fe;stroke:#01579b;stroke-width:2px;}
+.phase-analysis{fill:#c8e6c9;stroke:#2e7d32;stroke-width:2px;}
+.phase-results{fill:#fff3e0;stroke:#ef6c00;stroke-width:2px;}
+</style>
+<defs>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+<path d="M0,0 L0,6 L9,3 z" fill="#666"/>
+</marker>
+</defs>
+
+<!-- Input Phase -->
+<rect x="10" y="50" width="120" height="60" class="node-rect phase-input"/>
+<text x="70" y="75" class="node-text">🔗 Enter PR URL</text>
+<text x="70" y="90" class="node-text">🔑 Add Token</text>
+
+<!-- Analysis Phase -->
+<rect x="180" y="30" width="100" height="40" class="node-rect phase-analysis"/>
+<text x="230" y="55" class="node-text">📡 Fetch Data</text>
+
+<rect x="180" y="90" width="100" height="40" class="node-rect phase-analysis"/>
+<text x="230" y="115" class="node-text">📄 Get Files</text>
+
+<rect x="180" y="150" width="100" height="40" class="node-rect phase-analysis"/>
+<text x="230" y="175" class="node-text">👥 Parse Owners</text>
+
+<rect x="330" y="90" width="120" height="40" class="node-rect phase-analysis"/>
+<text x="390" y="115" class="node-text">🔍 Match Files</text>
+
+<!-- Results Phase -->
+<rect x="500" y="50" width="130" height="40" class="node-rect phase-results"/>
+<text x="565" y="75" class="node-text">📊 Calculate Approvals</text>
+
+<rect x="680" y="30" width="100" height="60" class="node-rect phase-results"/>
+<text x="730" y="55" class="node-text">✅ Show Results</text>
+<text x="730" y="75" class="node-text">💾 Save History</text>
+
+<!-- Arrows -->
+<path d="M130,80 L175,80" class="edge-path"/>
+<path d="M230,70 L230,85" class="edge-path"/>
+<path d="M230,130 L230,145" class="edge-path"/>
+<path d="M280,110 L325,110" class="edge-path"/>
+<path d="M450,110 L495,70" class="edge-path"/>
+<path d="M630,70 L675,70" class="edge-path"/>
+
+</svg>

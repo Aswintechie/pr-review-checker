@@ -1,5 +1,5 @@
 /**
- * PR Approval Finder v6.0
+ * PR Approval Finder
  * Copyright (c) 2025 Aswin
  * Licensed under MIT License
  */
@@ -8,6 +8,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
 import FeedbackForm from './FeedbackForm';
+import { APP_VERSION_SHORT } from './version';
 
 function App() {
   const [prUrl, setPrUrl] = useState('');
@@ -23,6 +24,9 @@ function App() {
   const [showThemeDropdown, setShowThemeDropdown] = useState(false);
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [feedbackPrefillData, setFeedbackPrefillData] = useState({});
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [showCloudflareModal, setShowCloudflareModal] = useState(false);
+  const [showDeveloperModal, setShowDeveloperModal] = useState(false);
 
   const themes = [
     { id: 'light', name: '☀️ Light', description: 'Clean and bright' },
@@ -62,13 +66,19 @@ function App() {
       if (showThemeDropdown && !event.target.closest('.theme-container')) {
         setShowThemeDropdown(false);
       }
+      if (showPrivacyModal && !event.target.closest('.privacy-modal-content')) {
+        setShowPrivacyModal(false);
+      }
+      if (showDeveloperModal && !event.target.closest('.developer-modal-content')) {
+        setShowDeveloperModal(false);
+      }
     };
 
-    if (showHistory || showThemeDropdown) {
+    if (showHistory || showThemeDropdown || showPrivacyModal || showDeveloperModal) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showHistory, showThemeDropdown]);
+  }, [showHistory, showThemeDropdown, showPrivacyModal, showDeveloperModal]);
 
   const changeTheme = themeId => {
     setCurrentTheme(themeId);
@@ -200,6 +210,7 @@ function App() {
               className='clear-history-btn'
               onClick={clearHistory}
               title='Clear history'
+              aria-label='Clear history'
               type='button'
               data-1p-ignore
               autoComplete='off'
@@ -452,10 +463,13 @@ function App() {
         <div className='theme-content'>
           <div className='theme-grid'>
             {themes.map(theme => (
-              <div
+              <button
                 key={theme.id}
                 className={`theme-option ${currentTheme === theme.id ? 'active' : ''}`}
                 onClick={() => changeTheme(theme.id)}
+                type='button'
+                data-1p-ignore
+                autoComplete='off'
               >
                 <div className={`theme-preview theme-${theme.id}`}></div>
                 <div className='theme-info'>
@@ -463,8 +477,303 @@ function App() {
                   <div className='theme-description'>{theme.description}</div>
                 </div>
                 {currentTheme === theme.id && <div className='theme-check'>✓</div>}
-              </div>
+              </button>
             ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPrivacyModal = () => {
+    if (!showPrivacyModal) return null;
+
+    return (
+      <div className='privacy-modal-overlay'>
+        <div className='privacy-modal-content'>
+          <div className='privacy-modal-header'>
+            <h3>🔒 Privacy & Security Information</h3>
+            <button
+              className='privacy-modal-close'
+              onClick={() => setShowPrivacyModal(false)}
+              type='button'
+              aria-label='Close privacy modal'
+            >
+              ✕
+            </button>
+          </div>
+          <div className='privacy-modal-body'>
+            <div className='privacy-section'>
+              <h4>🛡️ Data Storage & Security</h4>
+              <ul>
+                <li>
+                  <strong>No Server Storage:</strong> This application does not store any of your
+                  data on our servers.
+                </li>
+                <li>
+                  <strong>Local Storage Only:</strong> Your GitHub tokens and recent PR history are
+                  stored locally in your browser&apos;s localStorage.
+                </li>
+                <li>
+                  <strong>Automatic Cleanup:</strong> All data is automatically cleared when you
+                  clear your browser data or use incognito mode.
+                </li>
+                <li>
+                  <strong>No Tracking:</strong> We don&apos;t track your usage or collect any
+                  personal information.
+                </li>
+              </ul>
+            </div>
+            <div className='privacy-section'>
+              <h4>🔑 GitHub Token Handling</h4>
+              <ul>
+                <li>
+                  <strong>Client-Side Only:</strong> Your GitHub token is processed entirely in your
+                  browser.
+                </li>
+                <li>
+                  <strong>Direct API Calls:</strong> Tokens are sent directly to GitHub&apos;s API,
+                  never to our servers.
+                </li>
+                <li>
+                  <strong>No Persistence:</strong> Tokens are not permanently stored and are cleared
+                  when you close the browser.
+                </li>
+                <li>
+                  <strong>Your Control:</strong> You can clear stored tokens anytime by clearing
+                  browser data.
+                </li>
+              </ul>
+            </div>
+            <div className='privacy-section'>
+              <h4>🌐 Third-Party Connections</h4>
+              <ul>
+                <li>
+                  <strong>GitHub API:</strong> Direct connection to GitHub&apos;s public API for PR
+                  analysis.
+                </li>
+                <li>
+                  <strong>Cloudflare:</strong> Used for security and performance (no data storage).
+                </li>
+                <li>
+                  <strong>No Analytics:</strong> No Google Analytics, tracking pixels, or other
+                  monitoring tools.
+                </li>
+              </ul>
+            </div>
+            <div className='privacy-section'>
+              <h4>🧹 How to Clear Your Data</h4>
+              <ul>
+                <li>Clear your browser&apos;s localStorage</li>
+                <li>Use incognito/private browsing mode</li>
+                <li>Clear site data in your browser settings</li>
+                <li>Use the &quot;Clear History&quot; button in the recent PRs dropdown</li>
+              </ul>
+            </div>
+          </div>
+          <div className='privacy-modal-footer'>
+            <p>
+              <strong>Open Source:</strong> This project is open source. You can review the code on{' '}
+              <a
+                href='https://github.com/Aswin-coder/pr-review-checker'
+                target='_blank'
+                rel='noopener noreferrer'
+              >
+                GitHub
+              </a>{' '}
+              to verify these privacy practices.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderCloudflareModal = () => {
+    if (!showCloudflareModal) return null;
+
+    return (
+      <div className='cloudflare-modal-overlay' onClick={() => setShowCloudflareModal(false)}>
+        <div className='cloudflare-modal-content' onClick={e => e.stopPropagation()}>
+          <div className='cloudflare-modal-header'>
+            <h3>🛡️ Cloudflare Security & Performance</h3>
+            <button
+              className='cloudflare-modal-close'
+              onClick={() => setShowCloudflareModal(false)}
+              type='button'
+              aria-label='Close Cloudflare info modal'
+            >
+              ✕
+            </button>
+          </div>
+          <div className='cloudflare-modal-body'>
+            <div className='cloudflare-section'>
+              <h4>🔒 Security Protection</h4>
+              <ul>
+                <li>
+                  <strong>DDoS Protection:</strong> Advanced protection against distributed
+                  denial-of-service attacks and malicious traffic.
+                </li>
+                <li>
+                  <strong>Web Application Firewall:</strong> Filters malicious requests and blocks
+                  common web threats before they reach our servers.
+                </li>
+                <li>
+                  <strong>SSL/TLS Encryption:</strong> All data transmitted between your browser and
+                  our site is encrypted with industry-standard protocols.
+                </li>
+                <li>
+                  <strong>Bot Protection:</strong> Intelligent filtering of malicious bots and
+                  automated attacks while allowing legitimate traffic.
+                </li>
+              </ul>
+            </div>
+            <div className='cloudflare-section'>
+              <h4>⚡ Performance Benefits</h4>
+              <ul>
+                <li>
+                  <strong>Global CDN:</strong> Content delivered from 300+ data centers worldwide
+                  for faster loading times.
+                </li>
+                <li>
+                  <strong>Smart Caching:</strong> Static assets cached globally to reduce server
+                  load and improve response times.
+                </li>
+                <li>
+                  <strong>Image Optimization:</strong> Automatic image compression and format
+                  optimization for faster loading.
+                </li>
+                <li>
+                  <strong>Bandwidth Optimization:</strong> Intelligent compression reduces bandwidth
+                  usage without sacrificing quality.
+                </li>
+              </ul>
+            </div>
+            <div className='cloudflare-section'>
+              <h4>🌐 Reliability Features</h4>
+              <ul>
+                <li>
+                  <strong>99.99% Uptime:</strong> Enterprise-grade infrastructure ensuring maximum
+                  availability and reliability.
+                </li>
+                <li>
+                  <strong>Load Balancing:</strong> Traffic intelligently distributed across multiple
+                  servers for optimal performance.
+                </li>
+                <li>
+                  <strong>Always Online™:</strong> Serves cached versions of your content if the
+                  origin server is temporarily unavailable.
+                </li>
+                <li>
+                  <strong>Real-time Monitoring:</strong> Continuous monitoring and automatic
+                  mitigation of potential issues.
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div className='cloudflare-modal-footer'>
+            <p>
+              <strong>Learn More:</strong> Visit{' '}
+              <a
+                href='https://www.cloudflare.com/security/'
+                target='_blank'
+                rel='noopener noreferrer'
+              >
+                Cloudflare Security
+              </a>{' '}
+              to learn more about how these features protect and accelerate your browsing
+              experience.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderDeveloperModal = () => {
+    if (!showDeveloperModal) return null;
+
+    return (
+      <div className='developer-modal-overlay'>
+        <div className='developer-modal-content'>
+          <div className='developer-modal-header'>
+            <h3>🚧 Development Status</h3>
+            <button
+              className='developer-modal-close'
+              onClick={() => setShowDeveloperModal(false)}
+              type='button'
+              aria-label='Close'
+            >
+              ×
+            </button>
+          </div>
+          <div className='developer-modal-body'>
+            <div className='developer-section'>
+              <h4>👨‍💻 Current Status</h4>
+              <ul>
+                <li>
+                  <strong>Version:</strong> v{APP_VERSION_SHORT} - Actively under development
+                </li>
+                <li>
+                  <strong>Features:</strong> Core functionality is stable and tested
+                </li>
+                <li>
+                  <strong>Updates:</strong> Regular improvements and bug fixes
+                </li>
+                <li>
+                  <strong>Feedback:</strong> User suggestions help drive development priorities
+                </li>
+              </ul>
+            </div>
+
+            <div className='developer-section'>
+              <h4>🐛 Known Areas</h4>
+              <ul>
+                <li>
+                  <strong>CODEOWNERS parsing:</strong> Complex patterns may need refinement
+                </li>
+                <li>
+                  <strong>Team detection:</strong> Some edge cases in team member resolution
+                </li>
+                <li>
+                  <strong>UI/UX:</strong> Continuously improving based on user feedback
+                </li>
+                <li>
+                  <strong>Performance:</strong> Optimizing for large repositories
+                </li>
+              </ul>
+            </div>
+
+            <div className='developer-section'>
+              <h4>💬 Help Us Improve</h4>
+              <p>
+                Your feedback is invaluable! If you encounter any issues, have suggestions, or want
+                to report bugs, please let us know:
+              </p>
+              <button
+                className='developer-feedback-btn'
+                onClick={() => {
+                  setFeedbackPrefillData({
+                    type: 'bug',
+                    subject: 'Bug Report / Feature Request',
+                    message: 'I found an issue or have a suggestion:\n\n',
+                  });
+                  setShowFeedbackForm(true);
+                  setShowDeveloperModal(false);
+                }}
+                type='button'
+              >
+                🚀 Share Feedback
+              </button>
+            </div>
+          </div>
+          <div className='developer-modal-footer'>
+            <p>
+              Built with ❤️ by{' '}
+              <a href='https://github.com/Aswin-coder' target='_blank' rel='noopener noreferrer'>
+                Aswin
+              </a>
+            </p>
           </div>
         </div>
       </div>
@@ -476,7 +785,7 @@ function App() {
       <header className='App-header'>
         <div className='header-content'>
           <div>
-            <h1>🔍 PR Approval Finder v6.0</h1>
+            <h1>🔍 PR Approval Finder</h1>
             <p>Find minimum required approvals for your Pull Request</p>
           </div>
           <div className='header-controls'>
@@ -485,6 +794,7 @@ function App() {
                 className='history-btn'
                 onClick={toggleHistory}
                 title='Recent PRs'
+                aria-label='Recent PRs'
                 type='button'
                 data-1p-ignore
                 autoComplete='off'
@@ -494,21 +804,12 @@ function App() {
               </button>
               {renderHistoryDropdown()}
             </div>
-            <button
-              className='feedback-btn'
-              onClick={() => setShowFeedbackForm(true)}
-              title='Send feedback'
-              type='button'
-              data-1p-ignore
-              autoComplete='off'
-            >
-              💬
-            </button>
             <div className='theme-container'>
               <button
                 className='theme-toggle'
                 onClick={toggleThemeDropdown}
                 title='Choose theme'
+                aria-label='Choose theme'
                 type='button'
                 data-1p-ignore
                 autoComplete='off'
@@ -517,6 +818,17 @@ function App() {
               </button>
               {renderThemeDropdown()}
             </div>
+            <button
+              className='feedback-btn'
+              onClick={() => setShowFeedbackForm(true)}
+              title='Send feedback'
+              aria-label='Send feedback'
+              type='button'
+              data-1p-ignore
+              autoComplete='off'
+            >
+              💬
+            </button>
           </div>
         </div>
       </header>
@@ -650,6 +962,7 @@ function App() {
                   rel='noopener noreferrer'
                   className='pr-link-btn'
                   title='Open PR in GitHub'
+                  aria-label='Open PR in GitHub'
                 >
                   🔗 View PR
                 </a>
@@ -982,10 +1295,36 @@ function App() {
               © 2025 Aswin
             </div>
           </div>
+          <div className='footer-center'>
+            <button
+              className='footer-privacy-btn'
+              onClick={() => setShowPrivacyModal(true)}
+              title='Privacy & Security Information'
+              aria-label='Privacy & Security Information'
+              type='button'
+            >
+              🔒 Privacy
+            </button>
+          </div>
           <div className='footer-right'>
-            <div className='cloudflare-badge' title='Secured and accelerated by Cloudflare'>
+            <button
+              className='cloudflare-badge'
+              onClick={() => setShowCloudflareModal(true)}
+              title='Learn about Cloudflare security & performance'
+              aria-label='Learn about Cloudflare security & performance'
+              type='button'
+            >
               🛡️ Protected by Cloudflare
-            </div>
+            </button>
+            <button
+              className='version-info'
+              onClick={() => setShowDeveloperModal(true)}
+              title='Developer Info & Status'
+              aria-label='Developer Info & Status'
+              type='button'
+            >
+              v{APP_VERSION_SHORT}
+            </button>
           </div>
         </div>
       </footer>
@@ -998,6 +1337,9 @@ function App() {
           prefillData={feedbackPrefillData}
         />
       )}
+      {renderPrivacyModal()}
+      {renderCloudflareModal()}
+      {renderDeveloperModal()}
     </div>
   );
 }

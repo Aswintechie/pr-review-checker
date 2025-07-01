@@ -18,7 +18,7 @@ describe('App Component', () => {
 
   test('renders main heading', () => {
     render(<App />);
-    const heading = screen.getByText(/PR Approval Finder v6.0/i);
+    const heading = screen.getByText(/PR Approval Finder/i);
     expect(heading).toBeInTheDocument();
   });
 
