@@ -454,20 +454,26 @@ function App() {
         <div className='theme-header'>
           <h3>🎨 Choose Theme</h3>
         </div>
-        <div className='theme-options'>
-          {themes.map(theme => (
-            <button
-              key={theme.id}
-              className={`theme-option ${currentTheme === theme.id ? 'active' : ''}`}
-              onClick={() => changeTheme(theme.id)}
-              type='button'
-              data-1p-ignore
-              autoComplete='off'
-            >
-              <span className='theme-name'>{theme.name}</span>
-              <span className='theme-description'>{theme.description}</span>
-            </button>
-          ))}
+        <div className='theme-content'>
+          <div className='theme-grid'>
+            {themes.map(theme => (
+              <button
+                key={theme.id}
+                className={`theme-option ${currentTheme === theme.id ? 'active' : ''}`}
+                onClick={() => changeTheme(theme.id)}
+                type='button'
+                data-1p-ignore
+                autoComplete='off'
+              >
+                <div className={`theme-preview theme-${theme.id}`}></div>
+                <div className='theme-info'>
+                  <div className='theme-name'>{theme.name}</div>
+                  <div className='theme-description'>{theme.description}</div>
+                </div>
+                {currentTheme === theme.id && <div className='theme-check'>✓</div>}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     );
