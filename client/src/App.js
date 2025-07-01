@@ -599,6 +599,19 @@ function App() {
               </button>
               {renderHistoryDropdown()}
             </div>
+            <div className='theme-container'>
+              <button
+                className='theme-toggle'
+                onClick={toggleThemeDropdown}
+                title='Choose theme'
+                type='button'
+                data-1p-ignore
+                autoComplete='off'
+              >
+                🎨
+              </button>
+              {renderThemeDropdown()}
+            </div>
             <button
               className='privacy-btn'
               onClick={() => setShowPrivacyModal(true)}
@@ -619,19 +632,6 @@ function App() {
             >
               💬
             </button>
-            <div className='theme-container'>
-              <button
-                className='theme-toggle'
-                onClick={toggleThemeDropdown}
-                title='Choose theme'
-                type='button'
-                data-1p-ignore
-                autoComplete='off'
-              >
-                🎨
-              </button>
-              {renderThemeDropdown()}
-            </div>
           </div>
         </div>
       </header>
