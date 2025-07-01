@@ -1890,6 +1890,20 @@ section h2 {
   transform: scale(1);
 }
 
+.version-info {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  opacity: 0.6;
+  margin-top: 0.25rem;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.5px;
+  transition: opacity 0.3s ease;
+}
+
+.version-info:hover {
+  opacity: 0.8;
+}
+
 .cloudflare-badge {
   color: rgba(255, 255, 255, 0.7);
   font-size: 0.8rem;
@@ -1981,6 +1995,10 @@ section h2 {
 
   .copyright {
     font-size: 0.8rem;
+  }
+
+  .version-info {
+    font-size: 0.7rem;
   }
 }
 
