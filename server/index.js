@@ -319,7 +319,7 @@ async function initializeSharedBaseDir() {
   initializationPromise = (async () => {
     const tempDir = os.tmpdir();
     const proposedDir = path.join(tempDir, 'codeowners-base');
-    
+
     try {
       await fs.promises.mkdir(proposedDir, { recursive: true });
       sharedBaseTempDir = proposedDir;
@@ -387,9 +387,7 @@ async function analyzeCodeownersContent(codeownersContent, changedFiles) {
     try {
       await fs.promises.rm(tempCodeownersDir, { recursive: true, force: true });
     } catch (cleanupError) {
-      console.warn('  Cleanup: Failed to remove temp directory:', cleanupError.message);
-      console.warn('  Request ID:', requestId);
-      console.warn('  Temp Directory:', tempCodeownersDir);
+      console.info(`Cleanup failed for Request ID ${requestId} - Temp Directory: ${tempCodeownersDir}`);
     }
   }
 }
@@ -418,13 +416,11 @@ const handleGracefulShutdown = async signal => {
 
 // Process exit cleanup (synchronous - no async allowed in 'exit' event)
 process.on('exit', () => {
-  if (sharedBaseTempDir && sharedBaseTempDir !== os.tmpdir()) {
-    try {
-      fs.rmSync(sharedBaseTempDir, { recursive: true, force: true });
-      console.log('🧹 Process exit cleanup completed successfully');
-    } catch (error) {
-      console.error('❌ Process exit cleanup failed:', error.message);
-    }
+  try {
+    cleanupSharedTempDir(true);
+    console.log('🧹 Process exit cleanup completed successfully');
+  } catch (error) {
+    console.error('❌ Process exit cleanup failed:', error.message);
   }
 });
 
