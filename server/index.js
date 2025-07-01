@@ -11,6 +11,7 @@ const nodemailer = require('nodemailer');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const crypto = require('crypto');
 const Codeowners = require('codeowners');
 require('dotenv').config();
 
@@ -322,7 +323,7 @@ async function analyzeCodeownersContent(codeownersContent, changedFiles) {
   await initializeSharedBaseDir();
 
   // Create unique subdirectory for this request to avoid race conditions
-  const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const requestId = `${Date.now()}-${crypto.randomUUID()}`;
   const tempCodeownersDir = path.join(sharedBaseTempDir, `req-${requestId}`);
   const tempCodeownersFile = path.join(tempCodeownersDir, 'CODEOWNERS');
 
