@@ -127,6 +127,17 @@ function App() {
     setShowHistory(false);
   };
 
+  const deleteFromHistory = (urlToDelete, event) => {
+    // Prevent the click event from bubbling up to the history item
+    event.stopPropagation();
+
+    setRecentPRs(prev => {
+      const filtered = prev.filter(pr => pr.url !== urlToDelete);
+      localStorage.setItem('recentPRs', JSON.stringify(filtered));
+      return filtered;
+    });
+  };
+
   const handleSubmit = async e => {
     e.preventDefault();
     setLoading(true);
@@ -243,6 +254,14 @@ function App() {
                       <span className='history-badge pending'>{pr.needsApproval} needed</span>
                     )}
                   </div>
+                  <button
+                    className='history-delete-btn'
+                    onClick={e => deleteFromHistory(pr.url, e)}
+                    title={`Delete "${pr.title}" from history`}
+                    aria-label={`Delete "${pr.title}" from history`}
+                  >
+                    🗑️
+                  </button>
                 </div>
               ))}
             </div>
