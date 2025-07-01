@@ -395,22 +395,21 @@ function cleanupSharedTempDir(isSync = false) {
   }
 }
 
-// Cleanup shared base directory on process exit (synchronous)
+// Consolidated process cleanup handlers
+const handleGracefulShutdown = async (signal) => {
+  console.log(`📤 Received ${signal}, cleaning up...`);
+  await cleanupSharedTempDir(false);
+  process.exit(0);
+};
+
+// Process exit cleanup (synchronous - no async allowed in 'exit' event)
 process.on('exit', () => {
   cleanupSharedTempDir(true);
 });
 
-// Cleanup shared base directory on SIGINT (asynchronous)
-process.on('SIGINT', async () => {
-  await cleanupSharedTempDir(false);
-  process.exit(0);
-});
-
-// Cleanup on other termination signals for robustness
-process.on('SIGTERM', async () => {
-  await cleanupSharedTempDir(false);
-  process.exit(0);
-});
+// Graceful shutdown on termination signals (asynchronous)
+process.on('SIGINT', () => handleGracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => handleGracefulShutdown('SIGTERM'));
 
 // GitHub Teams Support Functions
 // fetchTeamMembers function removed (not currently used)
