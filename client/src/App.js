@@ -209,6 +209,7 @@ function App() {
               className='clear-history-btn'
               onClick={clearHistory}
               title='Clear history'
+              aria-label='Clear history'
               type='button'
               data-1p-ignore
               autoComplete='off'
@@ -792,6 +793,7 @@ function App() {
                 className='history-btn'
                 onClick={toggleHistory}
                 title='Recent PRs'
+                aria-label='Recent PRs'
                 type='button'
                 data-1p-ignore
                 autoComplete='off'
@@ -806,6 +808,7 @@ function App() {
                 className='theme-toggle'
                 onClick={toggleThemeDropdown}
                 title='Choose theme'
+                aria-label='Choose theme'
                 type='button'
                 data-1p-ignore
                 autoComplete='off'
@@ -818,6 +821,7 @@ function App() {
               className='feedback-btn'
               onClick={() => setShowFeedbackForm(true)}
               title='Send feedback'
+              aria-label='Send feedback'
               type='button'
               data-1p-ignore
               autoComplete='off'
@@ -957,6 +961,7 @@ function App() {
                   rel='noopener noreferrer'
                   className='pr-link-btn'
                   title='Open PR in GitHub'
+                  aria-label='Open PR in GitHub'
                 >
                   🔗 View PR
                 </a>
@@ -1294,6 +1299,7 @@ function App() {
               className='footer-privacy-btn'
               onClick={() => setShowPrivacyModal(true)}
               title='Privacy & Security Information'
+              aria-label='Privacy & Security Information'
               type='button'
             >
               🔒 Privacy
@@ -1304,6 +1310,7 @@ function App() {
               className='cloudflare-badge'
               onClick={() => setShowCloudflareModal(true)}
               title='Learn about Cloudflare security & performance'
+              aria-label='Learn about Cloudflare security & performance'
               type='button'
             >
               🛡️ Protected by Cloudflare
@@ -1312,6 +1319,7 @@ function App() {
               className='version-info'
               onClick={() => setShowDeveloperModal(true)}
               title='Developer Info & Status'
+              aria-label='Developer Info & Status'
               type='button'
             >
               v7.0
