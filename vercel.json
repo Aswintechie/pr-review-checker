@@ -5,11 +5,6 @@
   "outputDirectory": "client/build",
   "installCommand": "npm install && cd client && npm install && cd ../server && npm install",
   "framework": "create-react-app",
-  "functions": {
-    "server/index.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
   "headers": [
     {
       "source": "/static/(.*)",
