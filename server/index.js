@@ -9,6 +9,8 @@ const cors = require('cors');
 const axios = require('axios');
 const nodemailer = require('nodemailer');
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
 const Codeowners = require('codeowners');
 require('dotenv').config();
 
@@ -300,9 +302,8 @@ if (process.env.SMTP_USER && process.env.SMTP_PASS) {
 let sharedCodeownersDir = null;
 
 async function analyzeCodeownersContent(codeownersContent, changedFiles) {
-  const fs = require('fs');
-  const tempDir = require('os').tmpdir();
-  
+  const tempDir = os.tmpdir();
+
   // Create or reuse shared temp directory
   if (!sharedCodeownersDir) {
     sharedCodeownersDir = path.join(tempDir, 'codeowners-shared');
@@ -312,16 +313,16 @@ async function analyzeCodeownersContent(codeownersContent, changedFiles) {
       // Directory might already exist, which is fine
     }
   }
-  
+
   const tempCodeownersFile = path.join(sharedCodeownersDir, 'CODEOWNERS');
-  
+
   try {
     // Update the CODEOWNERS file content (reuse directory, just update file)
     fs.writeFileSync(tempCodeownersFile, codeownersContent);
-    
+
     // Create codeowners instance
     const codeowners = new Codeowners(sharedCodeownersDir);
-    
+
     // Process all files and return results
     const results = [];
     for (const file of changedFiles) {
@@ -333,7 +334,7 @@ async function analyzeCodeownersContent(codeownersContent, changedFiles) {
         results.push({ file, owners: [] });
       }
     }
-    
+
     return results;
   } catch (error) {
     console.warn('Error in analyzeCodeownersContent:', error.message);
@@ -345,7 +346,6 @@ async function analyzeCodeownersContent(codeownersContent, changedFiles) {
 // Cleanup function for graceful shutdown
 process.on('exit', () => {
   if (sharedCodeownersDir) {
-    const fs = require('fs');
     try {
       fs.rmSync(sharedCodeownersDir, { recursive: true, force: true });
     } catch (error) {
@@ -564,7 +564,7 @@ app.post('/api/pr-approvers', async (req, res) => {
       // Use optimized codeowners analysis with reusable temp directory
       try {
         const fileOwnerResults = await analyzeCodeownersContent(codeownersContent, changedFiles);
-        
+
         // Process each file's owners
         for (const { file, owners: fileOwners } of fileOwnerResults) {
           if (fileOwners && fileOwners.length > 0) {
@@ -584,7 +584,7 @@ app.post('/api/pr-approvers', async (req, res) => {
                   /^[a-zA-Z0-9\-_/]+$/.test(owner)
                 );
               });
-            
+
             if (cleanOwners.length > 0) {
               fileApprovalDetails.push({
                 file,
@@ -612,10 +612,9 @@ app.post('/api/pr-approvers', async (req, res) => {
             });
           }
         }
-        
       } catch (error) {
         console.warn('Error using codeowners library, falling back to no analysis:', error.message);
-        
+
         // Add all files as having no owners if library fails
         for (const file of changedFiles) {
           fileApprovalDetails.push({
