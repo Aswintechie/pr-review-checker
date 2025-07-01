@@ -301,24 +301,40 @@ if (process.env.SMTP_USER && process.env.SMTP_PASS) {
 
 // Optimized temp directory management with shared base directory
 let sharedBaseTempDir = null;
+let initializationPromise = null;
 
 // Initialize shared base directory at startup for optimal performance
 async function initializeSharedBaseDir() {
-  if (!sharedBaseTempDir) {
+  // Return existing promise if initialization is already in progress
+  if (initializationPromise) {
+    return initializationPromise;
+  }
+
+  // If already initialized, return immediately
+  if (sharedBaseTempDir) {
+    return Promise.resolve();
+  }
+
+  // Create and store the initialization promise to prevent race conditions
+  initializationPromise = (async () => {
     const tempDir = os.tmpdir();
-    sharedBaseTempDir = path.join(tempDir, 'codeowners-base');
+    const proposedDir = path.join(tempDir, 'codeowners-base');
+    
     try {
-      await fs.promises.mkdir(sharedBaseTempDir, { recursive: true });
+      await fs.promises.mkdir(proposedDir, { recursive: true });
+      sharedBaseTempDir = proposedDir;
     } catch (error) {
       console.warn('Could not create shared base temp directory:');
       console.warn('  Error Message:', error.message);
       console.warn('  Error Stack:', error.stack);
-      console.warn('  Attempted Path:', sharedBaseTempDir);
+      console.warn('  Attempted Path:', proposedDir);
       console.warn('  Fallback: Using system temp directory directly');
       // Fallback to using system temp directory directly
       sharedBaseTempDir = tempDir;
     }
-  }
+  })();
+
+  return initializationPromise;
 }
 
 // Thread-safe CODEOWNERS analysis with optimized directory management
