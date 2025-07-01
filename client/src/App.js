@@ -610,18 +610,8 @@ function App() {
               >
                 🎨
               </button>
-              {renderThemeDropdown()}
+                            {renderThemeDropdown()}
             </div>
-            <button
-              className='privacy-btn'
-              onClick={() => setShowPrivacyModal(true)}
-              title='Privacy & Security info'
-              type='button'
-              data-1p-ignore
-              autoComplete='off'
-            >
-              🔒
-            </button>
             <button
               className='feedback-btn'
               onClick={() => setShowFeedbackForm(true)}
@@ -1096,6 +1086,16 @@ function App() {
             <div className='copyright' title='Assisted with Cursor AI'>
               © 2025 Aswin
             </div>
+          </div>
+          <div className='footer-center'>
+            <button
+              className='footer-privacy-btn'
+              onClick={() => setShowPrivacyModal(true)}
+              title='Privacy & Security Information'
+              type='button'
+            >
+              🔒 Privacy
+            </button>
           </div>
           <div className='footer-right'>
             <div className='cloudflare-badge' title='Secured and accelerated by Cloudflare'>
