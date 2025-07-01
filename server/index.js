@@ -298,31 +298,23 @@ if (process.env.SMTP_USER && process.env.SMTP_PASS) {
   console.log('📧 No email configuration found - feedback will only be logged to console');
 }
 
-// Optimized CODEOWNERS analysis with reusable temp directory
-let sharedCodeownersDir = null;
-
+// Thread-safe CODEOWNERS analysis with per-request directories
 async function analyzeCodeownersContent(codeownersContent, changedFiles) {
   const tempDir = os.tmpdir();
-
-  // Create or reuse shared temp directory
-  if (!sharedCodeownersDir) {
-    sharedCodeownersDir = path.join(tempDir, 'codeowners-shared');
-    try {
-      fs.mkdirSync(sharedCodeownersDir, { recursive: true });
-    } catch (error) {
-      // Directory might already exist, which is fine
-    }
-  }
-
-  const tempCodeownersFile = path.join(sharedCodeownersDir, 'CODEOWNERS');
-
+  
+  // Create unique directory per request to avoid race conditions
+  const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const tempCodeownersDir = path.join(tempDir, `codeowners-${requestId}`);
+  const tempCodeownersFile = path.join(tempCodeownersDir, 'CODEOWNERS');
+  
   try {
-    // Update the CODEOWNERS file content (reuse directory, just update file)
-    fs.writeFileSync(tempCodeownersFile, codeownersContent);
-
-    // Create codeowners instance
-    const codeowners = new Codeowners(sharedCodeownersDir);
-
+    // Create unique directory and CODEOWNERS file for this request (non-blocking)
+    await fs.promises.mkdir(tempCodeownersDir, { recursive: true });
+    await fs.promises.writeFile(tempCodeownersFile, codeownersContent);
+    
+    // Create codeowners instance for this request
+    const codeowners = new Codeowners(tempCodeownersDir);
+    
     // Process all files and return results
     const results = [];
     for (const file of changedFiles) {
@@ -334,25 +326,26 @@ async function analyzeCodeownersContent(codeownersContent, changedFiles) {
         results.push({ file, owners: [] });
       }
     }
-
+    
+    // Clean up temp directory immediately after use (non-blocking)
+    await fs.promises.rm(tempCodeownersDir, { recursive: true, force: true });
+    
     return results;
   } catch (error) {
     console.warn('Error in analyzeCodeownersContent:', error.message);
+    
+    // Clean up temp directory if it exists (non-blocking)
+    try {
+      await fs.promises.access(tempCodeownersDir);
+      await fs.promises.rm(tempCodeownersDir, { recursive: true, force: true });
+    } catch (cleanupError) {
+      // Directory doesn't exist or cleanup failed, which is fine for cleanup
+    }
+    
     // Return empty results for all files if there's an error
     return changedFiles.map(file => ({ file, owners: [] }));
   }
 }
-
-// Cleanup function for graceful shutdown
-process.on('exit', () => {
-  if (sharedCodeownersDir) {
-    try {
-      fs.rmSync(sharedCodeownersDir, { recursive: true, force: true });
-    } catch (error) {
-      // Ignore cleanup errors
-    }
-  }
-});
 
 // GitHub Teams Support Functions
 // fetchTeamMembers function removed (not currently used)
