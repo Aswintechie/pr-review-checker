@@ -1194,9 +1194,7 @@ function App() {
             <div className='copyright' title='Assisted with Cursor AI'>
               © 2025 Aswin
             </div>
-            <div className='version-info'>
-              v7.0
-            </div>
+            <div className='version-info'>v7.0</div>
           </div>
           <div className='footer-center'>
             <button
