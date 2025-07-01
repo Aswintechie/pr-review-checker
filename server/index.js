@@ -301,20 +301,20 @@ if (process.env.SMTP_USER && process.env.SMTP_PASS) {
 // Thread-safe CODEOWNERS analysis with per-request directories
 async function analyzeCodeownersContent(codeownersContent, changedFiles) {
   const tempDir = os.tmpdir();
-  
+
   // Create unique directory per request to avoid race conditions
   const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   const tempCodeownersDir = path.join(tempDir, `codeowners-${requestId}`);
   const tempCodeownersFile = path.join(tempCodeownersDir, 'CODEOWNERS');
-  
+
   try {
     // Create unique directory and CODEOWNERS file for this request (non-blocking)
     await fs.promises.mkdir(tempCodeownersDir, { recursive: true });
     await fs.promises.writeFile(tempCodeownersFile, codeownersContent);
-    
+
     // Create codeowners instance for this request
     const codeowners = new Codeowners(tempCodeownersDir);
-    
+
     // Process all files and return results
     const results = [];
     for (const file of changedFiles) {
@@ -326,14 +326,14 @@ async function analyzeCodeownersContent(codeownersContent, changedFiles) {
         results.push({ file, owners: [] });
       }
     }
-    
+
     // Clean up temp directory immediately after use (non-blocking)
     await fs.promises.rm(tempCodeownersDir, { recursive: true, force: true });
-    
+
     return results;
   } catch (error) {
     console.warn('Error in analyzeCodeownersContent:', error.message);
-    
+
     // Clean up temp directory if it exists (non-blocking)
     try {
       await fs.promises.access(tempCodeownersDir);
@@ -341,7 +341,7 @@ async function analyzeCodeownersContent(codeownersContent, changedFiles) {
     } catch (cleanupError) {
       // Directory doesn't exist or cleanup failed, which is fine for cleanup
     }
-    
+
     // Return empty results for all files if there's an error
     return changedFiles.map(file => ({ file, owners: [] }));
   }
