@@ -569,29 +569,36 @@ body {
   align-items: center;
   gap: 1rem;
   padding: 0.75rem;
+  border: none;
   border-radius: 12px;
+  background: none;
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
+  width: 100%;
+  text-align: left;
 }
 
 .theme-option:hover {
   background: var(--bg-secondary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .theme-option.active {
   background: var(--bg-tertiary);
-  border: 2px solid var(--border-secondary);
+  box-shadow: 0 0 0 2px var(--border-secondary), 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .theme-preview {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  border: 2px solid var(--border-primary);
+  border: 1px solid var(--border-primary);
   flex-shrink: 0;
   position: relative;
   overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Theme Preview Colors */
@@ -2930,11 +2937,11 @@ section h2 {
     min-width: 260px;
     max-width: calc(100vw - 1rem);
   }
-  
+
   .theme-dropdown {
     max-width: 300px;
   }
-  
+
   .history-dropdown {
     max-width: 320px;
     max-height: 350px;
