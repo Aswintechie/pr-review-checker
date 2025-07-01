@@ -1163,6 +1163,27 @@ app.use((req, res, _next) => {
   res.status(404).json({ error: 'Not found' });
 });
 
+// Cleanup function for tests
+const cleanup = async () => {
+  return new Promise((resolve) => {
+    if (emailTransporter && typeof emailTransporter.close === 'function') {
+      // Set a timeout to prevent hanging
+      const timeout = setTimeout(() => {
+        emailTransporter = null;
+        resolve();
+      }, 1000);
+
+      emailTransporter.close(() => {
+        clearTimeout(timeout);
+        emailTransporter = null;
+        resolve();
+      });
+    } else {
+      resolve();
+    }
+  });
+};
+
 // Only start the server if this file is run directly (not imported for testing)
 if (require.main === module) {
   app.listen(PORT, () => {
@@ -1171,3 +1192,4 @@ if (require.main === module) {
 }
 
 module.exports = app;
+module.exports.cleanup = cleanup;
