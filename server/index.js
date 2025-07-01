@@ -310,7 +310,11 @@ async function initializeSharedBaseDir() {
     try {
       await fs.promises.mkdir(sharedBaseTempDir, { recursive: true });
     } catch (error) {
-      console.warn('Could not create shared base temp directory:', error.message);
+      console.warn('Could not create shared base temp directory:');
+      console.warn('  Error Message:', error.message);
+      console.warn('  Error Stack:', error.stack);
+      console.warn('  Attempted Path:', sharedBaseTempDir);
+      console.warn('  Fallback: Using system temp directory directly');
       // Fallback to using system temp directory directly
       sharedBaseTempDir = tempDir;
     }
@@ -342,7 +346,10 @@ async function analyzeCodeownersContent(codeownersContent, changedFiles) {
         const owners = codeowners.getOwner(file);
         results.push({ file, owners });
       } catch (fileError) {
-        console.warn(`Error getting owners for file ${file}:`, fileError.message);
+        console.warn(`Error getting owners for file ${file}:`);
+        console.warn('  File Error Message:', fileError.message);
+        console.warn('  File Error Stack:', fileError.stack);
+        console.warn('  Request ID:', requestId);
         results.push({ file, owners: [] });
       }
     }
@@ -352,14 +359,21 @@ async function analyzeCodeownersContent(codeownersContent, changedFiles) {
 
     return results;
   } catch (error) {
-    console.warn('Error in analyzeCodeownersContent:', error.message);
+    console.warn('Error in analyzeCodeownersContent:');
+    console.warn('  Message:', error.message);
+    console.warn('  Stack:', error.stack);
+    console.warn('  Request ID:', requestId);
+    console.warn('  Temp Directory:', tempCodeownersDir);
+    console.warn('  Changed Files Count:', changedFiles.length);
+    console.warn('  CODEOWNERS Content Length:', codeownersContent.length);
 
     // Clean up request-specific directory on error
     try {
       await fs.promises.access(tempCodeownersDir);
       await fs.promises.rm(tempCodeownersDir, { recursive: true, force: true });
+      console.warn('  Cleanup: Successfully removed temp directory');
     } catch (cleanupError) {
-      // Cleanup failed, which is fine
+      console.warn('  Cleanup: Failed to remove temp directory:', cleanupError.message);
     }
 
     // Return empty results for all files if there's an error
