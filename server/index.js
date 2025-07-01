@@ -387,7 +387,9 @@ async function analyzeCodeownersContent(codeownersContent, changedFiles) {
     try {
       await fs.promises.rm(tempCodeownersDir, { recursive: true, force: true });
     } catch (cleanupError) {
-      console.info(`Cleanup failed for Request ID ${requestId} - Temp Directory: ${tempCodeownersDir}`);
+      console.info(
+        `Cleanup failed for Request ID ${requestId} - Temp Directory: ${tempCodeownersDir}`
+      );
     }
   }
 }
