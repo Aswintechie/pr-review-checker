@@ -1892,8 +1892,8 @@ section h2 {
 
 .version-info {
   font-size: 0.75rem;
-  color: var(--text-tertiary);
-  opacity: 0.6;
+  color: var(--text-secondary);
+  opacity: 0.8;
   margin-top: 0.25rem;
   font-family: 'Courier New', monospace;
   letter-spacing: 0.5px;
@@ -1901,7 +1901,7 @@ section h2 {
 }
 
 .version-info:hover {
-  opacity: 0.8;
+  opacity: 1;
 }
 
 .cloudflare-badge {
