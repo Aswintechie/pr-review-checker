@@ -587,7 +587,9 @@ body {
 
 .theme-option.active {
   background: var(--bg-tertiary);
-  box-shadow: 0 0 0 2px var(--border-secondary), 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow:
+    0 0 0 2px var(--border-secondary),
+    0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .theme-preview {

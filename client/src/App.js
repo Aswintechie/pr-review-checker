@@ -745,8 +745,8 @@ function App() {
             <div className='developer-section'>
               <h4>💬 Help Us Improve</h4>
               <p>
-                Your feedback is invaluable! If you encounter any issues, have suggestions, or
-                want to report bugs, please let us know:
+                Your feedback is invaluable! If you encounter any issues, have suggestions, or want
+                to report bugs, please let us know:
               </p>
               <button
                 className='developer-feedback-btn'
@@ -768,11 +768,7 @@ function App() {
           <div className='developer-modal-footer'>
             <p>
               Built with ❤️ by{' '}
-              <a
-                href='https://github.com/Aswin-coder'
-                target='_blank'
-                rel='noopener noreferrer'
-              >
+              <a href='https://github.com/Aswin-coder' target='_blank' rel='noopener noreferrer'>
                 Aswin
               </a>
             </p>
