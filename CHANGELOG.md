@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### ✨ Added
+- **🗑️ Individual Delete Buttons** - Delete specific PRs from recent history instead of clearing all
 - Modern UI/UX revamp with professional design system
 - Improved accessibility features (WCAG 2.1 compliance)
 - Enhanced theme system with 8 professional themes
@@ -29,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved CI/CD pipeline with GitHub Actions
 - Better development tooling and linting
 - Updated dependencies to latest versions
+- Removed unused dependencies (web-vitals)
+- Cleaned up unused environment variables
 
 ## [6.0.0] - 2025-01-XX
 
