@@ -1,5 +1,4 @@
-<<<<<<< HEAD
-# 🚀 PR Approval Finder
+# 🚀 PR Approval Finder v7.0
 
 <div align="center">
 
@@ -9,18 +8,11 @@
 ![Node](https://img.shields.io/badge/Node.js-18+-green.svg?style=for-the-badge&logo=node.js)
 ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=for-the-badge)
 
-**A modern web application that analyzes GitHub Pull Requests to determine minimum required approvals based on CODEOWNERS files**
+**A modern web application that analyzes GitHub Pull Requests to determine minimum required approvals based on CODEOWNERS files. Now featuring AI-powered approval predictions that learn from your team's historical patterns.**
 
 [🚀 Live Demo](https://pr-reviewer.aswinlocal.in/) • [📖 Documentation](./docs) • [🐛 Report Bug](https://github.com/Aswin-coder/pr-review-checker/issues) • [💡 Request Feature](https://github.com/Aswin-coder/pr-review-checker/issues)
 
 </div>
-
-
-=======
-# 🔍 PR Approval Finder v6.0
-
-A modern web application that analyzes GitHub Pull Requests to determine the minimum required approvals based on CODEOWNERS files. Now featuring **AI-powered approval predictions** that learn from your team's historical patterns. Built with React and Node.js, featuring a beautiful theme system and comprehensive PR analysis.
->>>>>>> e3c1e43 (feat: Add ML-powered CODEOWNERS prediction system v2)
 
 ## ✨ Features
 
@@ -36,7 +28,8 @@ A modern web application that analyzes GitHub Pull Requests to determine the min
 - **Smart Approval Chances**: Shows percentage likelihood next to each reviewer
 - **Pattern Recognition**: Learns from file types, directories, and past approvals
 - **Seamless Integration**: ML predictions appear inline with existing CODEOWNERS
-- **Auto-Training**: Continuously learns from your team's approval behavior
+- **Enhanced Training**: Improved PR fetching system can analyze 1000+ PRs
+- **Duplicate Prevention**: Smart duplicate handling prevents model bias
 
 ### 🎨 **Modern UI/UX**
 - **🎭 8 Beautiful Themes** - Light, Dark, Ocean, Forest, Sunset, Midnight, Arctic, Cherry
@@ -100,7 +93,6 @@ npm run dev
 
 🌐 **Open your browser**: [http://localhost:3000](http://localhost:3000)
 
-<<<<<<< HEAD
 ### Alternative Installation Methods
 
 <details>
@@ -139,11 +131,6 @@ npm run client  # Terminal 2
 ### Basic Usage
 
 1. **📝 Enter GitHub PR URL**
-=======
-### Basic Usage
-
-1. **Enter a GitHub PR URL**
->>>>>>> e3c1e43 (feat: Add ML-powered CODEOWNERS prediction system v2)
    ```
    https://github.com/owner/repo/pull/123
    ```
@@ -158,18 +145,15 @@ npm run client  # Terminal 2
    - See detailed file-by-file breakdown
    - Track approval progress in real-time
 
-<<<<<<< HEAD
-### Advanced Features
-=======
 ### 🧠 AI Features Setup
 
-1. **Train the ML Model** (one-time setup)
+1. **Train the ML Model** (Enhanced v7.0)
    ```bash
+   # Train on large datasets (up to 1000+ PRs)
+   node train-model.js owner repo your_token 1000
+   
    # Interactive demo script
    ./ml-demo.js
-   
-   # Or set environment variable and use the web interface
-   export GITHUB_TOKEN=your_token_here
    ```
 
 2. **See Smart Predictions**
@@ -177,15 +161,24 @@ npm run client  # Terminal 2
    - Higher percentages = more likely to approve
    - Based on historical patterns from your repo
 
-3. **Model Management**
-   - Retrain periodically for best accuracy
-   - Model learns from the last 50 merged PRs
-   - Stored locally in `server/ml-model.json`
+3. **Model Management** (NEW!)
+   ```bash
+   # Check model status and duplicates
+   node model-utils.js status
+   
+   # Remove duplicate training data
+   node model-utils.js remove-duplicates
+   
+   # View detailed statistics
+   node model-utils.js stats
+   
+   # Clear model for fresh start
+   node model-utils.js clear
+   ```
 
 For detailed ML setup, see [docs/ML_CODEOWNERS.md](docs/ML_CODEOWNERS.md)
 
-## 🎨 Theme System
->>>>>>> e3c1e43 (feat: Add ML-powered CODEOWNERS prediction system v2)
+### Advanced Features
 
 <details>
 <summary>🎨 Theme Customization</summary>
@@ -254,6 +247,7 @@ REACT_APP_API_URL=http://localhost:3001
 - 🔍 Minimatch for glob patterns
 - 🛡️ CORS enabled
 - 📧 Nodemailer for feedback system
+- 🧠 ML Training system with enhanced PR fetching
 
 **DevOps**
 - 🚀 VPS server for production deployment
@@ -272,6 +266,7 @@ REACT_APP_API_URL=http://localhost:3001
 ├── 🔍 Pattern Matching      # Advanced glob pattern support
 ├── 🔒 Privacy Modal         # Comprehensive privacy information
 ├── 💬 Feedback System       # User feedback collection
+├── 🧠 ML Training System    # Enhanced PR fetching and duplicate handling
 └── 🚀 Performance Optimized # Lazy loading and memoization
 ```
 
@@ -395,6 +390,25 @@ POST /api/pr-approvers
   "prUrl": "https://github.com/owner/repo/pull/123",
   "githubToken": "optional_token"
 }
+
+POST /api/ml/train
+{
+  "owner": "repo-owner",
+  "repo": "repo-name", 
+  "token": "github-token",
+  "prCount": 1000
+}
+
+POST /api/ml/predict
+{
+  "files": ["src/file.js"],
+  "confidence": 0.3
+}
+
+GET /api/ml/status
+GET /api/ml/stats
+POST /api/ml/clear
+POST /api/ml/remove-duplicates
 ```
 
 ### Response Format
@@ -419,6 +433,14 @@ POST /api/pr-approvers
   "totalGroupsNeedingApproval": 2,
   "approvals": ["reviewer1"],
   "requestedReviewers": ["reviewer2"],
+  "mlPredictions": {
+    "predictions": [
+      {
+        "approver": "developer1",
+        "confidence": 0.85
+      }
+    ]
+  },
   "rateLimitInfo": {
     "limit": 5000,
     "remaining": 4999,
@@ -463,7 +485,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 3. **🧮 Pattern Matching** - Uses minimatch to match files against CODEOWNERS patterns
 4. **👥 Team Resolution** - Resolves GitHub teams to individual members
 5. **📊 Analysis** - Calculates minimum required approvals based on file changes
-6. **🎨 Visualization** - Presents results with interactive progress indicators
+6. **🧠 ML Predictions** - Uses trained models to predict approval likelihood
+7. **🎨 Visualization** - Presents results with interactive progress indicators
 
 ---
 
