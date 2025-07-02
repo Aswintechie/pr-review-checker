@@ -157,15 +157,47 @@ function App() {
 
   const getGeneralPredictions = async repoInfo => {
     try {
-      const response = await axios.post('/api/ml/predict', {
-        files: ['README.md', 'package.json', 'src/'], // Generic files for general patterns
-        confidence: 0.001, // Very low threshold to get all users
-        owner: repoInfo?.owner,
-        repo: repoInfo?.repo,
-        token: githubToken,
-      });
-      return response.data.prediction; // Return the prediction object
+      // Try multiple strategies to get general predictions
+      const strategies = [
+        // Strategy 1: Common documentation files
+        { files: ['README.md'], confidence: 0.001 },
+        // Strategy 2: Package files
+        { files: ['package.json'], confidence: 0.001 },
+        // Strategy 3: Source directories 
+        { files: ['src/index.js'], confidence: 0.001 },
+        // Strategy 4: Use the same files as main prediction but lower confidence
+        { files: result?.fileApprovalDetails?.map(detail => detail.file) || ['README.md'], confidence: 0.001 }
+      ];
+
+      for (const strategy of strategies) {
+        try {
+          // Skip if files array is empty
+          if (!strategy.files || strategy.files.length === 0) continue;
+          
+          console.log('Trying general prediction strategy:', strategy.files);
+          
+          const response = await axios.post('/api/ml/predict', {
+            files: strategy.files,
+            confidence: strategy.confidence,
+            owner: repoInfo?.owner,
+            repo: repoInfo?.repo,
+            token: githubToken,
+          });
+          
+          if (response.data.prediction?.predictions?.length > 0) {
+            console.log('✅ General predictions found:', response.data.prediction.predictions.length, 'approvers');
+            return response.data.prediction;
+          }
+        } catch (err) {
+          console.log('❌ Strategy failed:', strategy.files, '-', err.response?.data?.message || err.message);
+          continue;
+        }
+      }
+      
+      console.log('❌ No general predictions found with any strategy');
+      return null;
     } catch (error) {
+      console.log('❌ General predictions error:', error.message);
       return null;
     }
   };
@@ -207,7 +239,9 @@ function App() {
         setMlPredictions(predictions);
 
         // Also fetch general predictions for team members
+        console.log('🔄 Fetching general predictions for team members...');
         const general = await getGeneralPredictions(repoInfo);
+        console.log('📊 General predictions result:', general);
         setGeneralPredictions(general);
       }
     } catch (err) {
@@ -535,20 +569,32 @@ function App() {
   };
 
   const getGeneralMLApprovalChance = username => {
-    if (!generalPredictions?.predictions || !username) return null;
-
+    if (!generalPredictions?.predictions || !username) {
+      console.log('No general predictions or username:', { 
+        hasGeneralPredictions: !!generalPredictions?.predictions, 
+        username 
+      });
+      return null;
+    }
+    
+    console.log('Looking for general prediction for:', username);
+    console.log('Available general predictions:', generalPredictions.predictions.map(p => p.approver));
+    
     // Find prediction for this user in general predictions
     let prediction = generalPredictions.predictions.find(p => p.approver === username);
     if (!prediction) {
       prediction = generalPredictions.predictions.find(p => p.approver === `@${username}`);
     }
-
+    
     if (!prediction) {
+      console.log('No general prediction found for:', username);
       return null;
     }
 
     const percentage = prediction.confidence * 100;
-    return percentage >= 1 ? Math.round(percentage) : Math.round(percentage * 10) / 10;
+    const result = percentage >= 1 ? Math.round(percentage) : Math.round(percentage * 10) / 10;
+    console.log('General prediction for', username, ':', result + '%');
+    return result;
   };
 
   const renderUserCard = (user, isApproved = false, approvedMembers = []) => {
