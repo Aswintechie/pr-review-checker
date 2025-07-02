@@ -156,6 +156,8 @@ function App() {
   };
 
   const getGeneralPredictions = async repoInfo => {
+    console.log('🚀 getGeneralPredictions called with:', repoInfo);
+    
     try {
       // Try multiple strategies to get general predictions
       const strategies = [
@@ -168,6 +170,8 @@ function App() {
         // Strategy 4: Use the same files as main prediction but lower confidence
         { files: result?.fileApprovalDetails?.map(detail => detail.file) || ['README.md'], confidence: 0.001 }
       ];
+      
+      console.log('📝 Will try', strategies.length, 'strategies for general predictions');
 
       for (const strategy of strategies) {
         try {
@@ -195,6 +199,37 @@ function App() {
       }
       
       console.log('❌ No general predictions found with any strategy');
+      
+      // Fallback: Try to get ML model statistics for most frequent approvers
+      console.log('🔄 Trying fallback: Get ML model statistics...');
+      try {
+        const statsResponse = await axios.get('/api/ml/stats');
+        console.log('📈 ML stats response:', statsResponse.data);
+        
+        if (statsResponse.data?.stats?.approvalStatistics) {
+          // Convert approval statistics to prediction format
+          const stats = statsResponse.data.stats.approvalStatistics;
+          const totalPRs = Object.values(stats).reduce((sum, count) => sum + count, 0);
+          
+          if (totalPRs > 0) {
+            const predictions = Object.entries(stats)
+              .map(([approver, count]) => ({
+                approver,
+                confidence: count / totalPRs,
+                count
+              }))
+              .filter(p => p.confidence > 0.01) // At least 1% of PRs
+              .sort((a, b) => b.confidence - a.confidence)
+              .slice(0, 20); // Top 20 approvers
+            
+            console.log('✅ Fallback predictions from stats:', predictions.length, 'approvers');
+            return { predictions };
+          }
+        }
+      } catch (statsError) {
+        console.log('❌ Fallback stats error:', statsError.message);
+      }
+      
       return null;
     } catch (error) {
       console.log('❌ General predictions error:', error.message);
@@ -240,8 +275,19 @@ function App() {
 
         // Also fetch general predictions for team members
         console.log('🔄 Fetching general predictions for team members...');
+        console.log('📋 Repository info:', repoInfo);
+        console.log('🔑 GitHub token available:', !!githubToken);
+        
         const general = await getGeneralPredictions(repoInfo);
         console.log('📊 General predictions result:', general);
+        
+        if (general && general.predictions && general.predictions.length > 0) {
+          console.log('✅ Setting general predictions:', general.predictions.length, 'approvers');
+          console.log('👥 General approvers:', general.predictions.map(p => p.approver));
+        } else {
+          console.log('❌ No general predictions to set');
+        }
+        
         setGeneralPredictions(general);
       }
     } catch (err) {
