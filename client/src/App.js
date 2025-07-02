@@ -239,16 +239,16 @@ function App() {
           
           if (topApprovers && topApprovers.length > 0) {
             // Convert topApprovers array to predictions format
-            const totalCount = topApprovers.reduce((sum, item) => sum + (item.count || 0), 0);
+            const totalCount = topApprovers.reduce((sum, item) => sum + (item.totalApprovals || 0), 0);
             console.log('📊 Total approvals:', totalCount);
-            console.log('📊 Item counts:', topApprovers.map(item => ({ name: item.approver || item.name, count: item.count })));
+            console.log('📊 Item counts:', topApprovers.map(item => ({ name: item.approver || item.name, count: item.totalApprovals })));
 
             if (totalCount > 0) {
               const predictions = topApprovers
                 .map(item => ({
                   approver: item.approver || item.name || item.username,
-                  confidence: (item.count || 0) / totalCount,
-                  count: item.count || 0,
+                  confidence: (item.totalApprovals || 0) / totalCount,
+                  count: item.totalApprovals || 0,
                 }))
                 .filter(p => p.approver && p.confidence > 0.001) // Very low threshold
                 .sort((a, b) => b.confidence - a.confidence)
