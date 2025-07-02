@@ -231,17 +231,26 @@ function App() {
 
         if (statsResponse.data?.stats?.topApprovers) {
           console.log('✅ Found topApprovers');
-                    // Convert top approvers to prediction format
+          // Convert top approvers to prediction format
           const topApprovers = statsResponse.data.stats.topApprovers;
           console.log('📈 Top approvers:', topApprovers);
           console.log('📝 First top approver item:', topApprovers[0]);
           console.log('📝 First item keys:', Object.keys(topApprovers[0] || {}));
-          
+
           if (topApprovers && topApprovers.length > 0) {
             // Convert topApprovers array to predictions format
-            const totalCount = topApprovers.reduce((sum, item) => sum + (item.totalApprovals || 0), 0);
+            const totalCount = topApprovers.reduce(
+              (sum, item) => sum + (item.totalApprovals || 0),
+              0
+            );
             console.log('📊 Total approvals:', totalCount);
-            console.log('📊 Item counts:', topApprovers.map(item => ({ name: item.approver || item.name, count: item.totalApprovals })));
+            console.log(
+              '📊 Item counts:',
+              topApprovers.map(item => ({
+                name: item.approver || item.name,
+                count: item.totalApprovals,
+              }))
+            );
 
             if (totalCount > 0) {
               const predictions = topApprovers
