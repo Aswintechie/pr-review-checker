@@ -28,6 +28,7 @@ function App() {
   const [showCloudflareModal, setShowCloudflareModal] = useState(false);
   const [showDeveloperModal, setShowDeveloperModal] = useState(false);
   const [mlPredictions, setMlPredictions] = useState(null);
+  const [generalPredictions, setGeneralPredictions] = useState(null);
 
   const themes = [
     { id: 'light', name: '☀️ Light', description: 'Clean and bright' },
@@ -143,14 +144,28 @@ function App() {
     try {
       const response = await axios.post('/api/ml/predict', {
         files,
-        confidence: 0.1, // Very low threshold to see more predictions
+        confidence: 0.01, // Low threshold for more predictions
         owner: repoInfo?.owner,
         repo: repoInfo?.repo,
         token: githubToken,
       });
       return response.data.prediction; // Return the prediction object
     } catch (error) {
-      // ML prediction failed
+      return null;
+    }
+  };
+
+  const getGeneralPredictions = async repoInfo => {
+    try {
+      const response = await axios.post('/api/ml/predict', {
+        files: ['README.md', 'package.json', 'src/'], // Generic files for general patterns
+        confidence: 0.001, // Very low threshold to get all users
+        owner: repoInfo?.owner,
+        repo: repoInfo?.repo,
+        token: githubToken,
+      });
+      return response.data.prediction; // Return the prediction object
+    } catch (error) {
       return null;
     }
   };
@@ -162,6 +177,7 @@ function App() {
     setRateLimitInfo(null);
     setResult(null);
     setMlPredictions(null);
+    setGeneralPredictions(null);
 
     try {
       const response = await axios.post('/api/pr-approvers', {
@@ -189,6 +205,10 @@ function App() {
 
         const predictions = await getMlPredictions(files, repoInfo);
         setMlPredictions(predictions);
+
+        // Also fetch general predictions for team members
+        const general = await getGeneralPredictions(repoInfo);
+        setGeneralPredictions(general);
       }
     } catch (err) {
       setError(err.response?.data?.error || 'An error occurred');
@@ -445,22 +465,33 @@ function App() {
             <div className='team-members-title'>Team Members:</div>
             <div className='team-members-grid'>
               {team.members.map(member => {
-                const memberApproved = approvedMembers.includes(member.username);
+                // Extract actual GitHub username from member object
+                const memberUsername = member.login || member.username;
+                const memberApproved = approvedMembers.includes(memberUsername);
+                // Debug: console.log('Team member:', memberUsername);
+                const approvalPercentage = getGeneralMLApprovalChance(memberUsername);
                 return (
                   <div
-                    key={member.username}
+                    key={memberUsername}
                     className={`team-member ${memberApproved ? 'approved' : ''}`}
                   >
                     <div className='member-avatar'>
                       {member.avatar_url ? (
-                        <img src={member.avatar_url} alt={member.username} />
+                        <img src={member.avatar_url} alt={memberUsername} />
                       ) : (
                         <div className='avatar-placeholder'>👤</div>
                       )}
                     </div>
                     <div className='member-info'>
                       <div className='member-name'>{member.name}</div>
-                      <div className='member-username'>@{member.username}</div>
+                      <div className='member-username'>
+                        @{memberUsername}
+                        {approvalPercentage ? (
+                          <span className='ml-approval-chance'>{approvalPercentage}% likely</span>
+                        ) : (
+                          <span className='ml-no-data'>No prediction</span>
+                        )}
+                      </div>
                       {memberApproved && <div className='member-approved'>✅ Approved</div>}
                     </div>
                     {memberApproved && <div className='member-approval-badge'>✅</div>}
@@ -485,11 +516,37 @@ function App() {
   };
 
   const getMLApprovalChance = username => {
-    if (!mlPredictions?.predictions) return null;
-    const prediction = mlPredictions.predictions.find(p => p.approver === username);
-    if (!prediction) return null;
+    if (!mlPredictions?.predictions || !username) return null;
 
-    // Convert to percentage and round to 1 decimal place for better visibility
+    // Try exact match first
+    let prediction = mlPredictions.predictions.find(p => p.approver === username);
+
+    // Try with @ prefix if no exact match
+    if (!prediction) {
+      prediction = mlPredictions.predictions.find(p => p.approver === `@${username}`);
+    }
+
+    if (!prediction) {
+      return null;
+    }
+
+    const percentage = prediction.confidence * 100;
+    return percentage >= 1 ? Math.round(percentage) : Math.round(percentage * 10) / 10;
+  };
+
+  const getGeneralMLApprovalChance = username => {
+    if (!generalPredictions?.predictions || !username) return null;
+
+    // Find prediction for this user in general predictions
+    let prediction = generalPredictions.predictions.find(p => p.approver === username);
+    if (!prediction) {
+      prediction = generalPredictions.predictions.find(p => p.approver === `@${username}`);
+    }
+
+    if (!prediction) {
+      return null;
+    }
+
     const percentage = prediction.confidence * 100;
     return percentage >= 1 ? Math.round(percentage) : Math.round(percentage * 10) / 10;
   };

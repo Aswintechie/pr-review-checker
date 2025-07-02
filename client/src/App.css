@@ -1683,9 +1683,10 @@ section h2 {
   font-size: 0.75em;
   color: var(--text-secondary);
   line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .team-members-empty {
@@ -1768,6 +1769,20 @@ section h2 {
   letter-spacing: 0.2px;
   text-transform: uppercase;
   opacity: 0.9;
+}
+
+.ml-no-data {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 0.1rem 0.4rem;
+  border-radius: 8px;
+  white-space: nowrap;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+  opacity: 0.7;
+  border: 1px solid var(--border-secondary);
 }
 
 .user-status {
@@ -2183,20 +2198,21 @@ section h2 {
   gap: 1.5rem;
 }
 
-.form-group {
+/* ML-specific form styles - more specific to avoid conflicts */
+.ml-form .form-group {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-.form-group label {
+.ml-form .form-group label {
   font-weight: 600;
   color: var(--text-primary);
   font-size: 0.95rem;
 }
 
-.form-group input,
-.form-group textarea {
+.ml-form .form-group input,
+.ml-form .form-group textarea {
   padding: 0.75rem;
   border: 2px solid var(--border-color);
   border-radius: 8px;
@@ -2206,8 +2222,8 @@ section h2 {
   transition: border-color 0.3s ease;
 }
 
-.form-group input:focus,
-.form-group textarea:focus {
+.ml-form .form-group input:focus,
+.ml-form .form-group textarea:focus {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
