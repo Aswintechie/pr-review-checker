@@ -187,10 +187,10 @@ app.get('/api/ml/status', (req, res) => {
 app.post('/api/ml/clear', async (req, res) => {
   try {
     mlTrainer.clearModel();
-    
+
     // Save the cleared model to disk
     await saveModel();
-    
+
     res.json({
       success: true,
       message: 'Model cleared successfully',
@@ -208,10 +208,10 @@ app.post('/api/ml/clear', async (req, res) => {
 app.post('/api/ml/remove-duplicates', async (req, res) => {
   try {
     const removedCount = mlTrainer.removeDuplicates();
-    
+
     // Save the cleaned model to disk
     await saveModel();
-    
+
     res.json({
       success: true,
       message: `Removed ${removedCount} duplicate PRs`,

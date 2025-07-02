@@ -22,22 +22,24 @@ class MLCodeownersTrainer {
 
       // Try primary method first
       let mergedPRs = await this.fetchPRsPrimaryMethod(owner, repo, token, count);
-      
+
       // If we got significantly fewer PRs than requested, try the search API method
       if (mergedPRs.length < count * 0.8 && count > 100) {
-        console.log(`🔄 Primary method yielded ${mergedPRs.length}/${count} PRs. Trying search API method...`);
+        console.log(
+          `🔄 Primary method yielded ${mergedPRs.length}/${count} PRs. Trying search API method...`
+        );
         const searchPRs = await this.fetchPRsSearchMethod(owner, repo, token, count);
-        
+
         // Merge and deduplicate results
         const allPRs = [...mergedPRs, ...searchPRs];
-        const uniquePRs = allPRs.filter((pr, index, self) => 
-          index === self.findIndex(p => p.number === pr.number)
+        const uniquePRs = allPRs.filter(
+          (pr, index, self) => index === self.findIndex(p => p.number === pr.number)
         );
-        
+
         // Sort by merge date and take the most recent
         uniquePRs.sort((a, b) => new Date(b.merged_at) - new Date(a.merged_at));
         mergedPRs = uniquePRs.slice(0, count);
-        
+
         console.log(`🔄 Combined results: ${mergedPRs.length} unique merged PRs`);
       }
 
@@ -60,7 +62,11 @@ class MLCodeownersTrainer {
     const maxConsecutiveEmptyPages = 3; // Stop after 3 consecutive empty pages
     const maxPages = Math.ceil(count * 2.5); // Allow up to 2.5x pages to account for filtering
 
-    while (mergedPRs.length < count && consecutiveEmptyPages < maxConsecutiveEmptyPages && page <= maxPages) {
+    while (
+      mergedPRs.length < count &&
+      consecutiveEmptyPages < maxConsecutiveEmptyPages &&
+      page <= maxPages
+    ) {
       console.log(
         `📄 Primary method: Page ${page} (${mergedPRs.length}/${count} merged PRs found so far)`
       );
@@ -93,8 +99,10 @@ class MLCodeownersTrainer {
       const pageMergedPRs = response.data.filter(pr => pr.merged_at !== null);
       mergedPRs.push(...pageMergedPRs);
 
-      const mergeRate = pageMergedPRs.length / response.data.length * 100;
-      console.log(`✅ Found ${pageMergedPRs.length}/${response.data.length} merged PRs on page ${page} (${mergeRate.toFixed(1)}% merge rate)`);
+      const mergeRate = (pageMergedPRs.length / response.data.length) * 100;
+      console.log(
+        `✅ Found ${pageMergedPRs.length}/${response.data.length} merged PRs on page ${page} (${mergeRate.toFixed(1)}% merge rate)`
+      );
 
       // If we got fewer than perPage results, we've reached the end
       if (response.data.length < perPage) {
@@ -112,14 +120,14 @@ class MLCodeownersTrainer {
     mergedPRs.sort((a, b) => new Date(b.merged_at) - new Date(a.merged_at));
 
     const finalPRs = mergedPRs.slice(0, count);
-    const actualMergeRate = mergedPRs.length / (page * perPage) * 100;
-    
+    const actualMergeRate = (mergedPRs.length / (page * perPage)) * 100;
+
     console.log(`🎯 Primary Method Results:`);
     console.log(`   📊 Requested: ${count} merged PRs`);
     console.log(`   ✅ Found: ${finalPRs.length} merged PRs`);
     console.log(`   📄 Pages searched: ${page - 1}`);
     console.log(`   🔄 Overall merge rate: ${actualMergeRate.toFixed(1)}%`);
-    
+
     if (finalPRs.length < count) {
       console.log(`⚠️  Primary method found ${finalPRs.length}/${count} requested PRs`);
     }
@@ -130,14 +138,16 @@ class MLCodeownersTrainer {
   async fetchPRsSearchMethod(owner, repo, token, count) {
     try {
       console.log(`🔍 Using GitHub Search API to find merged PRs...`);
-      
+
       const mergedPRs = [];
       let page = 1;
       const perPage = 100; // GitHub Search API max is 100 per page
       const maxPages = Math.ceil(count / perPage) + 2; // Add buffer for duplicates
 
       while (mergedPRs.length < count && page <= maxPages) {
-        console.log(`📄 Search method: Page ${page} (${mergedPRs.length}/${count} merged PRs found so far)`);
+        console.log(
+          `📄 Search method: Page ${page} (${mergedPRs.length}/${count} merged PRs found so far)`
+        );
 
         // Use GitHub Search API to find merged PRs
         const searchQuery = `repo:${owner}/${repo} type:pr is:merged`;
@@ -393,10 +403,14 @@ class MLCodeownersTrainer {
         processedCount++;
         const progress = Math.round((processedCount / totalPRs) * 100);
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-        
-        console.log(`🔄 [${processedCount}/${totalPRs}] (${progress}%) Processing PR #${pr.number}`);
+
+        console.log(
+          `🔄 [${processedCount}/${totalPRs}] (${progress}%) Processing PR #${pr.number}`
+        );
         console.log(`   📝 "${pr.title.substring(0, 80)}${pr.title.length > 80 ? '...' : ''}"`);
-        console.log(`   ⏱️  Elapsed: ${elapsed}s | ETA: ${processedCount > 1 ? ((elapsed / processedCount) * (totalPRs - processedCount)).toFixed(1) : '?'}s`);
+        console.log(
+          `   ⏱️  Elapsed: ${elapsed}s | ETA: ${processedCount > 1 ? ((elapsed / processedCount) * (totalPRs - processedCount)).toFixed(1) : '?'}s`
+        );
 
         const { files, approvers } = await this.getPRDetails(owner, repo, pr.number, token);
 
@@ -409,7 +423,9 @@ class MLCodeownersTrainer {
         console.log(`   📁 ${files.length} files, 👥 ${approvers.length} approvers`);
 
         // Check for duplicates before processing
-        const isDuplicate = this.trainingData.some(existingData => existingData.prNumber === pr.number);
+        const isDuplicate = this.trainingData.some(
+          existingData => existingData.prNumber === pr.number
+        );
         if (isDuplicate) {
           skippedCount++;
           console.log(`   ⚠️  Skipped - PR #${pr.number} already in training data`);
@@ -501,12 +517,16 @@ class MLCodeownersTrainer {
       this.isModelTrained = true;
       const finalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
       const successfullyProcessed = processedCount - skippedCount;
-      
+
       console.log('\n✅ CODEOWNERS-based model training completed!');
       console.log(`📊 Summary:`);
       console.log(`   📄 Total PRs processed: ${totalPRs}`);
-      console.log(`   ✅ Successfully trained on: ${this.trainingData.length - (this.trainingData.length - prsToProcess.length + skippedCount)} PRs`);
-      console.log(`   ⚠️  Skipped PRs: ${skippedCount} (duplicates, no files, no approvers, or no groups)`);
+      console.log(
+        `   ✅ Successfully trained on: ${this.trainingData.length - (this.trainingData.length - prsToProcess.length + skippedCount)} PRs`
+      );
+      console.log(
+        `   ⚠️  Skipped PRs: ${skippedCount} (duplicates, no files, no approvers, or no groups)`
+      );
       console.log(`   📈 Total training data: ${this.trainingData.length} PRs`);
       console.log(`⏱️  Total time: ${finalElapsed}s`);
       console.log(`📊 Processed: ${processedCount}/${totalPRs} PRs`);
@@ -610,27 +630,27 @@ class MLCodeownersTrainer {
     const prNumbers = this.trainingData.map(data => data.prNumber);
     const uniquePRs = new Set(prNumbers);
     const duplicateCount = prNumbers.length - uniquePRs.size;
-    
+
     if (duplicateCount > 0) {
       // Find which PRs are duplicated
       const prCounts = new Map();
       prNumbers.forEach(prNumber => {
         prCounts.set(prNumber, (prCounts.get(prNumber) || 0) + 1);
       });
-      
+
       const duplicatedPRs = Array.from(prCounts.entries())
         .filter(([_, count]) => count > 1)
         .map(([prNumber, count]) => ({ prNumber, count }));
-      
+
       console.log(`⚠️  Found ${duplicateCount} duplicate PRs in training data:`);
       duplicatedPRs.slice(0, 5).forEach(({ prNumber, count }) => {
         console.log(`   PR #${prNumber}: ${count} times`);
       });
-      
+
       if (duplicatedPRs.length > 5) {
         console.log(`   ... and ${duplicatedPRs.length - 5} more duplicated PRs`);
       }
-      
+
       return duplicateCount;
     } else {
       console.log('✅ No duplicate PRs found in training data');
@@ -644,7 +664,7 @@ class MLCodeownersTrainer {
   removeDuplicates() {
     const seenPRs = new Set();
     const originalLength = this.trainingData.length;
-    
+
     this.trainingData = this.trainingData.filter(data => {
       if (seenPRs.has(data.prNumber)) {
         return false; // Remove duplicate
@@ -652,16 +672,18 @@ class MLCodeownersTrainer {
       seenPRs.add(data.prNumber);
       return true; // Keep first occurrence
     });
-    
+
     const removedCount = originalLength - this.trainingData.length;
-    
+
     if (removedCount > 0) {
       console.log(`🧹 Removed ${removedCount} duplicate PRs from training data`);
-      console.log(`📊 Training data reduced from ${originalLength} to ${this.trainingData.length} PRs`);
-      
+      console.log(
+        `📊 Training data reduced from ${originalLength} to ${this.trainingData.length} PRs`
+      );
+
       // Recalculate statistics after removing duplicates
       this.recalculateStatistics();
-      
+
       return removedCount;
     } else {
       console.log('✅ No duplicates found to remove');
@@ -676,13 +698,13 @@ class MLCodeownersTrainer {
     // Clear existing statistics
     this.groupApprovalStats.clear();
     this.approverStats.clear();
-    
+
     console.log('🔄 Recalculating approval statistics...');
-    
+
     // Rebuild statistics from clean training data
     this.trainingData.forEach(data => {
       const { codeownersGroups, approvers } = data;
-      
+
       // Update group approval statistics
       codeownersGroups.forEach((group, groupIndex) => {
         const groupKey = `group_${groupIndex}_${group.ownerDetails
@@ -733,7 +755,7 @@ class MLCodeownersTrainer {
         });
       });
     });
-    
+
     console.log('✅ Statistics recalculated successfully');
   }
 
@@ -748,7 +770,7 @@ class MLCodeownersTrainer {
       uniqueGroups: this.groupApprovalStats.size,
       uniqueApprovers: this.approverStats.size,
       duplicatePRs: duplicates,
-      hasData: this.trainingData.length > 0
+      hasData: this.trainingData.length > 0,
     };
   }
 
