@@ -257,7 +257,12 @@ function App() {
       addToRecentPRs(response.data);
 
       // Get ML predictions for the PR files
+      console.log('🔍 Checking if we should fetch ML predictions...');
+      console.log('📁 fileApprovalDetails:', response.data.fileApprovalDetails);
+      console.log('📁 Length:', response.data.fileApprovalDetails?.length);
+      
       if (response.data.fileApprovalDetails && response.data.fileApprovalDetails.length > 0) {
+        console.log('✅ Conditions met - fetching ML predictions');
         const files = response.data.fileApprovalDetails.map(detail => detail.file);
 
         // Extract repository info from PR URL
@@ -289,6 +294,34 @@ function App() {
         }
         
         setGeneralPredictions(general);
+      } else {
+        console.log('❌ ML predictions not fetched - conditions not met');
+        console.log('   - fileApprovalDetails exists:', !!response.data.fileApprovalDetails);
+        console.log('   - fileApprovalDetails length:', response.data.fileApprovalDetails?.length || 0);
+      }
+
+      // Always try to fetch general predictions for team members (independent of file details)
+      console.log('🌟 Always attempting general predictions (independent of files)...');
+      const urlMatch = prUrl.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
+      const repoInfo = urlMatch
+        ? {
+            owner: urlMatch[1],
+            repo: urlMatch[2],
+            prNumber: urlMatch[3],
+          }
+        : null;
+
+      if (repoInfo) {
+        console.log('🎯 Fetching independent general predictions...');
+        const independentGeneral = await getGeneralPredictions(repoInfo);
+        console.log('🎯 Independent general predictions result:', independentGeneral);
+        
+        if (independentGeneral && independentGeneral.predictions && independentGeneral.predictions.length > 0) {
+          console.log('✅ Setting independent general predictions:', independentGeneral.predictions.length, 'approvers');
+          setGeneralPredictions(independentGeneral);
+        }
+      } else {
+        console.log('❌ No repository info found for independent general predictions');
       }
     } catch (err) {
       setError(err.response?.data?.error || 'An error occurred');
