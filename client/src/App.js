@@ -30,6 +30,15 @@ function App() {
   const [mlPredictions, setMlPredictions] = useState(null);
   const [generalPredictions, setGeneralPredictions] = useState(null);
 
+  // Debug: Show current state
+  console.log('🔄 App render - Current state:', {
+    hasResult: !!result,
+    hasMLPredictions: !!mlPredictions,
+    hasGeneralPredictions: !!generalPredictions,
+    loading,
+    generalPredictionsValue: generalPredictions
+  });
+
   const themes = [
     { id: 'light', name: '☀️ Light', description: 'Clean and bright' },
     { id: 'dark', name: '🌙 Dark', description: 'Easy on the eyes' },
@@ -238,6 +247,7 @@ function App() {
   };
 
   const handleSubmit = async e => {
+    console.log('🎬 handleSubmit called');
     e.preventDefault();
     setLoading(true);
     setError('');
@@ -245,13 +255,16 @@ function App() {
     setResult(null);
     setMlPredictions(null);
     setGeneralPredictions(null);
+    console.log('🧹 State cleared, making API request...');
 
     try {
+      console.log('📡 Making API request to /api/pr-approvers...');
       const response = await axios.post('/api/pr-approvers', {
         prUrl,
         githubToken: githubToken || undefined,
       });
 
+      console.log('✅ API response received:', response.data);
       setResult(response.data);
       setRateLimitInfo(response.data.rateLimitInfo || null);
       addToRecentPRs(response.data);
@@ -324,9 +337,12 @@ function App() {
         console.log('❌ No repository info found for independent general predictions');
       }
     } catch (err) {
+      console.log('❌ Error in handleSubmit:', err);
+      console.log('❌ Error response:', err.response?.data);
       setError(err.response?.data?.error || 'An error occurred');
       setRateLimitInfo(err.response?.data?.rateLimitInfo || null);
     } finally {
+      console.log('🏁 handleSubmit finished, setLoading(false)');
       setLoading(false);
     }
   };
@@ -651,7 +667,8 @@ function App() {
     if (!generalPredictions?.predictions || !username) {
       console.log('No general predictions or username:', { 
         hasGeneralPredictions: !!generalPredictions?.predictions, 
-        username 
+        username,
+        generalPredictionsValue: generalPredictions
       });
       return null;
     }
