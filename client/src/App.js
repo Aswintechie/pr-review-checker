@@ -217,33 +217,39 @@ function App() {
         console.log('📊 Stats object keys:', Object.keys(statsResponse.data?.stats || {}));
         console.log('📊 Stats object:', statsResponse.data?.stats);
         
-        if (statsResponse.data?.stats?.approvalStatistics) {
-          console.log('✅ Found approvalStatistics');
-          // Convert approval statistics to prediction format
-          const stats = statsResponse.data.stats.approvalStatistics;
-          console.log('📈 Approval statistics:', stats);
-          const totalPRs = Object.values(stats).reduce((sum, count) => sum + count, 0);
-          console.log('📊 Total PRs:', totalPRs);
+        if (statsResponse.data?.stats?.topApprovers) {
+          console.log('✅ Found topApprovers');
+          // Convert top approvers to prediction format
+          const topApprovers = statsResponse.data.stats.topApprovers;
+          console.log('📈 Top approvers:', topApprovers);
           
-          if (totalPRs > 0) {
-            const predictions = Object.entries(stats)
-              .map(([approver, count]) => ({
-                approver,
-                confidence: count / totalPRs,
-                count
-              }))
-              .filter(p => p.confidence > 0.01) // At least 1% of PRs
-              .sort((a, b) => b.confidence - a.confidence)
-              .slice(0, 20); // Top 20 approvers
+          if (topApprovers && topApprovers.length > 0) {
+            // Convert topApprovers array to predictions format
+            const totalCount = topApprovers.reduce((sum, item) => sum + (item.count || 0), 0);
+            console.log('📊 Total approvals:', totalCount);
             
-            console.log('✅ Fallback predictions from stats:', predictions.length, 'approvers');
-            console.log('👥 Generated predictions:', predictions);
-            return { predictions };
+            if (totalCount > 0) {
+              const predictions = topApprovers
+                .map(item => ({
+                  approver: item.approver || item.name || item.username,
+                  confidence: (item.count || 0) / totalCount,
+                  count: item.count || 0
+                }))
+                .filter(p => p.approver && p.confidence > 0.001) // Very low threshold
+                .sort((a, b) => b.confidence - a.confidence)
+                .slice(0, 20); // Top 20 approvers
+              
+              console.log('✅ Fallback predictions from topApprovers:', predictions.length, 'approvers');
+              console.log('👥 Generated predictions:', predictions);
+              return { predictions };
+            } else {
+              console.log('❌ No approvals in topApprovers (totalCount = 0)');
+            }
           } else {
-            console.log('❌ No PRs in statistics (totalPRs = 0)');
+            console.log('❌ topApprovers is empty or invalid');
           }
         } else {
-          console.log('❌ No approvalStatistics found in stats');
+          console.log('❌ No topApprovers found in stats');
           console.log('🔍 Available stats fields:', Object.keys(statsResponse.data?.stats || {}));
         }
       } catch (statsError) {
