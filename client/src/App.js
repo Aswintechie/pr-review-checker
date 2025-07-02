@@ -150,145 +150,112 @@ function App() {
   };
 
   const getMlPredictions = async (files, repoInfo) => {
+    console.log('🚀 getMlPredictions called with:', { files, repoInfo });
     try {
       const response = await axios.post('/api/ml/predict', {
         files,
-        confidence: 0.01, // Low threshold for more predictions
+        confidence: 0.001, // Very low threshold for maximum predictions
         owner: repoInfo?.owner,
         repo: repoInfo?.repo,
         token: githubToken,
       });
+
+      console.log('✅ ML prediction response:', response.data);
+      console.log('📊 Prediction object:', response.data.prediction);
+      console.log('👥 Individual predictions:', response.data.prediction?.predictions || []);
+
+      // Detailed prediction analysis
+      if (response.data.prediction?.predictions) {
+        console.log('🔍 DETAILED PREDICTION ANALYSIS:');
+        response.data.prediction.predictions.forEach((pred, index) => {
+          const percentage = Math.round(pred.confidence * 100);
+          console.log(
+            `  ${index + 1}. ${pred.approver}: ${percentage}% (confidence: ${pred.confidence})`
+          );
+        });
+
+        const high_confidence = response.data.prediction.predictions.filter(
+          p => p.confidence > 0.3
+        );
+        console.log(`📈 HIGH CONFIDENCE (>30%): ${high_confidence.length} predictions`);
+        high_confidence.forEach(pred => {
+          console.log(`  🎯 ${pred.approver}: ${Math.round(pred.confidence * 100)}%`);
+        });
+      }
+
       return response.data.prediction; // Return the prediction object
     } catch (error) {
+      console.log('❌ ML prediction error:', error.response?.data || error.message);
       return null;
     }
   };
 
-  const getGeneralPredictions = async repoInfo => {
-    console.log('🚀 getGeneralPredictions called with:', repoInfo);
+  const getTeamApprovalRates = async () => {
+    console.log('🚀 Getting general team approval rates (who approves PRs quickly)...');
 
     try {
-      // Try multiple strategies to get general predictions
-      const strategies = [
-        // Strategy 1: Common documentation files
-        { files: ['README.md'], confidence: 0.001 },
-        // Strategy 2: Package files
-        { files: ['package.json'], confidence: 0.001 },
-        // Strategy 3: Source directories
-        { files: ['src/index.js'], confidence: 0.001 },
-        // Strategy 4: Use the same files as main prediction but lower confidence
-        {
-          files: result?.fileApprovalDetails?.map(detail => detail.file) || ['README.md'],
-          confidence: 0.001,
-        },
-      ];
+      const statsResponse = await axios.get('/api/ml/stats');
+      console.log('📊 ML stats for team approval rates:', statsResponse.data);
 
-      console.log('📝 Will try', strategies.length, 'strategies for general predictions');
+      if (statsResponse.data?.stats?.topApprovers) {
+        const topApprovers = statsResponse.data.stats.topApprovers;
 
-      for (const strategy of strategies) {
-        try {
-          // Skip if files array is empty
-          if (!strategy.files || strategy.files.length === 0) continue;
-
-          console.log('Trying general prediction strategy:', strategy.files);
-
-          const response = await axios.post('/api/ml/predict', {
-            files: strategy.files,
-            confidence: strategy.confidence,
-            owner: repoInfo?.owner,
-            repo: repoInfo?.repo,
-            token: githubToken,
-          });
-
-          if (response.data.prediction?.predictions?.length > 0) {
-            console.log(
-              '✅ General predictions found:',
-              response.data.prediction.predictions.length,
-              'approvers'
-            );
-            return response.data.prediction;
-          }
-        } catch (err) {
-          console.log(
-            '❌ Strategy failed:',
-            strategy.files,
-            '-',
-            err.response?.data?.message || err.message
+        if (topApprovers && topApprovers.length > 0) {
+          const totalCount = topApprovers.reduce(
+            (sum, item) => sum + (item.totalApprovals || 0),
+            0
           );
-          continue;
-        }
-      }
 
-      console.log('❌ No general predictions found with any strategy');
-
-      // Fallback: Try to get ML model statistics for most frequent approvers
-      console.log('🔄 Trying fallback: Get ML model statistics...');
-      try {
-        const statsResponse = await axios.get('/api/ml/stats');
-        console.log('📈 ML stats response:', statsResponse.data);
-        console.log('📊 Stats object keys:', Object.keys(statsResponse.data?.stats || {}));
-        console.log('📊 Stats object:', statsResponse.data?.stats);
-
-        if (statsResponse.data?.stats?.topApprovers) {
-          console.log('✅ Found topApprovers');
-          // Convert top approvers to prediction format
-          const topApprovers = statsResponse.data.stats.topApprovers;
-          console.log('📈 Top approvers:', topApprovers);
-          console.log('📝 First top approver item:', topApprovers[0]);
-          console.log('📝 First item keys:', Object.keys(topApprovers[0] || {}));
-
-          if (topApprovers && topApprovers.length > 0) {
-            // Convert topApprovers array to predictions format
-            const totalCount = topApprovers.reduce(
-              (sum, item) => sum + (item.totalApprovals || 0),
-              0
-            );
-            console.log('📊 Total approvals:', totalCount);
-            console.log(
-              '📊 Item counts:',
-              topApprovers.map(item => ({
-                name: item.approver || item.name,
-                count: item.totalApprovals,
+          if (totalCount > 0) {
+            const approvalRates = topApprovers
+              .map(item => ({
+                approver: item.approver || item.name || item.username,
+                confidence: (item.totalApprovals || 0) / totalCount,
+                totalApprovals: item.totalApprovals || 0,
+                isGeneral: true, // Mark as general approval rate, not file-specific
               }))
+              .filter(p => p.approver && p.confidence > 0.01) // Higher threshold for meaningful rates
+              .sort((a, b) => b.confidence - a.confidence)
+              .slice(0, 20); // Good coverage for teams
+
+            console.log('✅ Team approval rates found:', approvalRates.length, 'active approvers');
+            console.log(
+              '📊 Top approvers:',
+              approvalRates
+                .slice(0, 5)
+                .map(p => `${p.approver}: ${Math.round(p.confidence * 100)}%`)
             );
 
-            if (totalCount > 0) {
-              const predictions = topApprovers
-                .map(item => ({
-                  approver: item.approver || item.name || item.username,
-                  confidence: (item.totalApprovals || 0) / totalCount,
-                  count: item.totalApprovals || 0,
-                }))
-                .filter(p => p.approver && p.confidence > 0.001) // Very low threshold
-                .sort((a, b) => b.confidence - a.confidence)
-                .slice(0, 20); // Top 20 approvers
-
-              console.log(
-                '✅ Fallback predictions from topApprovers:',
-                predictions.length,
-                'approvers'
-              );
-              console.log('👥 Generated predictions:', predictions);
-              return { predictions };
-            } else {
-              console.log('❌ No approvals in topApprovers (totalCount = 0)');
-            }
-          } else {
-            console.log('❌ topApprovers is empty or invalid');
+            return { predictions: approvalRates, isGeneral: true };
           }
-        } else {
-          console.log('❌ No topApprovers found in stats');
-          console.log('🔍 Available stats fields:', Object.keys(statsResponse.data?.stats || {}));
         }
-      } catch (statsError) {
-        console.log('❌ Fallback stats error:', statsError.message);
       }
 
+      console.log('❌ No approval statistics available');
       return null;
     } catch (error) {
-      console.log('❌ General predictions error:', error.message);
+      console.log('❌ Error getting team approval rates:', error.message);
       return null;
     }
+  };
+
+  const getGeneralPredictions = async _repoInfo => {
+    console.log('🚀 Getting general team approval rates (who approves PRs quickly)...');
+
+    // For teams, we want to know who approves PRs quickly in general, not file-specific expertise
+    const prediction = await getTeamApprovalRates();
+
+    if (prediction?.predictions?.length > 0) {
+      console.log(
+        '✅ Team approval rates found:',
+        prediction.predictions.length,
+        'active approvers'
+      );
+      return prediction;
+    }
+
+    console.log('❌ No team approval rates available');
+    return null;
   };
 
   const handleSubmit = async e => {
@@ -657,7 +624,7 @@ function App() {
                 const memberUsername = member.login || member.username;
                 const memberApproved = approvedMembers.includes(memberUsername);
                 // Debug: console.log('Team member:', memberUsername);
-                const approvalPercentage = getGeneralMLApprovalChance(memberUsername);
+                const approvalResult = getGeneralMLApprovalChance(memberUsername);
                 return (
                   <div
                     key={memberUsername}
@@ -674,10 +641,20 @@ function App() {
                       <div className='member-name'>{member.name}</div>
                       <div className='member-username'>
                         @{memberUsername}
-                        {approvalPercentage ? (
-                          <span className='ml-approval-chance'>{approvalPercentage}% likely</span>
-                        ) : (
-                          <span className='ml-no-data'>No prediction</span>
+                        {approvalResult && (
+                          <span
+                            className={`ml-approval-chance ${approvalResult.isGeneral ? 'general' : ''}`}
+                          >
+                            {approvalResult.percentage}% approver
+                            {approvalResult.isGeneral && (
+                              <span
+                                className='general-indicator'
+                                title='General approval rate (how often this person approves PRs)'
+                              >
+                                ⚡
+                              </span>
+                            )}
+                          </span>
                         )}
                       </div>
                       {memberApproved && <div className='member-approved'>✅ Approved</div>}
@@ -704,59 +681,80 @@ function App() {
   };
 
   const getMLApprovalChance = username => {
-    if (!mlPredictions?.predictions || !username) return null;
+    console.log('🔍 getMLApprovalChance called for:', username);
+    console.log('📊 mlPredictions available:', !!mlPredictions);
+    console.log('📊 mlPredictions.predictions:', mlPredictions?.predictions?.length || 0);
+
+    if (mlPredictions?.predictions) {
+      console.log(
+        '👥 Available ML predictions:',
+        mlPredictions.predictions.map(p => p.approver)
+      );
+    }
+
+    if (!mlPredictions?.predictions || !username) {
+      console.log('❌ No ML predictions or username for:', username);
+      return null;
+    }
 
     // Try exact match first
     let prediction = mlPredictions.predictions.find(p => p.approver === username);
+    console.log('🎯 Exact match found:', !!prediction, 'for', username);
 
     // Try with @ prefix if no exact match
     if (!prediction) {
       prediction = mlPredictions.predictions.find(p => p.approver === `@${username}`);
+      console.log('🎯 @ prefix match found:', !!prediction, `for @${username}`);
     }
 
     if (!prediction) {
+      console.log('❌ No prediction found for:', username);
       return null;
     }
 
     const percentage = prediction.confidence * 100;
-    return percentage >= 1 ? Math.round(percentage) : Math.round(percentage * 10) / 10;
+    const result = percentage >= 1 ? Math.round(percentage) : Math.round(percentage * 10) / 10;
+    const isFallback = prediction.isFallback || false;
+    console.log(
+      '✅ ML prediction for',
+      username,
+      ':',
+      `${result}%`,
+      isFallback ? '(fallback)' : ''
+    );
+    return { percentage: result, isFallback };
   };
 
   const getGeneralMLApprovalChance = username => {
     if (!generalPredictions?.predictions || !username) {
-      console.log('No general predictions or username:', {
+      console.log('No general approval rates or username:', {
         hasGeneralPredictions: !!generalPredictions?.predictions,
         username,
-        generalPredictionsValue: generalPredictions,
       });
       return null;
     }
 
-    console.log('Looking for general prediction for:', username);
-    console.log(
-      'Available general predictions:',
-      generalPredictions.predictions.map(p => p.approver)
-    );
+    console.log('Looking for general approval rate for:', username);
 
-    // Find prediction for this user in general predictions
+    // Find approval rate for this user in general predictions
     let prediction = generalPredictions.predictions.find(p => p.approver === username);
     if (!prediction) {
       prediction = generalPredictions.predictions.find(p => p.approver === `@${username}`);
     }
 
     if (!prediction) {
-      console.log('No general prediction found for:', username);
+      console.log('No general approval rate found for:', username);
       return null;
     }
 
     const percentage = prediction.confidence * 100;
     const result = percentage >= 1 ? Math.round(percentage) : Math.round(percentage * 10) / 10;
-    console.log('General prediction for', username, ':', `${result}%`);
-    return result;
+    console.log('General approval rate for', username, ':', `${result}%`);
+    return { percentage: result, isGeneral: true };
   };
 
   const renderUserCard = (user, isApproved = false, approvedMembers = []) => {
-    const approvalPercentage = getMLApprovalChance(user.username);
+    const approvalResult = getMLApprovalChance(user.username);
     if (user.type === 'team') {
       return renderTeamCard(user, isApproved, approvedMembers);
     }
@@ -774,8 +772,18 @@ function App() {
           <div className='user-name'>{user.name}</div>
           <div className='user-username'>
             @{user.username}
-            {approvalPercentage && (
-              <span className='ml-approval-chance'>{approvalPercentage}% likely</span>
+            {approvalResult && (
+              <span className={`ml-approval-chance ${approvalResult.isFallback ? 'fallback' : ''}`}>
+                {approvalResult.percentage}% likely
+                {approvalResult.isFallback && (
+                  <span
+                    className='fallback-indicator'
+                    title='Using file pattern matching (supplemental prediction)'
+                  >
+                    *
+                  </span>
+                )}
+              </span>
             )}
           </div>
         </div>
@@ -1443,11 +1451,21 @@ function App() {
                             <div className='user-username'>
                               @{user.username}
                               {(() => {
-                                const approvalPercentage = getMLApprovalChance(user.username);
+                                const approvalResult = getMLApprovalChance(user.username);
                                 return (
-                                  approvalPercentage && (
-                                    <span className='ml-approval-chance'>
-                                      {approvalPercentage}% likely
+                                  approvalResult && (
+                                    <span
+                                      className={`ml-approval-chance ${approvalResult.isFallback ? 'fallback' : ''}`}
+                                    >
+                                      {approvalResult.percentage}% likely
+                                      {approvalResult.isFallback && (
+                                        <span
+                                          className='fallback-indicator'
+                                          title='Using file pattern matching (supplemental prediction)'
+                                        >
+                                          *
+                                        </span>
+                                      )}
                                     </span>
                                   )
                                 );

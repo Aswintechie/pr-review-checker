@@ -11,6 +11,7 @@ class MLCodeownersTrainer {
     this.groupApprovalStats = new Map(); // group -> { approvers: Map(approver -> count), totalApprovals: number }
     this.approverStats = new Map(); // approver -> { groups: Set, totalApprovals: number }
     this.isModelTrained = false;
+    this.codeownersCache = new Map(); // repo -> { content: string | null, timestamp: number }
   }
 
   /**
@@ -230,54 +231,77 @@ class MLCodeownersTrainer {
   }
 
   /**
-   * Analyze files using CODEOWNERS logic - simplified approach
+   * Analyze files using CODEOWNERS logic - with caching to avoid repeated API calls
    */
   async analyzeFilesWithCodeowners(owner, repo, files, token) {
     try {
-      // Try multiple possible CODEOWNERS locations
-      const possiblePaths = ['.github/CODEOWNERS', 'CODEOWNERS', 'docs/CODEOWNERS'];
+      const repoKey = `${owner}/${repo}`;
 
+      // Check if we have cached CODEOWNERS content for this repository
       let codeownersContent = null;
 
-      for (const path of possiblePaths) {
-        try {
-          console.log(`🔍 Trying to fetch CODEOWNERS from: ${path}`);
+      if (this.codeownersCache.has(repoKey)) {
+        // Use cached content (could be null if CODEOWNERS wasn't found)
+        codeownersContent = this.codeownersCache.get(repoKey).content;
+      } else {
+        // First time fetching CODEOWNERS for this repository
+        console.log(`🔍 Fetching CODEOWNERS for ${repoKey} (first time)...`);
 
-          const headers = {
-            Accept: 'application/vnd.github.v3+json',
-          };
+        // Try multiple possible CODEOWNERS locations
+        const possiblePaths = ['.github/CODEOWNERS', 'CODEOWNERS', 'docs/CODEOWNERS'];
 
-          // Only add authorization if token is provided
-          if (token && token.trim()) {
-            headers.Authorization = `token ${token}`;
+        for (const path of possiblePaths) {
+          try {
+            console.log(`🔍 Trying to fetch CODEOWNERS from: ${path}`);
+
+            const headers = {
+              Accept: 'application/vnd.github.v3+json',
+            };
+
+            // Only add authorization if token is provided
+            if (token && token.trim()) {
+              headers.Authorization = `token ${token}`;
+            }
+
+            const codeownersResponse = await axios.get(
+              `https://api.github.com/repos/${owner}/${repo}/contents/${path}`,
+              { headers }
+            );
+
+            codeownersContent = Buffer.from(codeownersResponse.data.content, 'base64').toString(
+              'utf-8'
+            );
+            console.log(`✅ Found CODEOWNERS at: ${path}`);
+            break;
+          } catch (pathError) {
+            console.log(
+              `⚠️ CODEOWNERS not found at: ${path} (${pathError.response?.status || pathError.message})`
+            );
+            continue;
           }
-
-          const codeownersResponse = await axios.get(
-            `https://api.github.com/repos/${owner}/${repo}/contents/${path}`,
-            { headers }
-          );
-
-          codeownersContent = Buffer.from(codeownersResponse.data.content, 'base64').toString(
-            'utf-8'
-          );
-          console.log(`✅ Found CODEOWNERS at: ${path}`);
-          break;
-        } catch (pathError) {
-          console.log(
-            `⚠️ CODEOWNERS not found at: ${path} (${pathError.response?.status || pathError.message})`
-          );
-          continue;
         }
+
+        if (!codeownersContent) {
+          console.log('❌ No CODEOWNERS file found in any standard location');
+        }
+
+        // Cache the result (including null if not found)
+        this.codeownersCache.set(repoKey, {
+          content: codeownersContent,
+          timestamp: Date.now(),
+        });
+
+        console.log(
+          `💾 Cached CODEOWNERS result for ${repoKey} - subsequent PR processing will be silent`
+        );
       }
 
       if (!codeownersContent) {
-        console.log('❌ No CODEOWNERS file found in any standard location');
         return [];
       }
 
       // Parse CODEOWNERS and create groups based on files
       const groups = this.createGroupsFromFiles(files, codeownersContent);
-      console.log(`📊 Created ${groups.length} approval groups from CODEOWNERS`);
       return groups;
     } catch (error) {
       console.error('❌ Error analyzing files with CODEOWNERS:', error.message);
@@ -544,9 +568,11 @@ class MLCodeownersTrainer {
   }
 
   /**
-   * Predict approvers for given files using CODEOWNERS groups
+   * Predict approvers for given files using CODEOWNERS groups or file pattern fallback
    */
   async predictApprovers(owner, repo, files, token, confidence = 0.3) {
+    console.log(`🤖 Predicting approvers for ${files.length} files with confidence ${confidence}`);
+
     if (!this.isModelTrained) {
       throw new Error('Model not trained yet. Please train the model first.');
     }
@@ -554,9 +580,11 @@ class MLCodeownersTrainer {
     try {
       // Analyze files using CODEOWNERS logic
       const codeownersGroups = await this.analyzeFilesWithCodeowners(owner, repo, files, token);
+      console.log(`📊 CODEOWNERS analysis found ${codeownersGroups.length} groups`);
 
       if (codeownersGroups.length === 0) {
-        return { predictions: [], matchedGroups: [], totalGroups: 0 };
+        console.log('⚠️ No CODEOWNERS groups found, trying file pattern fallback...');
+        return this.predictWithFilePatterns(files, confidence);
       }
 
       const approverScores = new Map();
@@ -592,15 +620,85 @@ class MLCodeownersTrainer {
 
       // Normalize scores and filter by confidence threshold
       const maxScore = Math.max(...Array.from(approverScores.values()), 1);
-      const predictions = Array.from(approverScores.entries())
+      console.log(`📊 Raw scores before normalization:`, Array.from(approverScores.entries()));
+      console.log(`📊 Max score found: ${maxScore}`);
+
+      const allPredictions = Array.from(approverScores.entries())
         .map(([approver, score]) => ({
           approver,
           confidence: score / maxScore,
           rawScore: score,
         }))
-        .filter(prediction => prediction.confidence >= confidence)
-        .sort((a, b) => b.confidence - a.confidence);
+        .sort((a, b) => {
+          // First sort by confidence (descending)
+          if (b.confidence !== a.confidence) {
+            return b.confidence - a.confidence;
+          }
+          // If confidence is equal, sort alphabetically for consistency
+          return a.approver.localeCompare(b.approver);
+        });
 
+      console.log(
+        `📊 All predictions before filtering:`,
+        allPredictions.map(p => `${p.approver}: ${Math.round(p.confidence * 100)}%`)
+      );
+      console.log(`📊 Confidence threshold: ${confidence}`);
+
+      const filteredPredictions = allPredictions.filter(
+        prediction => prediction.confidence >= confidence
+      );
+      console.log(
+        `📊 After confidence filter (>=${confidence}):`,
+        filteredPredictions.map(p => `${p.approver}: ${Math.round(p.confidence * 100)}%`)
+      );
+
+      const predictions = filteredPredictions.slice(0, 5); // Limit to top 5 most confident predictions
+      console.log(
+        `📊 Final predictions (top 5):`,
+        predictions.map(p => `${p.approver}: ${Math.round(p.confidence * 100)}%`)
+      );
+      console.log(
+        `🔍 Checking supplementation: ${predictions.length} predictions, ${codeownersGroups.length} groups, threshold: 5`
+      );
+
+      // If CODEOWNERS gives us fewer than 5 predictions, supplement with file pattern predictions
+      if (predictions.length < 5 && codeownersGroups.length > 0) {
+        console.log(
+          `🔄 CODEOWNERS only gave ${predictions.length} predictions, supplementing with file patterns...`
+        );
+
+        try {
+          const fallbackResult = this.predictWithFilePatterns(files, confidence);
+          console.log(
+            `📊 File pattern fallback found ${fallbackResult.predictions.length} additional predictions`
+          );
+
+          // Merge predictions, avoiding duplicates
+          const existingApprovers = new Set(predictions.map(p => p.approver));
+          const supplementalPredictions = fallbackResult.predictions
+            .filter(p => !existingApprovers.has(p.approver))
+            .map(p => ({
+              ...p,
+              isFallback: true, // Mark as fallback prediction
+            }));
+
+          const combinedPredictions = [...predictions, ...supplementalPredictions].slice(0, 5); // Increase limit to 5 for better coverage
+          console.log(
+            `✅ Combined predictions: ${combinedPredictions.length} approvers (${predictions.length} CODEOWNERS + ${supplementalPredictions.length} patterns)`
+          );
+
+          return {
+            predictions: combinedPredictions,
+            matchedGroups,
+            totalGroups: codeownersGroups.length,
+            supplementedWithPatterns: supplementalPredictions.length > 0,
+          };
+        } catch (fallbackError) {
+          console.log(`❌ File pattern supplement failed: ${fallbackError.message}`);
+        }
+      }
+
+      console.log(`✅ CODEOWNERS-based predictions: ${predictions.length} approvers (top 5)`);
       return {
         predictions,
         matchedGroups,
@@ -608,8 +706,182 @@ class MLCodeownersTrainer {
       };
     } catch (error) {
       console.error('❌ Prediction failed:', error.message);
+      console.log('🔄 Falling back to file pattern predictions...');
+      return this.predictWithFilePatterns(files, confidence);
+    }
+  }
+
+  /**
+   * Fallback prediction method using file patterns when CODEOWNERS is not available
+   * This tries to approximate CODEOWNERS behavior using historical file patterns
+   */
+  predictWithFilePatterns(files, confidence = 0.3) {
+    console.log(`🔄 Using file pattern fallback for ${files.length} files`);
+
+    if (this.trainingData.length === 0) {
+      console.log('❌ No training data available for file pattern predictions');
       return { predictions: [], matchedGroups: [], totalGroups: 0 };
     }
+
+    const approverScores = new Map();
+    const fileExtensions = new Set();
+    const deepPaths = new Set(); // More specific paths
+    const shallowPaths = new Set(); // Broader paths
+
+    // Extract patterns from the requested files with different specificity levels
+    files.forEach(file => {
+      const ext = file.split('.').pop()?.toLowerCase();
+      if (ext) fileExtensions.add(ext);
+
+      // Extract directory patterns with different depths
+      const pathParts = file.split('/');
+      pathParts.forEach((part, index) => {
+        if (index < pathParts.length - 1) {
+          // Exclude filename
+          const pathDepth = index + 1;
+          const currentPath = pathParts.slice(0, pathDepth).join('/');
+
+          // Categorize by depth for better matching
+          if (pathDepth >= 3) {
+            deepPaths.add(currentPath); // Deep paths like "tt_metal/hw/ckernels"
+          } else if (pathDepth >= 1) {
+            shallowPaths.add(currentPath); // Shallow paths like "tt_metal"
+          }
+        }
+      });
+    });
+
+    console.log(`📁 File patterns - Extensions: [${Array.from(fileExtensions).join(', ')}]`);
+    console.log(`📂 Deep paths: [${Array.from(deepPaths).slice(0, 3).join(', ')}...]`);
+    console.log(`📂 Shallow paths: [${Array.from(shallowPaths).slice(0, 3).join(', ')}...]`);
+
+    // Score approvers with weighted matching (more specific = higher weight)
+    this.trainingData.forEach(trainingItem => {
+      trainingItem.files.forEach(historicalFile => {
+        const historicalExt = historicalFile.split('.').pop()?.toLowerCase();
+        let matchScore = 0;
+        const matchReasons = [];
+
+        // Deep path matches (highest weight - approximates CODEOWNERS specificity)
+        for (const deepPath of deepPaths) {
+          if (historicalFile.startsWith(`${deepPath}/`)) {
+            matchScore += 3; // High weight for specific directory matches
+            matchReasons.push(`deep-path:${deepPath}`);
+            break;
+          }
+        }
+
+        // Extension matches (medium weight - indicates file type expertise)
+        if (historicalExt && fileExtensions.has(historicalExt)) {
+          matchScore += 2;
+          matchReasons.push(`ext:${historicalExt}`);
+        }
+
+        // Shallow path matches (lower weight - broader category)
+        if (matchScore === 0) {
+          // Only if no specific matches found
+          for (const shallowPath of shallowPaths) {
+            if (historicalFile.startsWith(`${shallowPath}/`)) {
+              matchScore += 1;
+              matchReasons.push(`shallow-path:${shallowPath}`);
+              break;
+            }
+          }
+        }
+
+        // Even broader matches for more coverage (very low weight)
+        if (matchScore === 0) {
+          // Match any file with same extension anywhere
+          if (historicalExt && fileExtensions.has(historicalExt)) {
+            matchScore += 0.5;
+            matchReasons.push(`broad-ext:${historicalExt}`);
+          }
+
+          // Match similar directory names at any level
+          for (const shallowPath of shallowPaths) {
+            if (historicalFile.includes(shallowPath)) {
+              matchScore += 0.3;
+              matchReasons.push(`broad-path:${shallowPath}`);
+              break;
+            }
+          }
+        }
+
+        if (matchScore > 0) {
+          // Score the approvers who worked on this similar file
+          trainingItem.approvers.forEach(approver => {
+            const currentScore = approverScores.get(approver) || 0;
+            approverScores.set(approver, currentScore + matchScore);
+
+            // Debug logging for all matches (not just high ones)
+            if (matchScore >= 2) {
+              console.log(
+                `🎯 Strong match: ${approver} worked on ${historicalFile} (${matchReasons.join(', ')})`
+              );
+            } else if (matchScore >= 1) {
+              console.log(
+                `👍 Good match: ${approver} worked on ${historicalFile} (${matchReasons.join(', ')})`
+              );
+            }
+          });
+        }
+      });
+    });
+
+    if (approverScores.size === 0) {
+      console.log('❌ No pattern matches found in training data');
+      return { predictions: [], matchedGroups: [], totalGroups: 0 };
+    }
+
+    // Normalize scores and filter by confidence threshold
+    const maxScore = Math.max(...Array.from(approverScores.values()), 1);
+    console.log(`📊 Raw scores before normalization:`, Array.from(approverScores.entries()));
+    console.log(`📊 Max score found: ${maxScore}`);
+
+    const allPredictions = Array.from(approverScores.entries())
+      .map(([approver, score]) => ({
+        approver,
+        confidence: score / maxScore,
+        rawScore: score,
+      }))
+      .sort((a, b) => b.confidence - a.confidence);
+
+    console.log(
+      `📊 All predictions before filtering:`,
+      allPredictions.map(p => `${p.approver}: ${Math.round(p.confidence * 100)}%`)
+    );
+    console.log(`📊 Confidence threshold: ${confidence}`);
+
+    const filteredPredictions = allPredictions.filter(
+      prediction => prediction.confidence >= confidence
+    );
+    console.log(
+      `📊 After confidence filter (>=${confidence}):`,
+      filteredPredictions.map(p => `${p.approver}: ${Math.round(p.confidence * 100)}%`)
+    );
+
+    const predictions = filteredPredictions.slice(0, 3); // Limit to top 3 most confident predictions
+    console.log(
+      `📊 Final predictions (top 3):`,
+      predictions.map(p => `${p.approver}: ${Math.round(p.confidence * 100)}%`)
+    );
+
+    console.log(`✅ File pattern predictions: ${predictions.length} approvers (top 3)`);
+    console.log(
+      `👥 Top predictions: ${predictions
+        .slice(0, 3)
+        .map(p => `${p.approver} (${Math.round(p.confidence * 100)}%)`)
+        .join(', ')}`
+    );
+    console.log(`⚠️ Note: Using file pattern fallback - results may differ from CODEOWNERS`);
+
+    return {
+      predictions,
+      matchedGroups: [],
+      totalGroups: 0,
+      fallbackMethod: 'file-patterns',
+      matchingStrategy: 'weighted-path-depth',
+    };
   }
 
   /**
@@ -620,6 +892,7 @@ class MLCodeownersTrainer {
     this.groupApprovalStats = new Map();
     this.approverStats = new Map();
     this.isModelTrained = false;
+    this.codeownersCache.clear(); // Clear CODEOWNERS cache
     console.log('🧹 Model cleared - ready for fresh training');
   }
 

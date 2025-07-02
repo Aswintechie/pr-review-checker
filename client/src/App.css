@@ -1760,15 +1760,48 @@ section h2 {
 .ml-approval-chance {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
   font-weight: 600;
-  padding: 0.1rem 0.4rem;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(102, 126, 234, 0.3);
+  margin-left: 6px;
   white-space: nowrap;
-  letter-spacing: 0.2px;
-  text-transform: uppercase;
+  position: relative;
+}
+
+.ml-approval-chance.fallback {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  border: 1px dashed rgba(255, 255, 255, 0.3);
+}
+
+.fallback-indicator {
+  margin-left: 2px;
+  font-weight: bold;
+  opacity: 0.8;
+}
+
+.ml-approval-chance.general {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.general-indicator {
+  margin-left: 2px;
+  font-weight: bold;
   opacity: 0.9;
+  animation: sparkle 2s infinite ease-in-out;
+}
+
+@keyframes sparkle {
+  0%,
+  100% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
 }
 
 .ml-no-data {
