@@ -214,11 +214,16 @@ function App() {
       try {
         const statsResponse = await axios.get('/api/ml/stats');
         console.log('📈 ML stats response:', statsResponse.data);
+        console.log('📊 Stats object keys:', Object.keys(statsResponse.data?.stats || {}));
+        console.log('📊 Stats object:', statsResponse.data?.stats);
         
         if (statsResponse.data?.stats?.approvalStatistics) {
+          console.log('✅ Found approvalStatistics');
           // Convert approval statistics to prediction format
           const stats = statsResponse.data.stats.approvalStatistics;
+          console.log('📈 Approval statistics:', stats);
           const totalPRs = Object.values(stats).reduce((sum, count) => sum + count, 0);
+          console.log('📊 Total PRs:', totalPRs);
           
           if (totalPRs > 0) {
             const predictions = Object.entries(stats)
@@ -232,8 +237,14 @@ function App() {
               .slice(0, 20); // Top 20 approvers
             
             console.log('✅ Fallback predictions from stats:', predictions.length, 'approvers');
+            console.log('👥 Generated predictions:', predictions);
             return { predictions };
+          } else {
+            console.log('❌ No PRs in statistics (totalPRs = 0)');
           }
+        } else {
+          console.log('❌ No approvalStatistics found in stats');
+          console.log('🔍 Available stats fields:', Object.keys(statsResponse.data?.stats || {}));
         }
       } catch (statsError) {
         console.log('❌ Fallback stats error:', statsError.message);
