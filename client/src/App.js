@@ -137,6 +137,8 @@ function App() {
       localStorage.setItem('recentPRs', JSON.stringify(filtered));
       return filtered;
     });
+  };
+
   const getMlPredictions = async (files, repoInfo) => {
     try {
       const response = await axios.post('/api/ml/predict', {

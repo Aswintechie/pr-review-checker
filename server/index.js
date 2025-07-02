@@ -10,10 +10,10 @@ const axios = require('axios');
 const nodemailer = require('nodemailer');
 const path = require('path');
 const fs = require('fs');
+const fsPromises = require('fs').promises;
 const os = require('os');
 const crypto = require('crypto');
 const Codeowners = require('codeowners');
-const fs = require('fs').promises;
 const MLCodeownersTrainer = require('./ml-codeowners');
 require('dotenv').config();
 
@@ -33,7 +33,7 @@ const MODEL_FILE_PATH = path.join(__dirname, 'ml-model.json');
 // Load existing model if available
 async function loadModel() {
   try {
-    const modelData = await fs.readFile(MODEL_FILE_PATH, 'utf8');
+    const modelData = await fsPromises.readFile(MODEL_FILE_PATH, 'utf8');
     mlTrainer.importModel(JSON.parse(modelData));
     console.log('✅ ML model loaded from storage');
   } catch (error) {
@@ -45,7 +45,7 @@ async function loadModel() {
 async function saveModel() {
   try {
     const modelData = mlTrainer.exportModel();
-    await fs.writeFile(MODEL_FILE_PATH, JSON.stringify(modelData, null, 2));
+    await fsPromises.writeFile(MODEL_FILE_PATH, JSON.stringify(modelData, null, 2));
     console.log('💾 ML model saved to storage');
   } catch (error) {
     console.error('❌ Error saving ML model:', error.message);
@@ -161,6 +161,66 @@ app.get('/api/ml/stats', (req, res) => {
     console.error('❌ ML stats error:', error.message);
     res.status(500).json({
       error: 'Failed to get model stats',
+      message: error.message,
+    });
+  }
+});
+
+// Get detailed model status
+app.get('/api/ml/status', (req, res) => {
+  try {
+    const status = mlTrainer.getModelStatus();
+    res.json({
+      success: true,
+      status,
+    });
+  } catch (error) {
+    console.error('❌ ML status error:', error.message);
+    res.status(500).json({
+      error: 'Failed to get model status',
+      message: error.message,
+    });
+  }
+});
+
+// Clear model data
+app.post('/api/ml/clear', async (req, res) => {
+  try {
+    mlTrainer.clearModel();
+    
+    // Save the cleared model to disk
+    await saveModel();
+    
+    res.json({
+      success: true,
+      message: 'Model cleared successfully',
+    });
+  } catch (error) {
+    console.error('❌ ML clear error:', error.message);
+    res.status(500).json({
+      error: 'Failed to clear model',
+      message: error.message,
+    });
+  }
+});
+
+// Remove duplicate PRs from training data
+app.post('/api/ml/remove-duplicates', async (req, res) => {
+  try {
+    const removedCount = mlTrainer.removeDuplicates();
+    
+    // Save the cleaned model to disk
+    await saveModel();
+    
+    res.json({
+      success: true,
+      message: `Removed ${removedCount} duplicate PRs`,
+      removedCount,
+    });
+  } catch (error) {
+    console.error('❌ ML remove duplicates error:', error.message);
+    res.status(500).json({
+      error: 'Failed to remove duplicates',
       message: error.message,
     });
   }
@@ -501,7 +561,7 @@ async function initializeSharedBaseDir() {
     const proposedDir = path.join(tempDir, 'codeowners-base');
 
     try {
-      await fs.promises.mkdir(proposedDir, { recursive: true });
+      await fsPromises.mkdir(proposedDir, { recursive: true });
       sharedBaseTempDir = proposedDir;
     } catch (error) {
       console.warn('Could not create shared base temp directory:');
@@ -529,8 +589,8 @@ async function analyzeCodeownersContent(codeownersContent, changedFiles) {
 
   try {
     // Create unique subdirectory and CODEOWNERS file for this request
-    await fs.promises.mkdir(tempCodeownersDir, { recursive: true });
-    await fs.promises.writeFile(tempCodeownersFile, codeownersContent);
+    await fsPromises.mkdir(tempCodeownersDir, { recursive: true });
+    await fsPromises.writeFile(tempCodeownersFile, codeownersContent);
 
     // Create codeowners instance (requires exact "CODEOWNERS" filename)
     const codeowners = new Codeowners(tempCodeownersDir);
@@ -565,7 +625,7 @@ async function analyzeCodeownersContent(codeownersContent, changedFiles) {
   } finally {
     // Clean up request-specific directory - this always runs regardless of success or error
     try {
-      await fs.promises.rm(tempCodeownersDir, { recursive: true, force: true });
+      await fsPromises.rm(tempCodeownersDir, { recursive: true, force: true });
     } catch (cleanupError) {
       console.info(
         `Cleanup failed for Request ID ${requestId} - Temp Directory: ${tempCodeownersDir}`
@@ -581,7 +641,7 @@ function cleanupSharedTempDir(isSync = false) {
       if (isSync) {
         fs.rmSync(sharedBaseTempDir, { recursive: true, force: true });
       } else {
-        return fs.promises.rm(sharedBaseTempDir, { recursive: true, force: true });
+        return fsPromises.rm(sharedBaseTempDir, { recursive: true, force: true });
       }
     } catch (error) {
       // Silently ignore cleanup errors - errors are now handled by callers where appropriate
