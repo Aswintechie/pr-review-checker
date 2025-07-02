@@ -36,7 +36,7 @@ function App() {
     hasMLPredictions: !!mlPredictions,
     hasGeneralPredictions: !!generalPredictions,
     loading,
-    generalPredictionsValue: generalPredictions
+    generalPredictionsValue: generalPredictions,
   });
 
   const themes = [
@@ -166,7 +166,7 @@ function App() {
 
   const getGeneralPredictions = async repoInfo => {
     console.log('🚀 getGeneralPredictions called with:', repoInfo);
-    
+
     try {
       // Try multiple strategies to get general predictions
       const strategies = [
@@ -174,21 +174,24 @@ function App() {
         { files: ['README.md'], confidence: 0.001 },
         // Strategy 2: Package files
         { files: ['package.json'], confidence: 0.001 },
-        // Strategy 3: Source directories 
+        // Strategy 3: Source directories
         { files: ['src/index.js'], confidence: 0.001 },
         // Strategy 4: Use the same files as main prediction but lower confidence
-        { files: result?.fileApprovalDetails?.map(detail => detail.file) || ['README.md'], confidence: 0.001 }
+        {
+          files: result?.fileApprovalDetails?.map(detail => detail.file) || ['README.md'],
+          confidence: 0.001,
+        },
       ];
-      
+
       console.log('📝 Will try', strategies.length, 'strategies for general predictions');
 
       for (const strategy of strategies) {
         try {
           // Skip if files array is empty
           if (!strategy.files || strategy.files.length === 0) continue;
-          
+
           console.log('Trying general prediction strategy:', strategy.files);
-          
+
           const response = await axios.post('/api/ml/predict', {
             files: strategy.files,
             confidence: strategy.confidence,
@@ -196,19 +199,28 @@ function App() {
             repo: repoInfo?.repo,
             token: githubToken,
           });
-          
+
           if (response.data.prediction?.predictions?.length > 0) {
-            console.log('✅ General predictions found:', response.data.prediction.predictions.length, 'approvers');
+            console.log(
+              '✅ General predictions found:',
+              response.data.prediction.predictions.length,
+              'approvers'
+            );
             return response.data.prediction;
           }
         } catch (err) {
-          console.log('❌ Strategy failed:', strategy.files, '-', err.response?.data?.message || err.message);
+          console.log(
+            '❌ Strategy failed:',
+            strategy.files,
+            '-',
+            err.response?.data?.message || err.message
+          );
           continue;
         }
       }
-      
+
       console.log('❌ No general predictions found with any strategy');
-      
+
       // Fallback: Try to get ML model statistics for most frequent approvers
       console.log('🔄 Trying fallback: Get ML model statistics...');
       try {
@@ -216,30 +228,37 @@ function App() {
         console.log('📈 ML stats response:', statsResponse.data);
         console.log('📊 Stats object keys:', Object.keys(statsResponse.data?.stats || {}));
         console.log('📊 Stats object:', statsResponse.data?.stats);
-        
+
         if (statsResponse.data?.stats?.topApprovers) {
           console.log('✅ Found topApprovers');
-          // Convert top approvers to prediction format
+                    // Convert top approvers to prediction format
           const topApprovers = statsResponse.data.stats.topApprovers;
           console.log('📈 Top approvers:', topApprovers);
+          console.log('📝 First top approver item:', topApprovers[0]);
+          console.log('📝 First item keys:', Object.keys(topApprovers[0] || {}));
           
           if (topApprovers && topApprovers.length > 0) {
             // Convert topApprovers array to predictions format
             const totalCount = topApprovers.reduce((sum, item) => sum + (item.count || 0), 0);
             console.log('📊 Total approvals:', totalCount);
-            
+            console.log('📊 Item counts:', topApprovers.map(item => ({ name: item.approver || item.name, count: item.count })));
+
             if (totalCount > 0) {
               const predictions = topApprovers
                 .map(item => ({
                   approver: item.approver || item.name || item.username,
                   confidence: (item.count || 0) / totalCount,
-                  count: item.count || 0
+                  count: item.count || 0,
                 }))
                 .filter(p => p.approver && p.confidence > 0.001) // Very low threshold
                 .sort((a, b) => b.confidence - a.confidence)
                 .slice(0, 20); // Top 20 approvers
-              
-              console.log('✅ Fallback predictions from topApprovers:', predictions.length, 'approvers');
+
+              console.log(
+                '✅ Fallback predictions from topApprovers:',
+                predictions.length,
+                'approvers'
+              );
               console.log('👥 Generated predictions:', predictions);
               return { predictions };
             } else {
@@ -255,7 +274,7 @@ function App() {
       } catch (statsError) {
         console.log('❌ Fallback stats error:', statsError.message);
       }
-      
+
       return null;
     } catch (error) {
       console.log('❌ General predictions error:', error.message);
@@ -290,7 +309,7 @@ function App() {
       console.log('🔍 Checking if we should fetch ML predictions...');
       console.log('📁 fileApprovalDetails:', response.data.fileApprovalDetails);
       console.log('📁 Length:', response.data.fileApprovalDetails?.length);
-      
+
       if (response.data.fileApprovalDetails && response.data.fileApprovalDetails.length > 0) {
         console.log('✅ Conditions met - fetching ML predictions');
         const files = response.data.fileApprovalDetails.map(detail => detail.file);
@@ -312,22 +331,28 @@ function App() {
         console.log('🔄 Fetching general predictions for team members...');
         console.log('📋 Repository info:', repoInfo);
         console.log('🔑 GitHub token available:', !!githubToken);
-        
+
         const general = await getGeneralPredictions(repoInfo);
         console.log('📊 General predictions result:', general);
-        
+
         if (general && general.predictions && general.predictions.length > 0) {
           console.log('✅ Setting general predictions:', general.predictions.length, 'approvers');
-          console.log('👥 General approvers:', general.predictions.map(p => p.approver));
+          console.log(
+            '👥 General approvers:',
+            general.predictions.map(p => p.approver)
+          );
         } else {
           console.log('❌ No general predictions to set');
         }
-        
+
         setGeneralPredictions(general);
       } else {
         console.log('❌ ML predictions not fetched - conditions not met');
         console.log('   - fileApprovalDetails exists:', !!response.data.fileApprovalDetails);
-        console.log('   - fileApprovalDetails length:', response.data.fileApprovalDetails?.length || 0);
+        console.log(
+          '   - fileApprovalDetails length:',
+          response.data.fileApprovalDetails?.length || 0
+        );
       }
 
       // Always try to fetch general predictions for team members (independent of file details)
@@ -345,9 +370,17 @@ function App() {
         console.log('🎯 Fetching independent general predictions...');
         const independentGeneral = await getGeneralPredictions(repoInfo);
         console.log('🎯 Independent general predictions result:', independentGeneral);
-        
-        if (independentGeneral && independentGeneral.predictions && independentGeneral.predictions.length > 0) {
-          console.log('✅ Setting independent general predictions:', independentGeneral.predictions.length, 'approvers');
+
+        if (
+          independentGeneral &&
+          independentGeneral.predictions &&
+          independentGeneral.predictions.length > 0
+        ) {
+          console.log(
+            '✅ Setting independent general predictions:',
+            independentGeneral.predictions.length,
+            'approvers'
+          );
           setGeneralPredictions(independentGeneral);
         }
       } else {
@@ -682,23 +715,26 @@ function App() {
 
   const getGeneralMLApprovalChance = username => {
     if (!generalPredictions?.predictions || !username) {
-      console.log('No general predictions or username:', { 
-        hasGeneralPredictions: !!generalPredictions?.predictions, 
+      console.log('No general predictions or username:', {
+        hasGeneralPredictions: !!generalPredictions?.predictions,
         username,
-        generalPredictionsValue: generalPredictions
+        generalPredictionsValue: generalPredictions,
       });
       return null;
     }
-    
+
     console.log('Looking for general prediction for:', username);
-    console.log('Available general predictions:', generalPredictions.predictions.map(p => p.approver));
-    
+    console.log(
+      'Available general predictions:',
+      generalPredictions.predictions.map(p => p.approver)
+    );
+
     // Find prediction for this user in general predictions
     let prediction = generalPredictions.predictions.find(p => p.approver === username);
     if (!prediction) {
       prediction = generalPredictions.predictions.find(p => p.approver === `@${username}`);
     }
-    
+
     if (!prediction) {
       console.log('No general prediction found for:', username);
       return null;
@@ -706,7 +742,7 @@ function App() {
 
     const percentage = prediction.confidence * 100;
     const result = percentage >= 1 ? Math.round(percentage) : Math.round(percentage * 10) / 10;
-    console.log('General prediction for', username, ':', result + '%');
+    console.log('General prediction for', username, ':', `${result}%`);
     return result;
   };
 
