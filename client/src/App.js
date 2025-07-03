@@ -176,6 +176,7 @@ function App() {
   };
 
   const getMlPredictions = async (files, repoInfo) => {
+    console.log('🚀 DEBUG: getMlPredictions called with:', { files, repoInfo });
     try {
       const response = await axios.post('/api/ml/predict', {
         files,
@@ -185,8 +186,13 @@ function App() {
         token: githubToken,
       });
 
+      console.log('✅ DEBUG: ML prediction response:', response.data);
+      console.log('📊 DEBUG: Prediction object:', response.data.prediction);
+      console.log('👥 DEBUG: Individual predictions:', response.data.prediction?.predictions || []);
+
       return response.data.prediction; // Return the prediction object
     } catch (error) {
+      console.log('❌ DEBUG: ML prediction error:', error.response?.data || error.message);
       return null;
     }
   };
@@ -724,25 +730,39 @@ function App() {
   };
 
   const getMLApprovalChance = username => {
+    // Debug logging to see what's happening
+    console.log('🔍 DEBUG: getMLApprovalChance called for:', username);
+    console.log('📊 DEBUG: mlPredictions available:', !!mlPredictions);
+    console.log('📊 DEBUG: mlPredictions structure:', mlPredictions);
+    console.log('📊 DEBUG: mlPredictions.predictions:', mlPredictions?.predictions?.length || 0);
+
     if (!mlPredictions?.predictions || !username) {
+      console.log('❌ DEBUG: No ML predictions or username for:', username);
       return null;
     }
 
+    // Debug: show available predictions
+    console.log('👥 DEBUG: Available predictions:', mlPredictions.predictions.map(p => p.approver));
+
     // Try exact match first
     let prediction = mlPredictions.predictions.find(p => p.approver === username);
+    console.log('🎯 DEBUG: Exact match found:', !!prediction, 'for', username);
 
     // Try with @ prefix if no exact match
     if (!prediction) {
       prediction = mlPredictions.predictions.find(p => p.approver === `@${username}`);
+      console.log('🎯 DEBUG: @ prefix match found:', !!prediction, `for @${username}`);
     }
 
     if (!prediction) {
+      console.log('❌ DEBUG: No prediction found for:', username);
       return null;
     }
 
     const percentage = prediction.confidence * 100;
     const result = percentage >= 1 ? Math.round(percentage) : Math.round(percentage * 10) / 10;
     const isFallback = prediction.isFallback || false;
+    console.log('✅ DEBUG: ML prediction for', username, ':', `${result}%`, isFallback ? '(fallback)' : '');
     return { percentage: result, isFallback };
   };
 
