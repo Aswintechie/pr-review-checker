@@ -54,16 +54,10 @@
     }
   ],
   "functions": {
-    "server/index.js": {
-      "includeFiles": "server/ml-model.json"
+    "api/pr-approvers.js": {
+      "includeFiles": "server/**"
     }
   },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/server/index.js"
-    }
-  ],
   "env": {
     "NODE_ENV": "production",
     "REACT_APP_VERSION": "8.0.0"
