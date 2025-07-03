@@ -176,6 +176,7 @@ function App() {
   };
 
   const getMlPredictions = async (files, repoInfo) => {
+    // eslint-disable-next-line no-console
     console.log('🚀 DEBUG: getMlPredictions called with:', { files, repoInfo });
     try {
       const response = await axios.post('/api/ml/predict', {
@@ -186,12 +187,16 @@ function App() {
         token: githubToken,
       });
 
+      // eslint-disable-next-line no-console
       console.log('✅ DEBUG: ML prediction response:', response.data);
+      // eslint-disable-next-line no-console
       console.log('📊 DEBUG: Prediction object:', response.data.prediction);
+      // eslint-disable-next-line no-console
       console.log('👥 DEBUG: Individual predictions:', response.data.prediction?.predictions || []);
 
       return response.data.prediction; // Return the prediction object
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.log('❌ DEBUG: ML prediction error:', error.response?.data || error.message);
       return null;
     }
@@ -731,17 +736,23 @@ function App() {
 
   const getMLApprovalChance = username => {
     // Debug logging to see what's happening
+    // eslint-disable-next-line no-console
     console.log('🔍 DEBUG: getMLApprovalChance called for:', username);
+    // eslint-disable-next-line no-console
     console.log('📊 DEBUG: mlPredictions available:', !!mlPredictions);
+    // eslint-disable-next-line no-console
     console.log('📊 DEBUG: mlPredictions structure:', mlPredictions);
+    // eslint-disable-next-line no-console
     console.log('📊 DEBUG: mlPredictions.predictions:', mlPredictions?.predictions?.length || 0);
 
     if (!mlPredictions?.predictions || !username) {
+      // eslint-disable-next-line no-console
       console.log('❌ DEBUG: No ML predictions or username for:', username);
       return null;
     }
 
     // Debug: show available predictions
+    // eslint-disable-next-line no-console
     console.log(
       '👥 DEBUG: Available predictions:',
       mlPredictions.predictions.map(p => p.approver)
@@ -749,15 +760,18 @@ function App() {
 
     // Try exact match first
     let prediction = mlPredictions.predictions.find(p => p.approver === username);
+    // eslint-disable-next-line no-console
     console.log('🎯 DEBUG: Exact match found:', !!prediction, 'for', username);
 
     // Try with @ prefix if no exact match
     if (!prediction) {
       prediction = mlPredictions.predictions.find(p => p.approver === `@${username}`);
+      // eslint-disable-next-line no-console
       console.log('🎯 DEBUG: @ prefix match found:', !!prediction, `for @${username}`);
     }
 
     if (!prediction) {
+      // eslint-disable-next-line no-console
       console.log('❌ DEBUG: No prediction found for:', username);
       return null;
     }
@@ -765,6 +779,7 @@ function App() {
     const percentage = prediction.confidence * 100;
     const result = percentage >= 1 ? Math.round(percentage) : Math.round(percentage * 10) / 10;
     const isFallback = prediction.isFallback || false;
+    // eslint-disable-next-line no-console
     console.log(
       '✅ DEBUG: ML prediction for',
       username,
