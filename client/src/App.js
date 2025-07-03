@@ -742,7 +742,10 @@ function App() {
     }
 
     // Debug: show available predictions
-    console.log('👥 DEBUG: Available predictions:', mlPredictions.predictions.map(p => p.approver));
+    console.log(
+      '👥 DEBUG: Available predictions:',
+      mlPredictions.predictions.map(p => p.approver)
+    );
 
     // Try exact match first
     let prediction = mlPredictions.predictions.find(p => p.approver === username);
@@ -762,7 +765,13 @@ function App() {
     const percentage = prediction.confidence * 100;
     const result = percentage >= 1 ? Math.round(percentage) : Math.round(percentage * 10) / 10;
     const isFallback = prediction.isFallback || false;
-    console.log('✅ DEBUG: ML prediction for', username, ':', `${result}%`, isFallback ? '(fallback)' : '');
+    console.log(
+      '✅ DEBUG: ML prediction for',
+      username,
+      ':',
+      `${result}%`,
+      isFallback ? '(fallback)' : ''
+    );
     return { percentage: result, isFallback };
   };
 
