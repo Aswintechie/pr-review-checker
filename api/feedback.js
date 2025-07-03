@@ -1,7 +1,7 @@
 /**
- * Vercel Serverless Function for all API endpoints
+ * Vercel Serverless Function for Feedback API
  * This file exports the Express app as a serverless function
- * Handles: /api/pr-approvers, /api/ml/*, /api/feedback, /health, etc.
+ * Handles: /api/feedback
  */
 
 const app = require('../server/index.js');
