@@ -176,7 +176,6 @@ function App() {
   };
 
   const getMlPredictions = async (files, repoInfo) => {
-    console.log('🚀 getMlPredictions called with:', { files, repoInfo });
     try {
       const response = await axios.post('/api/ml/predict', {
         files,
@@ -186,25 +185,8 @@ function App() {
         token: githubToken,
       });
 
-      console.log('✅ ML prediction response:', response.data);
-      console.log('📊 Prediction object:', response.data.prediction);
-      console.log('👥 Individual predictions:', response.data.prediction?.predictions || []);
-
-      // Detailed prediction analysis
-      if (response.data.prediction?.predictions) {
-        console.log('🔍 DETAILED PREDICTION ANALYSIS:');
-        console.log('   - Predictions count:', response.data.prediction.predictions.length);
-        console.log('   - Fallback used:', response.data.prediction.fallbackUsed);
-        console.log('   - Model available:', response.data.prediction.modelAvailable);
-        response.data.prediction.predictions.slice(0, 5).forEach(p => {
-          console.log(`   - ${p.approver}: ${Math.round(p.confidence * 100)}%`);
-        });
-      }
-
       return response.data.prediction; // Return the prediction object
     } catch (error) {
-      console.log('❌ ML prediction error:', error.response?.data || error.message);
-      console.log('❌ Full error:', error);
       return null;
     }
   };
@@ -742,47 +724,25 @@ function App() {
   };
 
   const getMLApprovalChance = username => {
-    console.log('🔍 getMLApprovalChance called for:', username);
-    console.log('📊 mlPredictions available:', !!mlPredictions);
-    console.log('📊 mlPredictions.predictions:', mlPredictions?.predictions?.length || 0);
-
-    if (mlPredictions?.predictions) {
-      console.log(
-        '👥 Available ML predictions:',
-        mlPredictions.predictions.map(p => p.approver)
-      );
-    }
-
     if (!mlPredictions?.predictions || !username) {
-      console.log('❌ No ML predictions or username for:', username);
       return null;
     }
 
     // Try exact match first
     let prediction = mlPredictions.predictions.find(p => p.approver === username);
-    console.log('🎯 Exact match found:', !!prediction, 'for', username);
 
     // Try with @ prefix if no exact match
     if (!prediction) {
       prediction = mlPredictions.predictions.find(p => p.approver === `@${username}`);
-      console.log('🎯 @ prefix match found:', !!prediction, `for @${username}`);
     }
 
     if (!prediction) {
-      console.log('❌ No prediction found for:', username);
       return null;
     }
 
     const percentage = prediction.confidence * 100;
     const result = percentage >= 1 ? Math.round(percentage) : Math.round(percentage * 10) / 10;
     const isFallback = prediction.isFallback || false;
-    console.log(
-      '✅ ML prediction for',
-      username,
-      ':',
-      `${result}%`,
-      isFallback ? '(fallback)' : ''
-    );
     return { percentage: result, isFallback };
   };
 
