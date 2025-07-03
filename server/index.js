@@ -301,13 +301,13 @@ app.get('/api/ml/stats', (req, res) => {
     let summary;
     let isModelTrained = false;
 
-        try {
+    try {
       summary = mlTrainer.generateModelSummary();
       isModelTrained = mlTrainer.isModelTrained;
-      
-      console.warn('🔍 Stats debug - isModelTrained:', isModelTrained);
-      console.warn('🔍 Stats debug - topApprovers length:', summary?.topApprovers?.length || 0);
-      
+
+      // console.warn('🔍 Stats debug - isModelTrained:', isModelTrained);
+      // console.warn('🔍 Stats debug - topApprovers length:', summary?.topApprovers?.length || 0);
+
       // Check if model is actually trained and has data
       if (!isModelTrained || !summary?.topApprovers || summary.topApprovers.length === 0) {
         throw new Error('Model not trained or empty data - forcing fallback');
