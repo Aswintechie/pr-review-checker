@@ -539,6 +539,7 @@ class MLCodeownersTrainer {
       }
 
       this.isModelTrained = true;
+      this.exportedAt = new Date().toISOString(); // Set training completion time
       const finalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
       const successfullyProcessed = processedCount - skippedCount;
 
@@ -1081,7 +1082,7 @@ class MLCodeownersTrainer {
       },
       topGroups,
       topApprovers,
-      lastTrained: new Date().toISOString(),
+      lastTrained: this.exportedAt || new Date().toISOString(),
     };
   }
 
@@ -1137,10 +1138,14 @@ class MLCodeownersTrainer {
     );
 
     this.isModelTrained = modelData.isModelTrained || false;
+    this.exportedAt = modelData.exportedAt;
 
     console.log('✅ ML model imported successfully');
     console.log(`📊 Loaded ${this.trainingData.length} training samples`);
     console.log(`🎯 Loaded ${this.groupApprovalStats.size} group patterns`);
+    if (this.exportedAt) {
+      console.log(`📅 Model last trained: ${new Date(this.exportedAt).toLocaleString()}`);
+    }
   }
 }
 

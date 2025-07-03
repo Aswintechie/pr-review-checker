@@ -27,8 +27,11 @@ function App() {
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showCloudflareModal, setShowCloudflareModal] = useState(false);
   const [showDeveloperModal, setShowDeveloperModal] = useState(false);
+  const [showApprovalsInfoModal, setShowApprovalsInfoModal] = useState(false);
   const [mlPredictions, setMlPredictions] = useState(null);
   const [generalPredictions, setGeneralPredictions] = useState(null);
+  const [mlModelStats, setMlModelStats] = useState(null);
+  const [isFirstTimeUser, setIsFirstTimeUser] = useState(false);
 
   // Debug: Show current state
   console.log('🔄 App render - Current state:', {
@@ -83,13 +86,36 @@ function App() {
       if (showDeveloperModal && !event.target.closest('.developer-modal-content')) {
         setShowDeveloperModal(false);
       }
+      if (showApprovalsInfoModal && !event.target.closest('.approvals-info-modal-content')) {
+        setShowApprovalsInfoModal(false);
+      }
     };
 
-    if (showHistory || showThemeDropdown || showPrivacyModal || showDeveloperModal) {
+    if (
+      showHistory ||
+      showThemeDropdown ||
+      showPrivacyModal ||
+      showDeveloperModal ||
+      showApprovalsInfoModal
+    ) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showHistory, showThemeDropdown, showPrivacyModal, showDeveloperModal]);
+  }, [
+    showHistory,
+    showThemeDropdown,
+    showPrivacyModal,
+    showDeveloperModal,
+    showApprovalsInfoModal,
+  ]);
+
+  // Check if user is visiting for the first time
+  useEffect(() => {
+    const hasSeenInfoModal = localStorage.getItem('hasSeenInfoModal');
+    if (!hasSeenInfoModal) {
+      setIsFirstTimeUser(true);
+    }
+  }, []);
 
   const changeTheme = themeId => {
     setCurrentTheme(themeId);
@@ -188,6 +214,46 @@ function App() {
       console.log('❌ ML prediction error:', error.response?.data || error.message);
       return null;
     }
+  };
+
+  const formatDateIST = dateString => {
+    if (!dateString) return 'Loading...';
+
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Asia/Kolkata',
+      timeZoneName: 'short',
+    });
+  };
+
+  const getMlModelStats = async () => {
+    try {
+      const response = await fetch('/api/ml/stats', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        console.warn('Failed to fetch ML model stats');
+        return null;
+      }
+
+      const data = await response.json();
+      if (data.success && data.stats) {
+        setMlModelStats(data.stats);
+        return data.stats;
+      }
+    } catch (error) {
+      console.warn('Error fetching ML model stats:', error);
+    }
+    return null;
   };
 
   const getTeamApprovalRates = async () => {
@@ -1030,6 +1096,104 @@ function App() {
     );
   };
 
+  const renderApprovalsInfoModal = () => {
+    if (!showApprovalsInfoModal) return null;
+
+    return (
+      <div className='approvals-info-modal-overlay'>
+        <div className='approvals-info-modal-content'>
+          <div className='approvals-info-modal-header'>
+            <h3>ℹ️ How Approval Grouping Works</h3>
+            <button
+              className='approvals-info-modal-close'
+              onClick={() => setShowApprovalsInfoModal(false)}
+              type='button'
+              aria-label='Close'
+            >
+              ×
+            </button>
+          </div>
+          <div className='approvals-info-modal-body'>
+            <div className='info-section'>
+              <h4>📋 What are Approval Groups?</h4>
+              <p>
+                Files in your PR are grouped based on their CODEOWNERS patterns. Each group requires
+                approval from <strong>ANY ONE</strong> of the listed reviewers.
+              </p>
+            </div>
+
+            <div className='info-section'>
+              <h4>🎯 Group Requirements</h4>
+              <ul>
+                <li>
+                  <strong>✅ Approved Groups:</strong> At least one required reviewer has already
+                  approved
+                </li>
+                <li>
+                  <strong>❌ Pending Groups:</strong> Still need approval from any listed reviewer
+                </li>
+                <li>
+                  <strong>👥 Team Approvals:</strong> Any team member can approve for the entire
+                  team
+                </li>
+              </ul>
+            </div>
+
+            <div className='info-section'>
+              <h4>🤖 ML Predictions</h4>
+              <p>
+                Purple badges show ML-predicted approval likelihood based on historical patterns.
+                These are <strong>guidance only</strong> and trained specifically on the
+                tenstorrent/tt-metal repository.
+              </p>
+
+              <div className='ml-stats-summary'>
+                <h5>📊 Training Data Details:</h5>
+                <ul>
+                  <li>
+                    <strong>Training Set:</strong>{' '}
+                    {mlModelStats?.trainingData?.totalPRs || 'Loading...'} PRs from
+                    tenstorrent/tt-metal repository
+                  </li>
+                  <li>
+                    <strong>Last Updated:</strong> {formatDateIST(mlModelStats?.lastTrained)}
+                  </li>
+                  <li>
+                    <strong>Learned Patterns:</strong>{' '}
+                    {mlModelStats?.trainingData?.totalApprovers || 'Loading...'} unique approvers
+                  </li>
+                  <li>
+                    <strong>Accuracy:</strong> Predictive guidance only - not 100% accurate
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div className='info-section'>
+              <h4>💡 Tips</h4>
+              <ul>
+                <li>Focus on pending groups - they&apos;re blocking your PR merge</li>
+                <li>Contact reviewers with higher ML prediction percentages first</li>
+                <li>Team members can approve for their entire team</li>
+                <li>Use Advanced view to see which specific files need each approval</li>
+              </ul>
+            </div>
+          </div>
+          <div className='approvals-info-modal-footer'>
+            <p>Need help? Use the feedback button to report issues or ask questions.</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Fetch ML stats when developer modal or approvals info modal opens
+  React.useEffect(() => {
+    if (showDeveloperModal || showApprovalsInfoModal) {
+      getMlModelStats();
+    }
+  }, [showDeveloperModal, showApprovalsInfoModal]);
+
   const renderDeveloperModal = () => {
     if (!showDeveloperModal) return null;
 
@@ -1082,6 +1246,45 @@ function App() {
                   <strong>Performance:</strong> Optimizing for large repositories
                 </li>
               </ul>
+            </div>
+
+            <div className='developer-section'>
+              <h4>🤖 ML Prediction Model</h4>
+              <ul>
+                <li>
+                  <strong>Training Data:</strong> Trained specifically on Tenstorrent&apos;s{' '}
+                  tenstorrent/tt-metal repository
+                </li>
+                <li>
+                  <strong>Dataset Size:</strong>{' '}
+                  {mlModelStats?.trainingData?.totalPRs || 'Loading...'} PRs used for training
+                </li>
+                <li>
+                  <strong>Last Trained:</strong> {formatDateIST(mlModelStats?.lastTrained)}
+                </li>
+                <li>
+                  <strong>Total Approvers:</strong>{' '}
+                  {mlModelStats?.trainingData?.totalApprovers || 'Loading...'} unique approvers
+                  learned
+                </li>
+                <li>
+                  <strong>Accuracy:</strong> ML predictions are not 100% accurate - use as guidance
+                  only
+                </li>
+                <li>
+                  <strong>Scope:</strong> Best results for tenstorrent/tt-metal repo; may not work
+                  well for other repositories
+                </li>
+                <li>
+                  <strong>Retraining:</strong> Model can be retrained with more recent data if
+                  needed
+                </li>
+              </ul>
+              <p>
+                <strong>Note:</strong> If you find ML predictions are inaccurate or need model
+                retraining, please share feedback below. The model learns from historical approval
+                patterns and may not reflect recent changes in team structure or responsibilities.
+              </p>
             </div>
 
             <div className='developer-section'>
@@ -1373,7 +1576,39 @@ function App() {
               <>
                 {/* Minimum Required Approvals */}
                 <section className='approval-section'>
-                  <h2>🎯 Required Approvals</h2>
+                  <div className='section-header-with-info'>
+                    <h2>🎯 Required Approvals</h2>
+                    <div className='info-button-container'>
+                      <button
+                        className={`info-button ${isFirstTimeUser ? 'first-time-pulse' : ''}`}
+                        onClick={() => {
+                          setShowApprovalsInfoModal(true);
+                          if (isFirstTimeUser) {
+                            setIsFirstTimeUser(false);
+                            localStorage.setItem('hasSeenInfoModal', 'true');
+                          }
+                        }}
+                        title='How approval grouping works'
+                        aria-label='Information about approval grouping'
+                        type='button'
+                        data-tooltip='Click for more info'
+                      >
+                        i
+                      </button>
+                      <span
+                        className='help-text'
+                        onClick={() => {
+                          setShowApprovalsInfoModal(true);
+                          if (isFirstTimeUser) {
+                            setIsFirstTimeUser(false);
+                            localStorage.setItem('hasSeenInfoModal', 'true');
+                          }
+                        }}
+                      >
+                        Click to learn how this works!
+                      </span>
+                    </div>
+                  </div>
 
                   {result.minRequiredApprovals.map((group, index) => (
                     <div
@@ -1487,7 +1722,39 @@ function App() {
               <>
                 {/* Minimum Required Approvals */}
                 <section className='approval-section'>
-                  <h2>🎯 Required Approvals</h2>
+                  <div className='section-header-with-info'>
+                    <h2>🎯 Required Approvals</h2>
+                    <div className='info-button-container'>
+                      <button
+                        className={`info-button ${isFirstTimeUser ? 'first-time-pulse' : ''}`}
+                        onClick={() => {
+                          setShowApprovalsInfoModal(true);
+                          if (isFirstTimeUser) {
+                            setIsFirstTimeUser(false);
+                            localStorage.setItem('hasSeenInfoModal', 'true');
+                          }
+                        }}
+                        title='How approval grouping works'
+                        aria-label='Information about approval grouping'
+                        type='button'
+                        data-tooltip='Click for more info'
+                      >
+                        i
+                      </button>
+                      <span
+                        className='help-text'
+                        onClick={() => {
+                          setShowApprovalsInfoModal(true);
+                          if (isFirstTimeUser) {
+                            setIsFirstTimeUser(false);
+                            localStorage.setItem('hasSeenInfoModal', 'true');
+                          }
+                        }}
+                      >
+                        Click to learn how this works!
+                      </span>
+                    </div>
+                  </div>
 
                   {result.minRequiredApprovals.map((group, index) => (
                     <div
@@ -1699,6 +1966,7 @@ function App() {
           prefillData={feedbackPrefillData}
         />
       )}
+      {renderApprovalsInfoModal()}
       {renderPrivacyModal()}
       {renderCloudflareModal()}
       {renderDeveloperModal()}

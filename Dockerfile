@@ -57,7 +57,7 @@ CMD ["node", "server/index.js"]
 
 # Labels for better maintainability
 LABEL maintainer="Aswin <your.email@example.com>"
-LABEL version="7.0.0"
+LABEL version="8.0.0"
 LABEL description="PR Approval Finder - GitHub Pull Request Analysis Tool"
 LABEL org.opencontainers.image.source="https://github.com/yourusername/pr-approval-finder"
 LABEL org.opencontainers.image.documentation="https://github.com/yourusername/pr-approval-finder#readme"

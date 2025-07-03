@@ -30,7 +30,7 @@ If applicable, add screenshots to help explain your problem.
 - **Browser**: [e.g. Chrome, Firefox, Safari]
 - **Browser Version**: [e.g. 91.0.4472.124]
 - **Node.js Version**: [e.g. 18.0.0]
-- **App Version**: [e.g. 7.0.0]
+- **App Version**: [e.g. 8.0.0]
 
 ## 📋 Additional Context
 - **PR URL you were testing**: [e.g. https://github.com/owner/repo/pull/123]

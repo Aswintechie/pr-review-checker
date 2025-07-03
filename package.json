@@ -1,6 +1,6 @@
 {
   "name": "pr-approval-finder",
-  "version": "7.0.0",
+  "version": "8.0.0",
   "description": "🔍 Analyze GitHub Pull Requests to determine minimum required approvals based on CODEOWNERS files",
   "main": "index.js",
   "engines": {
