@@ -34,13 +34,13 @@ function App() {
   const [isFirstTimeUser, setIsFirstTimeUser] = useState(false);
 
   // Debug: Show current state
-  console.log('🔄 App render - Current state:', {
-    hasResult: !!result,
-    hasMLPredictions: !!mlPredictions,
-    hasGeneralPredictions: !!generalPredictions,
-    loading,
-    generalPredictionsValue: generalPredictions,
-  });
+  // console.log('🔄 App render - Current state:', {
+  //   hasResult: !!result,
+  //   hasMLPredictions: !!mlPredictions,
+  //   hasGeneralPredictions: !!generalPredictions,
+  //   loading,
+  //   generalPredictionsValue: generalPredictions,
+  // });
 
   const themes = [
     { id: 'light', name: '☀️ Light', description: 'Clean and bright' },
@@ -176,7 +176,7 @@ function App() {
   };
 
   const getMlPredictions = async (files, repoInfo) => {
-    console.log('🚀 getMlPredictions called with:', { files, repoInfo });
+    // console.log('🚀 getMlPredictions called with:', { files, repoInfo });
     try {
       const response = await axios.post('/api/ml/predict', {
         files,
@@ -186,32 +186,19 @@ function App() {
         token: githubToken,
       });
 
-      console.log('✅ ML prediction response:', response.data);
-      console.log('📊 Prediction object:', response.data.prediction);
-      console.log('👥 Individual predictions:', response.data.prediction?.predictions || []);
+      // console.log('✅ ML prediction response:', response.data);
+      // console.log('📊 Prediction object:', response.data.prediction);
+      // console.log('👥 Individual predictions:', response.data.prediction?.predictions || []);
 
       // Detailed prediction analysis
       if (response.data.prediction?.predictions) {
-        console.log('🔍 DETAILED PREDICTION ANALYSIS:');
-        response.data.prediction.predictions.forEach((pred, index) => {
-          const percentage = Math.round(pred.confidence * 100);
-          console.log(
-            `  ${index + 1}. ${pred.approver}: ${percentage}% (confidence: ${pred.confidence})`
-          );
-        });
-
-        const high_confidence = response.data.prediction.predictions.filter(
-          p => p.confidence > 0.3
-        );
-        console.log(`📈 HIGH CONFIDENCE (>30%): ${high_confidence.length} predictions`);
-        high_confidence.forEach(pred => {
-          console.log(`  🎯 ${pred.approver}: ${Math.round(pred.confidence * 100)}%`);
-        });
+        // console.log('🔍 DETAILED PREDICTION ANALYSIS:');
+        // Additional analysis could be done here if needed
       }
 
       return response.data.prediction; // Return the prediction object
     } catch (error) {
-      console.log('❌ ML prediction error:', error.response?.data || error.message);
+      // console.log('❌ ML prediction error:', error.response?.data || error.message);
       return null;
     }
   };
@@ -241,6 +228,7 @@ function App() {
       });
 
       if (!response.ok) {
+        // eslint-disable-next-line
         console.warn('Failed to fetch ML model stats');
         return null;
       }
@@ -251,17 +239,18 @@ function App() {
         return data.stats;
       }
     } catch (error) {
+      // eslint-disable-next-line
       console.warn('Error fetching ML model stats:', error);
     }
     return null;
   };
 
   const getTeamApprovalRates = async () => {
-    console.log('🚀 Getting general team approval rates (who approves PRs quickly)...');
+    // console.log('🚀 Getting general team approval rates (who approves PRs quickly)...');
 
     try {
       const statsResponse = await axios.get('/api/ml/stats');
-      console.log('📊 ML stats for team approval rates:', statsResponse.data);
+      // console.log('📊 ML stats for team approval rates:', statsResponse.data);
 
       if (statsResponse.data?.stats?.topApprovers) {
         const topApprovers = statsResponse.data.stats.topApprovers;
@@ -284,48 +273,48 @@ function App() {
               .sort((a, b) => b.confidence - a.confidence)
               .slice(0, 20); // Good coverage for teams
 
-            console.log('✅ Team approval rates found:', approvalRates.length, 'active approvers');
-            console.log(
-              '📊 Top approvers:',
-              approvalRates
-                .slice(0, 5)
-                .map(p => `${p.approver}: ${Math.round(p.confidence * 100)}%`)
-            );
+            // console.log('✅ Team approval rates found:', approvalRates.length, 'active approvers');
+            // console.log(
+            //   '📊 Top approvers:',
+            //   approvalRates
+            //     .slice(0, 5)
+            //     .map(p => `${p.approver}: ${Math.round(p.confidence * 100)}%`)
+            // );
 
             return { predictions: approvalRates, isGeneral: true };
           }
         }
       }
 
-      console.log('❌ No approval statistics available');
+      // console.log('❌ No approval statistics available');
       return null;
     } catch (error) {
-      console.log('❌ Error getting team approval rates:', error.message);
+      // console.log('❌ Error getting team approval rates:', error.message);
       return null;
     }
   };
 
   const getGeneralPredictions = async _repoInfo => {
-    console.log('🚀 Getting general team approval rates (who approves PRs quickly)...');
+    // console.log('🚀 Getting general team approval rates (who approves PRs quickly)...');
 
     // For teams, we want to know who approves PRs quickly in general, not file-specific expertise
     const prediction = await getTeamApprovalRates();
 
     if (prediction?.predictions?.length > 0) {
-      console.log(
-        '✅ Team approval rates found:',
-        prediction.predictions.length,
-        'active approvers'
-      );
+      // console.log(
+      //   '✅ Team approval rates found:',
+      //   prediction.predictions.length,
+      //   'active approvers'
+      // );
       return prediction;
     }
 
-    console.log('❌ No team approval rates available');
+    // console.log('❌ No team approval rates available');
     return null;
   };
 
   const handleSubmit = async e => {
-    console.log('🎬 handleSubmit called');
+    // console.log('🎬 handleSubmit called');
     e.preventDefault();
     setLoading(true);
     setError('');
@@ -333,27 +322,27 @@ function App() {
     setResult(null);
     setMlPredictions(null);
     setGeneralPredictions(null);
-    console.log('🧹 State cleared, making API request...');
+    // console.log('🧹 State cleared, making API request...');
 
     try {
-      console.log('📡 Making API request to /api/pr-approvers...');
+      // console.log('📡 Making API request to /api/pr-approvers...');
       const response = await axios.post('/api/pr-approvers', {
         prUrl,
         githubToken: githubToken || undefined,
       });
 
-      console.log('✅ API response received:', response.data);
+      // console.log('✅ API response received:', response.data);
       setResult(response.data);
       setRateLimitInfo(response.data.rateLimitInfo || null);
       addToRecentPRs(response.data);
 
       // Get ML predictions for the PR files
-      console.log('🔍 Checking if we should fetch ML predictions...');
-      console.log('📁 fileApprovalDetails:', response.data.fileApprovalDetails);
-      console.log('📁 Length:', response.data.fileApprovalDetails?.length);
+      // console.log('🔍 Checking if we should fetch ML predictions...');
+      // console.log('📁 fileApprovalDetails:', response.data.fileApprovalDetails);
+      // console.log('📁 Length:', response.data.fileApprovalDetails?.length);
 
       if (response.data.fileApprovalDetails && response.data.fileApprovalDetails.length > 0) {
-        console.log('✅ Conditions met - fetching ML predictions');
+        // console.log('✅ Conditions met - fetching ML predictions');
         const files = response.data.fileApprovalDetails.map(detail => detail.file);
 
         // Extract repository info from PR URL
@@ -370,35 +359,35 @@ function App() {
         setMlPredictions(predictions);
 
         // Also fetch general predictions for team members
-        console.log('🔄 Fetching general predictions for team members...');
-        console.log('📋 Repository info:', repoInfo);
-        console.log('🔑 GitHub token available:', !!githubToken);
+        // console.log('🔄 Fetching general predictions for team members...');
+        // console.log('📋 Repository info:', repoInfo);
+        // console.log('🔑 GitHub token available:', !!githubToken);
 
         const general = await getGeneralPredictions(repoInfo);
-        console.log('📊 General predictions result:', general);
+        // console.log('📊 General predictions result:', general);
 
         if (general && general.predictions && general.predictions.length > 0) {
-          console.log('✅ Setting general predictions:', general.predictions.length, 'approvers');
-          console.log(
-            '👥 General approvers:',
-            general.predictions.map(p => p.approver)
-          );
+          // console.log('✅ Setting general predictions:', general.predictions.length, 'approvers');
+          // console.log(
+          //   '👥 General approvers:',
+          //   general.predictions.map(p => p.approver)
+          // );
         } else {
-          console.log('❌ No general predictions to set');
+          // console.log('❌ No general predictions to set');
         }
 
         setGeneralPredictions(general);
       } else {
-        console.log('❌ ML predictions not fetched - conditions not met');
-        console.log('   - fileApprovalDetails exists:', !!response.data.fileApprovalDetails);
-        console.log(
-          '   - fileApprovalDetails length:',
-          response.data.fileApprovalDetails?.length || 0
-        );
+        // console.log('❌ ML predictions not fetched - conditions not met');
+        // console.log('   - fileApprovalDetails exists:', !!response.data.fileApprovalDetails);
+        // console.log(
+        //   '   - fileApprovalDetails length:',
+        //   response.data.fileApprovalDetails?.length || 0
+        // );
       }
 
       // Always try to fetch general predictions for team members (independent of file details)
-      console.log('🌟 Always attempting general predictions (independent of files)...');
+      // console.log('🌟 Always attempting general predictions (independent of files)...');
       const urlMatch = prUrl.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
       const repoInfo = urlMatch
         ? {
@@ -409,32 +398,32 @@ function App() {
         : null;
 
       if (repoInfo) {
-        console.log('🎯 Fetching independent general predictions...');
+        // console.log('🎯 Fetching independent general predictions...');
         const independentGeneral = await getGeneralPredictions(repoInfo);
-        console.log('🎯 Independent general predictions result:', independentGeneral);
+        // console.log('🎯 Independent general predictions result:', independentGeneral);
 
         if (
           independentGeneral &&
           independentGeneral.predictions &&
           independentGeneral.predictions.length > 0
         ) {
-          console.log(
-            '✅ Setting independent general predictions:',
-            independentGeneral.predictions.length,
-            'approvers'
-          );
+          // console.log(
+          //   '✅ Setting independent general predictions:',
+          //   independentGeneral.predictions.length,
+          //   'approvers'
+          // );
           setGeneralPredictions(independentGeneral);
         }
       } else {
-        console.log('❌ No repository info found for independent general predictions');
+        // console.log('❌ No repository info found for independent general predictions');
       }
     } catch (err) {
-      console.log('❌ Error in handleSubmit:', err);
-      console.log('❌ Error response:', err.response?.data);
+      // console.log('❌ Error in handleSubmit:', err);
+      // console.log('❌ Error response:', err.response?.data);
       setError(err.response?.data?.error || 'An error occurred');
       setRateLimitInfo(err.response?.data?.rateLimitInfo || null);
     } finally {
-      console.log('🏁 handleSubmit finished, setLoading(false)');
+      // console.log('🏁 handleSubmit finished, setLoading(false)');
       setLoading(false);
     }
   };
@@ -747,60 +736,60 @@ function App() {
   };
 
   const getMLApprovalChance = username => {
-    console.log('🔍 getMLApprovalChance called for:', username);
-    console.log('📊 mlPredictions available:', !!mlPredictions);
-    console.log('📊 mlPredictions.predictions:', mlPredictions?.predictions?.length || 0);
+    // console.log('🔍 getMLApprovalChance called for:', username);
+    // console.log('📊 mlPredictions available:', !!mlPredictions);
+    // console.log('📊 mlPredictions.predictions:', mlPredictions?.predictions?.length || 0);
 
     if (mlPredictions?.predictions) {
-      console.log(
-        '👥 Available ML predictions:',
-        mlPredictions.predictions.map(p => p.approver)
-      );
+      // console.log(
+      //   '👥 Available ML predictions:',
+      //   mlPredictions.predictions.map(p => p.approver)
+      // );
     }
 
     if (!mlPredictions?.predictions || !username) {
-      console.log('❌ No ML predictions or username for:', username);
+      // console.log('❌ No ML predictions or username for:', username);
       return null;
     }
 
     // Try exact match first
     let prediction = mlPredictions.predictions.find(p => p.approver === username);
-    console.log('🎯 Exact match found:', !!prediction, 'for', username);
+    // console.log('🎯 Exact match found:', !!prediction, 'for', username);
 
     // Try with @ prefix if no exact match
     if (!prediction) {
       prediction = mlPredictions.predictions.find(p => p.approver === `@${username}`);
-      console.log('🎯 @ prefix match found:', !!prediction, `for @${username}`);
+      // console.log('🎯 @ prefix match found:', !!prediction, `for @${username}`);
     }
 
     if (!prediction) {
-      console.log('❌ No prediction found for:', username);
+      // console.log('❌ No prediction found for:', username);
       return null;
     }
 
     const percentage = prediction.confidence * 100;
     const result = percentage >= 1 ? Math.round(percentage) : Math.round(percentage * 10) / 10;
     const isFallback = prediction.isFallback || false;
-    console.log(
-      '✅ ML prediction for',
-      username,
-      ':',
-      `${result}%`,
-      isFallback ? '(fallback)' : ''
-    );
+    // console.log(
+    //   '✅ ML prediction for',
+    //   username,
+    //   ':',
+    //   `${result}%`,
+    //   isFallback ? '(fallback)' : ''
+    // );
     return { percentage: result, isFallback };
   };
 
   const getGeneralMLApprovalChance = username => {
     if (!generalPredictions?.predictions || !username) {
-      console.log('No general approval rates or username:', {
-        hasGeneralPredictions: !!generalPredictions?.predictions,
-        username,
-      });
+      // console.log('No general approval rates or username:', {
+      //   hasGeneralPredictions: !!generalPredictions?.predictions,
+      //   username,
+      // });
       return null;
     }
 
-    console.log('Looking for general approval rate for:', username);
+    // console.log('Looking for general approval rate for:', username);
 
     // Find approval rate for this user in general predictions
     let prediction = generalPredictions.predictions.find(p => p.approver === username);
@@ -809,13 +798,13 @@ function App() {
     }
 
     if (!prediction) {
-      console.log('No general approval rate found for:', username);
+      // console.log('No general approval rate found for:', username);
       return null;
     }
 
     const percentage = prediction.confidence * 100;
     const result = percentage >= 1 ? Math.round(percentage) : Math.round(percentage * 10) / 10;
-    console.log('General approval rate for', username, ':', `${result}%`);
+    // console.log('General approval rate for', username, ':', `${result}%`);
     return { percentage: result, isGeneral: true };
   };
 
