@@ -53,6 +53,11 @@
       "permanent": false
     }
   ],
+  "functions": {
+    "server/index.js": {
+      "includeFiles": "server/ml-model.json"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",

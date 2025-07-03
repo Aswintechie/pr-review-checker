@@ -1143,6 +1143,15 @@ function App() {
                     <strong>Training Set:</strong>{' '}
                     {mlModelStats?.trainingData?.totalPRs || 'Loading...'} PRs from
                     tenstorrent/tt-metal repository
+                    {mlModelStats?.isModelLoaded === false && (
+                      <span
+                        className='fallback-indicator'
+                        title='Using cached training data - ML model not fully loaded in this deployment'
+                      >
+                        {' '}
+                        (cached)
+                      </span>
+                    )}
                   </li>
                   <li>
                     <strong>Last Updated:</strong> {formatDateIST(mlModelStats?.lastTrained)}
@@ -1247,6 +1256,15 @@ function App() {
                 <li>
                   <strong>Dataset Size:</strong>{' '}
                   {mlModelStats?.trainingData?.totalPRs || 'Loading...'} PRs used for training
+                  {mlModelStats?.isModelLoaded === false && (
+                    <span
+                      className='fallback-indicator'
+                      title='Using cached training data - ML model not fully loaded in this deployment'
+                    >
+                      {' '}
+                      (cached)
+                    </span>
+                  )}
                 </li>
                 <li>
                   <strong>Last Trained:</strong> {formatDateIST(mlModelStats?.lastTrained)}
