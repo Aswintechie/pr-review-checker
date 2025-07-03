@@ -304,6 +304,11 @@ app.get('/api/ml/stats', (req, res) => {
     try {
       summary = mlTrainer.generateModelSummary();
       isModelTrained = mlTrainer.isModelTrained;
+      
+      // Check if model is actually trained and has data
+      if (!isModelTrained || !summary?.topApprovers || summary.topApprovers.length === 0) {
+        throw new Error('Model not trained or empty data');
+      }
     } catch (modelError) {
       console.warn('⚠️ ML model not available, using fallback data:', modelError.message);
 
