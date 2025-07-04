@@ -27,6 +27,20 @@ function App() {
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showCloudflareModal, setShowCloudflareModal] = useState(false);
   const [showDeveloperModal, setShowDeveloperModal] = useState(false);
+  const [showApprovalsInfoModal, setShowApprovalsInfoModal] = useState(false);
+  const [mlPredictions, setMlPredictions] = useState(null);
+  const [generalPredictions, setGeneralPredictions] = useState(null);
+  const [mlModelStats, setMlModelStats] = useState(null);
+  const [isFirstTimeUser, setIsFirstTimeUser] = useState(false);
+
+  // Debug: Show current state
+  // console.log('🔄 App render - Current state:', {
+  //   hasResult: !!result,
+  //   hasMLPredictions: !!mlPredictions,
+  //   hasGeneralPredictions: !!generalPredictions,
+  //   loading,
+  //   generalPredictionsValue: generalPredictions,
+  // });
 
   const themes = [
     { id: 'light', name: '☀️ Light', description: 'Clean and bright' },
@@ -72,13 +86,36 @@ function App() {
       if (showDeveloperModal && !event.target.closest('.developer-modal-content')) {
         setShowDeveloperModal(false);
       }
+      if (showApprovalsInfoModal && !event.target.closest('.approvals-info-modal-content')) {
+        setShowApprovalsInfoModal(false);
+      }
     };
 
-    if (showHistory || showThemeDropdown || showPrivacyModal || showDeveloperModal) {
+    if (
+      showHistory ||
+      showThemeDropdown ||
+      showPrivacyModal ||
+      showDeveloperModal ||
+      showApprovalsInfoModal
+    ) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showHistory, showThemeDropdown, showPrivacyModal, showDeveloperModal]);
+  }, [
+    showHistory,
+    showThemeDropdown,
+    showPrivacyModal,
+    showDeveloperModal,
+    showApprovalsInfoModal,
+  ]);
+
+  // Check if user is visiting for the first time
+  useEffect(() => {
+    const hasSeenInfoModal = localStorage.getItem('hasSeenInfoModal');
+    if (!hasSeenInfoModal) {
+      setIsFirstTimeUser(true);
+    }
+  }, []);
 
   const changeTheme = themeId => {
     setCurrentTheme(themeId);
@@ -138,26 +175,254 @@ function App() {
     });
   };
 
+  const getMlPredictions = async (files, repoInfo) => {
+    // eslint-disable-next-line no-console
+    console.log('🚀 DEBUG: getMlPredictions called with:', { files, repoInfo });
+    try {
+      const response = await axios.post('/api/ml/predict', {
+        files,
+        confidence: 0.001, // Very low threshold for maximum predictions
+        owner: repoInfo?.owner,
+        repo: repoInfo?.repo,
+        token: githubToken,
+      });
+
+      // eslint-disable-next-line no-console
+      console.log('✅ DEBUG: ML prediction response:', response.data);
+      // eslint-disable-next-line no-console
+      console.log('📊 DEBUG: Prediction object:', response.data.prediction);
+      // eslint-disable-next-line no-console
+      console.log('👥 DEBUG: Individual predictions:', response.data.prediction?.predictions || []);
+
+      return response.data.prediction; // Return the prediction object
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.log('❌ DEBUG: ML prediction error:', error.response?.data || error.message);
+      return null;
+    }
+  };
+
+  const formatDateIST = dateString => {
+    if (!dateString) return 'Loading...';
+
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Asia/Kolkata',
+      timeZoneName: 'short',
+    });
+  };
+
+  const getMlModelStats = async () => {
+    try {
+      const response = await fetch('/api/ml/stats', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        // eslint-disable-next-line
+        console.warn('Failed to fetch ML model stats');
+        return null;
+      }
+
+      const data = await response.json();
+      if (data.success && data.stats) {
+        setMlModelStats(data.stats);
+        return data.stats;
+      }
+    } catch (error) {
+      // eslint-disable-next-line
+      console.warn('Error fetching ML model stats:', error);
+    }
+    return null;
+  };
+
+  const getTeamApprovalRates = async () => {
+    // console.log('🚀 Getting general team approval rates (who approves PRs quickly)...');
+
+    try {
+      const statsResponse = await axios.get('/api/ml/stats');
+      // console.log('📊 ML stats for team approval rates:', statsResponse.data);
+
+      if (statsResponse.data?.stats?.topApprovers) {
+        const topApprovers = statsResponse.data.stats.topApprovers;
+
+        if (topApprovers && topApprovers.length > 0) {
+          const totalCount = topApprovers.reduce(
+            (sum, item) => sum + (item.totalApprovals || 0),
+            0
+          );
+
+          if (totalCount > 0) {
+            const approvalRates = topApprovers
+              .map(item => ({
+                approver: item.approver || item.name || item.username,
+                confidence: (item.totalApprovals || 0) / totalCount,
+                totalApprovals: item.totalApprovals || 0,
+                isGeneral: true, // Mark as general approval rate, not file-specific
+              }))
+              .filter(p => p.approver && p.confidence > 0.01) // Higher threshold for meaningful rates
+              .sort((a, b) => b.confidence - a.confidence)
+              .slice(0, 20); // Good coverage for teams
+
+            // console.log('✅ Team approval rates found:', approvalRates.length, 'active approvers');
+            // console.log(
+            //   '📊 Top approvers:',
+            //   approvalRates
+            //     .slice(0, 5)
+            //     .map(p => `${p.approver}: ${Math.round(p.confidence * 100)}%`)
+            // );
+
+            return { predictions: approvalRates, isGeneral: true };
+          }
+        }
+      }
+
+      // console.log('❌ No approval statistics available');
+      return null;
+    } catch (error) {
+      // console.log('❌ Error getting team approval rates:', error.message);
+      return null;
+    }
+  };
+
+  const getGeneralPredictions = async _repoInfo => {
+    // console.log('🚀 Getting general team approval rates (who approves PRs quickly)...');
+
+    // For teams, we want to know who approves PRs quickly in general, not file-specific expertise
+    const prediction = await getTeamApprovalRates();
+
+    if (prediction?.predictions?.length > 0) {
+      // console.log(
+      //   '✅ Team approval rates found:',
+      //   prediction.predictions.length,
+      //   'active approvers'
+      // );
+      return prediction;
+    }
+
+    // console.log('❌ No team approval rates available');
+    return null;
+  };
+
   const handleSubmit = async e => {
+    // console.log('🎬 handleSubmit called');
     e.preventDefault();
     setLoading(true);
     setError('');
     setRateLimitInfo(null);
     setResult(null);
+    setMlPredictions(null);
+    setGeneralPredictions(null);
+    // console.log('🧹 State cleared, making API request...');
 
     try {
+      // console.log('📡 Making API request to /api/pr-approvers...');
       const response = await axios.post('/api/pr-approvers', {
         prUrl,
         githubToken: githubToken || undefined,
       });
 
+      // console.log('✅ API response received:', response.data);
       setResult(response.data);
       setRateLimitInfo(response.data.rateLimitInfo || null);
       addToRecentPRs(response.data);
+
+      // Get ML predictions for the PR files
+      // console.log('🔍 Checking if we should fetch ML predictions...');
+      // console.log('📁 fileApprovalDetails:', response.data.fileApprovalDetails);
+      // console.log('📁 Length:', response.data.fileApprovalDetails?.length);
+
+      if (response.data.fileApprovalDetails && response.data.fileApprovalDetails.length > 0) {
+        // console.log('✅ Conditions met - fetching ML predictions');
+        const files = response.data.fileApprovalDetails.map(detail => detail.file);
+
+        // Extract repository info from PR URL
+        const urlMatch = prUrl.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
+        const repoInfo = urlMatch
+          ? {
+              owner: urlMatch[1],
+              repo: urlMatch[2],
+              prNumber: urlMatch[3],
+            }
+          : null;
+
+        const predictions = await getMlPredictions(files, repoInfo);
+        setMlPredictions(predictions);
+
+        // Also fetch general predictions for team members
+        // console.log('🔄 Fetching general predictions for team members...');
+        // console.log('📋 Repository info:', repoInfo);
+        // console.log('🔑 GitHub token available:', !!githubToken);
+
+        const general = await getGeneralPredictions(repoInfo);
+        // console.log('📊 General predictions result:', general);
+
+        if (general && general.predictions && general.predictions.length > 0) {
+          // console.log('✅ Setting general predictions:', general.predictions.length, 'approvers');
+          // console.log(
+          //   '👥 General approvers:',
+          //   general.predictions.map(p => p.approver)
+          // );
+        } else {
+          // console.log('❌ No general predictions to set');
+        }
+
+        setGeneralPredictions(general);
+      } else {
+        // console.log('❌ ML predictions not fetched - conditions not met');
+        // console.log('   - fileApprovalDetails exists:', !!response.data.fileApprovalDetails);
+        // console.log(
+        //   '   - fileApprovalDetails length:',
+        //   response.data.fileApprovalDetails?.length || 0
+        // );
+      }
+
+      // Always try to fetch general predictions for team members (independent of file details)
+      // console.log('🌟 Always attempting general predictions (independent of files)...');
+      const urlMatch = prUrl.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
+      const repoInfo = urlMatch
+        ? {
+            owner: urlMatch[1],
+            repo: urlMatch[2],
+            prNumber: urlMatch[3],
+          }
+        : null;
+
+      if (repoInfo) {
+        // console.log('🎯 Fetching independent general predictions...');
+        const independentGeneral = await getGeneralPredictions(repoInfo);
+        // console.log('🎯 Independent general predictions result:', independentGeneral);
+
+        if (
+          independentGeneral &&
+          independentGeneral.predictions &&
+          independentGeneral.predictions.length > 0
+        ) {
+          // console.log(
+          //   '✅ Setting independent general predictions:',
+          //   independentGeneral.predictions.length,
+          //   'approvers'
+          // );
+          setGeneralPredictions(independentGeneral);
+        }
+      } else {
+        // console.log('❌ No repository info found for independent general predictions');
+      }
     } catch (err) {
+      // console.log('❌ Error in handleSubmit:', err);
+      // console.log('❌ Error response:', err.response?.data);
       setError(err.response?.data?.error || 'An error occurred');
       setRateLimitInfo(err.response?.data?.rateLimitInfo || null);
     } finally {
+      // console.log('🏁 handleSubmit finished, setLoading(false)');
       setLoading(false);
     }
   };
@@ -409,22 +674,43 @@ function App() {
             <div className='team-members-title'>Team Members:</div>
             <div className='team-members-grid'>
               {team.members.map(member => {
-                const memberApproved = approvedMembers.includes(member.username);
+                // Extract actual GitHub username from member object
+                const memberUsername = member.login || member.username;
+                const memberApproved = approvedMembers.includes(memberUsername);
+                // Debug: console.log('Team member:', memberUsername);
+                const approvalResult = getGeneralMLApprovalChance(memberUsername);
                 return (
                   <div
-                    key={member.username}
+                    key={memberUsername}
                     className={`team-member ${memberApproved ? 'approved' : ''}`}
                   >
                     <div className='member-avatar'>
                       {member.avatar_url ? (
-                        <img src={member.avatar_url} alt={member.username} />
+                        <img src={member.avatar_url} alt={memberUsername} />
                       ) : (
                         <div className='avatar-placeholder'>👤</div>
                       )}
                     </div>
                     <div className='member-info'>
                       <div className='member-name'>{member.name}</div>
-                      <div className='member-username'>@{member.username}</div>
+                      <div className='member-username'>
+                        @{memberUsername}
+                        {approvalResult && (
+                          <span
+                            className={`ml-approval-chance ${approvalResult.isGeneral ? 'general' : ''}`}
+                          >
+                            {approvalResult.percentage}% approver
+                            {approvalResult.isGeneral && (
+                              <span
+                                className='general-indicator'
+                                title='General approval rate (how often this person approves PRs)'
+                              >
+                                ⚡
+                              </span>
+                            )}
+                          </span>
+                        )}
+                      </div>
                       {memberApproved && <div className='member-approved'>✅ Approved</div>}
                     </div>
                     {memberApproved && <div className='member-approval-badge'>✅</div>}
@@ -448,7 +734,92 @@ function App() {
     );
   };
 
+  const getMLApprovalChance = username => {
+    // Debug logging to see what's happening
+    // eslint-disable-next-line no-console
+    console.log('🔍 DEBUG: getMLApprovalChance called for:', username);
+    // eslint-disable-next-line no-console
+    console.log('📊 DEBUG: mlPredictions available:', !!mlPredictions);
+    // eslint-disable-next-line no-console
+    console.log('📊 DEBUG: mlPredictions structure:', mlPredictions);
+    // eslint-disable-next-line no-console
+    console.log('📊 DEBUG: mlPredictions.predictions:', mlPredictions?.predictions?.length || 0);
+
+    if (!mlPredictions?.predictions || !username) {
+      // eslint-disable-next-line no-console
+      console.log('❌ DEBUG: No ML predictions or username for:', username);
+      return null;
+    }
+
+    // Debug: show available predictions
+    // eslint-disable-next-line no-console
+    console.log(
+      '👥 DEBUG: Available predictions:',
+      mlPredictions.predictions.map(p => p.approver)
+    );
+
+    // Try exact match first
+    let prediction = mlPredictions.predictions.find(p => p.approver === username);
+    // eslint-disable-next-line no-console
+    console.log('🎯 DEBUG: Exact match found:', !!prediction, 'for', username);
+
+    // Try with @ prefix if no exact match
+    if (!prediction) {
+      prediction = mlPredictions.predictions.find(p => p.approver === `@${username}`);
+      // eslint-disable-next-line no-console
+      console.log('🎯 DEBUG: @ prefix match found:', !!prediction, `for @${username}`);
+    }
+
+    if (!prediction) {
+      // eslint-disable-next-line no-console
+      console.log('❌ DEBUG: No prediction found for:', username);
+      return null;
+    }
+
+    const percentage = prediction.confidence * 100;
+    const result = percentage >= 1 ? Math.round(percentage) : Math.round(percentage * 10) / 10;
+    const isFallback = prediction.isFallback || false;
+    // eslint-disable-next-line no-console
+    console.log(
+      '✅ DEBUG: ML prediction for',
+      username,
+      ':',
+      `${result}%`,
+      isFallback ? '(fallback)' : ''
+    );
+    return { percentage: result, isFallback };
+  };
+
+  const getGeneralMLApprovalChance = username => {
+    if (!generalPredictions?.predictions || !username) {
+      // console.log('No general approval rates or username:', {
+      //   hasGeneralPredictions: !!generalPredictions?.predictions,
+      //   username,
+      // });
+      return null;
+    }
+
+    // console.log('Looking for general approval rate for:', username);
+
+    // Find approval rate for this user in general predictions
+    let prediction = generalPredictions.predictions.find(p => p.approver === username);
+    if (!prediction) {
+      prediction = generalPredictions.predictions.find(p => p.approver === `@${username}`);
+    }
+
+    if (!prediction) {
+      // console.log('No general approval rate found for:', username);
+      return null;
+    }
+
+    const percentage = prediction.confidence * 100;
+    const result = percentage >= 1 ? Math.round(percentage) : Math.round(percentage * 10) / 10;
+    // console.log('General approval rate for', username, ':', `${result}%`);
+    return { percentage: result, isGeneral: true };
+  };
+
   const renderUserCard = (user, isApproved = false, approvedMembers = []) => {
+    const approvalResult = getMLApprovalChance(user.username);
     if (user.type === 'team') {
       return renderTeamCard(user, isApproved, approvedMembers);
     }
@@ -464,7 +835,22 @@ function App() {
         </div>
         <div className='user-info'>
           <div className='user-name'>{user.name}</div>
-          <div className='user-username'>@{user.username}</div>
+          <div className='user-username'>
+            @{user.username}
+            {approvalResult && (
+              <span className={`ml-approval-chance ${approvalResult.isFallback ? 'fallback' : ''}`}>
+                {approvalResult.percentage}% likely
+                {approvalResult.isFallback && (
+                  <span
+                    className='fallback-indicator'
+                    title='Using file pattern matching (supplemental prediction)'
+                  >
+                    *
+                  </span>
+                )}
+              </span>
+            )}
+          </div>
         </div>
         {isApproved && <div className='approval-badge'>✅</div>}
       </div>
@@ -709,6 +1095,113 @@ function App() {
     );
   };
 
+  const renderApprovalsInfoModal = () => {
+    if (!showApprovalsInfoModal) return null;
+
+    return (
+      <div className='approvals-info-modal-overlay'>
+        <div className='approvals-info-modal-content'>
+          <div className='approvals-info-modal-header'>
+            <h3>ℹ️ How Approval Grouping Works</h3>
+            <button
+              className='approvals-info-modal-close'
+              onClick={() => setShowApprovalsInfoModal(false)}
+              type='button'
+              aria-label='Close'
+            >
+              ×
+            </button>
+          </div>
+          <div className='approvals-info-modal-body'>
+            <div className='info-section'>
+              <h4>📋 What are Approval Groups?</h4>
+              <p>
+                Files in your PR are grouped based on their CODEOWNERS patterns. Each group requires
+                approval from <strong>ANY ONE</strong> of the listed reviewers.
+              </p>
+            </div>
+
+            <div className='info-section'>
+              <h4>🎯 Group Requirements</h4>
+              <ul>
+                <li>
+                  <strong>✅ Approved Groups:</strong> At least one required reviewer has already
+                  approved
+                </li>
+                <li>
+                  <strong>❌ Pending Groups:</strong> Still need approval from any listed reviewer
+                </li>
+                <li>
+                  <strong>👥 Team Approvals:</strong> Any team member can approve for the entire
+                  team
+                </li>
+              </ul>
+            </div>
+
+            <div className='info-section'>
+              <h4>🤖 ML Predictions</h4>
+              <p>
+                Purple badges show ML-predicted approval likelihood based on historical patterns.
+                These are <strong>guidance only</strong> and trained specifically on the
+                tenstorrent/tt-metal repository.
+              </p>
+
+              <div className='ml-stats-summary'>
+                <h5>📊 Training Data Details:</h5>
+                <ul>
+                  <li>
+                    <strong>Training Set:</strong>{' '}
+                    {mlModelStats?.trainingData?.totalPRs || 'Loading...'} PRs from
+                    tenstorrent/tt-metal repository
+                    {mlModelStats?.isModelLoaded === false && (
+                      <span
+                        className='fallback-indicator'
+                        title='Using cached training data - ML model not fully loaded in this deployment'
+                      >
+                        {' '}
+                        (cached)
+                      </span>
+                    )}
+                  </li>
+                  <li>
+                    <strong>Last Updated:</strong> {formatDateIST(mlModelStats?.lastTrained)}
+                  </li>
+                  <li>
+                    <strong>Learned Patterns:</strong>{' '}
+                    {mlModelStats?.trainingData?.totalApprovers || 'Loading...'} unique approvers
+                  </li>
+                  <li>
+                    <strong>Accuracy:</strong> Predictive guidance only - not 100% accurate
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div className='info-section'>
+              <h4>💡 Tips</h4>
+              <ul>
+                <li>Focus on pending groups - they&apos;re blocking your PR merge</li>
+                <li>Contact reviewers with higher ML prediction percentages first</li>
+                <li>Team members can approve for their entire team</li>
+                <li>Use Advanced view to see which specific files need each approval</li>
+              </ul>
+            </div>
+          </div>
+          <div className='approvals-info-modal-footer'>
+            <p>Need help? Use the feedback button to report issues or ask questions.</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Fetch ML stats when developer modal or approvals info modal opens
+  React.useEffect(() => {
+    if (showDeveloperModal || showApprovalsInfoModal) {
+      getMlModelStats();
+    }
+  }, [showDeveloperModal, showApprovalsInfoModal]);
+
   const renderDeveloperModal = () => {
     if (!showDeveloperModal) return null;
 
@@ -761,6 +1254,54 @@ function App() {
                   <strong>Performance:</strong> Optimizing for large repositories
                 </li>
               </ul>
+            </div>
+
+            <div className='developer-section'>
+              <h4>🤖 ML Prediction Model</h4>
+              <ul>
+                <li>
+                  <strong>Training Data:</strong> Trained specifically on Tenstorrent&apos;s{' '}
+                  tenstorrent/tt-metal repository
+                </li>
+                <li>
+                  <strong>Dataset Size:</strong>{' '}
+                  {mlModelStats?.trainingData?.totalPRs || 'Loading...'} PRs used for training
+                  {mlModelStats?.isModelLoaded === false && (
+                    <span
+                      className='fallback-indicator'
+                      title='Using cached training data - ML model not fully loaded in this deployment'
+                    >
+                      {' '}
+                      (cached)
+                    </span>
+                  )}
+                </li>
+                <li>
+                  <strong>Last Trained:</strong> {formatDateIST(mlModelStats?.lastTrained)}
+                </li>
+                <li>
+                  <strong>Total Approvers:</strong>{' '}
+                  {mlModelStats?.trainingData?.totalApprovers || 'Loading...'} unique approvers
+                  learned
+                </li>
+                <li>
+                  <strong>Accuracy:</strong> ML predictions are not 100% accurate - use as guidance
+                  only
+                </li>
+                <li>
+                  <strong>Scope:</strong> Best results for tenstorrent/tt-metal repo; may not work
+                  well for other repositories
+                </li>
+                <li>
+                  <strong>Retraining:</strong> Model can be retrained with more recent data if
+                  needed
+                </li>
+              </ul>
+              <p>
+                <strong>Note:</strong> If you find ML predictions are inaccurate or need model
+                retraining, please share feedback below. The model learns from historical approval
+                patterns and may not reflect recent changes in team structure or responsibilities.
+              </p>
             </div>
 
             <div className='developer-section'>
@@ -1052,7 +1593,39 @@ function App() {
               <>
                 {/* Minimum Required Approvals */}
                 <section className='approval-section'>
-                  <h2>🎯 Required Approvals</h2>
+                  <div className='section-header-with-info'>
+                    <h2>🎯 Required Approvals</h2>
+                    <div className='info-button-container'>
+                      <button
+                        className={`info-button ${isFirstTimeUser ? 'first-time-pulse' : ''}`}
+                        onClick={() => {
+                          setShowApprovalsInfoModal(true);
+                          if (isFirstTimeUser) {
+                            setIsFirstTimeUser(false);
+                            localStorage.setItem('hasSeenInfoModal', 'true');
+                          }
+                        }}
+                        title='How approval grouping works'
+                        aria-label='Information about approval grouping'
+                        type='button'
+                        data-tooltip='Click for more info'
+                      >
+                        i
+                      </button>
+                      <span
+                        className='help-text'
+                        onClick={() => {
+                          setShowApprovalsInfoModal(true);
+                          if (isFirstTimeUser) {
+                            setIsFirstTimeUser(false);
+                            localStorage.setItem('hasSeenInfoModal', 'true');
+                          }
+                        }}
+                      >
+                        Click to learn how this works!
+                      </span>
+                    </div>
+                  </div>
 
                   {result.minRequiredApprovals.map((group, index) => (
                     <div
@@ -1127,7 +1700,29 @@ function App() {
                           </div>
                           <div className='user-info'>
                             <div className='user-name'>{user.name}</div>
-                            <div className='user-username'>@{user.username}</div>
+                            <div className='user-username'>
+                              @{user.username}
+                              {(() => {
+                                const approvalResult = getMLApprovalChance(user.username);
+                                return (
+                                  approvalResult && (
+                                    <span
+                                      className={`ml-approval-chance ${approvalResult.isFallback ? 'fallback' : ''}`}
+                                    >
+                                      {approvalResult.percentage}% likely
+                                      {approvalResult.isFallback && (
+                                        <span
+                                          className='fallback-indicator'
+                                          title='Using file pattern matching (supplemental prediction)'
+                                        >
+                                          *
+                                        </span>
+                                      )}
+                                    </span>
+                                  )
+                                );
+                              })()}
+                            </div>
                             {isRequested && <div className='user-status'>Requested</div>}
                           </div>
                           {isApproved && <div className='approval-badge'>✅</div>}
@@ -1144,7 +1739,39 @@ function App() {
               <>
                 {/* Minimum Required Approvals */}
                 <section className='approval-section'>
-                  <h2>🎯 Required Approvals</h2>
+                  <div className='section-header-with-info'>
+                    <h2>🎯 Required Approvals</h2>
+                    <div className='info-button-container'>
+                      <button
+                        className={`info-button ${isFirstTimeUser ? 'first-time-pulse' : ''}`}
+                        onClick={() => {
+                          setShowApprovalsInfoModal(true);
+                          if (isFirstTimeUser) {
+                            setIsFirstTimeUser(false);
+                            localStorage.setItem('hasSeenInfoModal', 'true');
+                          }
+                        }}
+                        title='How approval grouping works'
+                        aria-label='Information about approval grouping'
+                        type='button'
+                        data-tooltip='Click for more info'
+                      >
+                        i
+                      </button>
+                      <span
+                        className='help-text'
+                        onClick={() => {
+                          setShowApprovalsInfoModal(true);
+                          if (isFirstTimeUser) {
+                            setIsFirstTimeUser(false);
+                            localStorage.setItem('hasSeenInfoModal', 'true');
+                          }
+                        }}
+                      >
+                        Click to learn how this works!
+                      </span>
+                    </div>
+                  </div>
 
                   {result.minRequiredApprovals.map((group, index) => (
                     <div
@@ -1356,6 +1983,7 @@ function App() {
           prefillData={feedbackPrefillData}
         />
       )}
+      {renderApprovalsInfoModal()}
       {renderPrivacyModal()}
       {renderCloudflareModal()}
       {renderDeveloperModal()}

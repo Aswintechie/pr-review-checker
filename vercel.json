@@ -53,15 +53,29 @@
       "permanent": false
     }
   ],
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/server/index.js"
+  "functions": {
+    "api/pr-approvers.js": {
+      "includeFiles": "server/**"
+    },
+    "api/ml/predict.js": {
+      "includeFiles": "server/**"
+    },
+    "api/ml/stats.js": {
+      "includeFiles": "server/**"
+    },
+    "api/ml/train.js": {
+      "includeFiles": "server/**"
+    },
+    "api/feedback.js": {
+      "includeFiles": "server/**"
+    },
+    "api/health.js": {
+      "includeFiles": "server/**"
     }
-  ],
+  },
   "env": {
     "NODE_ENV": "production",
-    "REACT_APP_VERSION": "7.0.0"
+    "REACT_APP_VERSION": "8.0.0"
   },
   "build": {
     "env": {
