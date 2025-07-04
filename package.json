@@ -24,14 +24,15 @@
     "test": "concurrently \"cd client && npm test -- --watchAll=false\" \"cd server && npm test\"",
     "test:watch": "concurrently \"cd client && npm run test\" \"cd server && npm run test:watch\"",
     "test:coverage": "concurrently \"cd client && npm test -- --coverage --watchAll=false\" \"cd server && npm run test -- --coverage\"",
-    "pre-commit": "npm run format && npm run lint && npm run test",
+    "pre-commit": "npm run sync-version && npm run format && npm run lint && npm run test",
     "prepare": "husky install",
     "docker:build": "docker build -t pr-approval-finder .",
     "docker:run": "docker run -p 3000:3000 pr-approval-finder",
     "docker:dev": "docker-compose up --build",
     "vercel:dev": "vercel dev",
     "vercel:deploy": "vercel --prod",
-    "sync-version": "node scripts/sync-version.js"
+    "sync-version": "node scripts/sync-version.js",
+    "sync-version-manual": "node scripts/sync-version.js && echo '\\n🔧 Manual sync complete. Run git commit to proceed with your changes.'"
   },
   "keywords": [
     "github",

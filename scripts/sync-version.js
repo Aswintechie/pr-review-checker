@@ -9,6 +9,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 // Read the current version from root package.json
 const rootPackageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
@@ -90,12 +91,22 @@ const filesToUpdate = [
         return content.trim() + '\n' + `REACT_APP_VERSION=${currentVersion}\n`;
       }
     }
+  },
+  {
+    file: 'client/src/version.js',
+    updateFn: (content) => {
+      return content.replace(
+        /const FALLBACK_VERSION = '[\d\.]+';/,
+        `const FALLBACK_VERSION = '${currentVersion}';`
+      );
+    }
   }
 ];
 
 // Process each file
 let updatedCount = 0;
 let errorCount = 0;
+const updatedFiles = [];
 
 filesToUpdate.forEach(({ file, updateFn }) => {
   try {
@@ -116,6 +127,7 @@ filesToUpdate.forEach(({ file, updateFn }) => {
       fs.writeFileSync(file, updatedContent);
       console.log(`✅ Updated ${file}`);
       updatedCount++;
+      updatedFiles.push(file);
     } else {
       console.log(`ℹ️  No changes needed for ${file}`);
     }
@@ -124,6 +136,21 @@ filesToUpdate.forEach(({ file, updateFn }) => {
     errorCount++;
   }
 });
+
+// Auto-stage updated files if this is running in a git repository
+if (updatedFiles.length > 0) {
+  try {
+    // Check if we're in a git repository
+    execSync('git rev-parse --git-dir', { stdio: 'ignore' });
+    
+    // Stage only the files we modified
+    const filesToStage = updatedFiles.join(' ');
+    execSync(`git add ${filesToStage}`, { stdio: 'ignore' });
+    console.log(`📦 Auto-staged updated files: ${updatedFiles.join(', ')}`);
+  } catch (gitError) {
+    console.log(`ℹ️  Not in a git repository or git staging failed - files updated but not staged`);
+  }
+}
 
 console.log(`\n📊 Summary:`);
 console.log(`   Updated: ${updatedCount} files`);
@@ -135,7 +162,12 @@ if (errorCount > 0) {
   process.exit(1);
 } else {
   console.log(`\n🎉 All files synced successfully!`);
-  console.log(`\n💡 Next steps:`);
-  console.log(`   1. Review the changes with: git diff`);
-  console.log(`   2. Commit the changes: git add . && git commit -m "Sync version to ${currentVersion}"`);
+  
+  if (updatedFiles.length > 0) {
+    console.log(`\n💡 Next steps:`);
+    console.log(`   1. Review the changes with: git diff --staged`);
+    console.log(`   2. Updated files have been auto-staged for commit`);
+  } else {
+    console.log(`\n💡 All version references were already up to date.`);
+  }
 } 
