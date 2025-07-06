@@ -1938,7 +1938,7 @@ function App() {
         <div className='footer-content'>
           <div className='footer-left'>
             <div className='copyright' title='Assisted with Cursor AI'>
-              © 2025 Aswin
+              © 2025 <a href='https://aswinlocal.in' target='_blank' rel='noopener noreferrer' className='portfolio-link'>Aswin</a>
             </div>
           </div>
           <div className='footer-center'>
