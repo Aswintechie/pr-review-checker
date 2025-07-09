@@ -1640,7 +1640,21 @@ function App() {
                         </h3>
                         {!group.needsApproval && (
                           <span className='approved-by'>
-                            {group.approverType === 'team' ? (
+                            {group.allGroupApprovers && group.allGroupApprovers.length > 0 ? (
+                              group.allGroupApprovers.length === 1 ? (
+                                group.approverType === 'team' ? (
+                                  <>
+                                    Approved by @{group.allGroupApprovers[0]} (member of{' '}
+                                    {group.teamName})
+                                  </>
+                                ) : (
+                                  <>Approved by @{group.allGroupApprovers[0]}</>
+                                )
+                              ) : (
+                                <>Approved by @{group.allGroupApprovers.join(', @')}</>
+                              )
+                            ) : // Fallback to original approvedBy field
+                            group.approverType === 'team' ? (
                               <>
                                 Approved by @{group.approvedBy} (member of {group.teamName})
                               </>
@@ -1658,11 +1672,13 @@ function App() {
                         <div className='users-grid'>
                           {group.ownerDetails.map(user => {
                             const isApproved =
-                              !group.needsApproval &&
-                              (user.username === group.approvedBy ||
-                                (user.type === 'team' &&
-                                  (group.teamName === user.username ||
-                                    group.teamName?.endsWith(user.name))));
+                              (!group.needsApproval &&
+                                group.allGroupApprovers &&
+                                group.allGroupApprovers.includes(user.username)) ||
+                              user.username === group.approvedBy ||
+                              (user.type === 'team' &&
+                                (group.teamName === user.username ||
+                                  group.teamName?.endsWith(user.name)));
                             const approvedMembers =
                               user.type === 'team' &&
                               (group.teamName === user.username ||
@@ -1786,7 +1802,21 @@ function App() {
                         </h3>
                         {!group.needsApproval && (
                           <span className='approved-by'>
-                            {group.approverType === 'team' ? (
+                            {group.allGroupApprovers && group.allGroupApprovers.length > 0 ? (
+                              group.allGroupApprovers.length === 1 ? (
+                                group.approverType === 'team' ? (
+                                  <>
+                                    Approved by @{group.allGroupApprovers[0]} (member of{' '}
+                                    {group.teamName})
+                                  </>
+                                ) : (
+                                  <>Approved by @{group.allGroupApprovers[0]}</>
+                                )
+                              ) : (
+                                <>Approved by @{group.allGroupApprovers.join(', @')}</>
+                              )
+                            ) : // Fallback to original approvedBy field
+                            group.approverType === 'team' ? (
                               <>
                                 Approved by @{group.approvedBy} (member of {group.teamName})
                               </>
@@ -1817,11 +1847,13 @@ function App() {
                         <div className='users-grid'>
                           {group.ownerDetails.map(user => {
                             const isApproved =
-                              !group.needsApproval &&
-                              (user.username === group.approvedBy ||
-                                (user.type === 'team' &&
-                                  (group.teamName === user.username ||
-                                    group.teamName?.endsWith(user.name))));
+                              (!group.needsApproval &&
+                                group.allGroupApprovers &&
+                                group.allGroupApprovers.includes(user.username)) ||
+                              user.username === group.approvedBy ||
+                              (user.type === 'team' &&
+                                (group.teamName === user.username ||
+                                  group.teamName?.endsWith(user.name)));
                             const approvedMembers =
                               user.type === 'team' &&
                               (group.teamName === user.username ||
