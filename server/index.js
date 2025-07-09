@@ -1270,25 +1270,31 @@ app.post('/api/pr-approvers', async (req, res) => {
       let approverType = 'individual'; // 'individual' or 'team'
       let teamName = null;
       let approvedTeamMembers = [];
+      const allGroupApprovers = []; // Track all approvers from this group
 
       // Check each owner (individual or team) for approval
       for (const owner of owners) {
         if (approvedBy.has(owner)) {
           // Direct individual approval
           hasApproval = true;
-          approver = owner;
-          approverType = 'individual';
-          break;
+          allGroupApprovers.push(owner);
+          if (!approver) {
+            approver = owner; // Set first approver as primary
+            approverType = 'individual';
+          }
+          // Don't break - continue to find all approvers in this group
         } else if (owner.includes('/')) {
           // Check if this is a team and if any approver is a team member
           const teamApprovers = checkTeamApproval(owner, approvedBy);
           if (teamApprovers) {
             hasApproval = true;
-            approver = teamApprovers[0]; // Primary approver for display
-            approvedTeamMembers = teamApprovers; // All approved team members
-            approverType = 'team';
-            teamName = owner;
-            break;
+            if (!approver) {
+              approver = teamApprovers[0]; // Primary approver for display
+              approvedTeamMembers = teamApprovers; // All approved team members
+              approverType = 'team';
+              teamName = owner;
+            }
+            // Don't break - continue to find all approvers in this group
           }
         }
       }
@@ -1315,6 +1321,7 @@ app.post('/api/pr-approvers', async (req, res) => {
           approverType,
           teamName,
           approvedTeamMembers,
+          allGroupApprovers, // Include all approvers from this group
         });
       }
     }
