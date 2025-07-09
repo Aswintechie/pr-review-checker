@@ -1158,8 +1158,21 @@ app.post('/api/pr-approvers', async (req, res) => {
     );
 
     const reviews = reviewsResponse.data;
-    const approvals = reviews
-      .filter(review => review.state === 'APPROVED')
+
+    // Get only the latest review from each user (GitHub API returns reviews chronologically)
+    const latestReviewByUser = new Map();
+    reviews.forEach(review => {
+      const username = review.user.login;
+      // GitHub API returns reviews in chronological order, so later reviews overwrite earlier ones
+      latestReviewByUser.set(username, review);
+    });
+
+    // Only count users whose LATEST review state is 'APPROVED' AND who are not currently re-requested
+    const currentlyRequestedReviewers = new Set(pr.requested_reviewers?.map(r => r.login) || []);
+    const approvals = Array.from(latestReviewByUser.values())
+      .filter(
+        review => review.state === 'APPROVED' && !currentlyRequestedReviewers.has(review.user.login)
+      )
       .map(review => review.user.login);
 
     // Get requested reviewers

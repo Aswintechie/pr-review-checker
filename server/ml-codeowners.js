@@ -203,7 +203,13 @@ class MLCodeownersTrainer {
    */
   async getPRDetails(owner, repo, prNumber, token) {
     try {
-      const [filesResponse, reviewsResponse] = await Promise.all([
+      const [prResponse, filesResponse, reviewsResponse] = await Promise.all([
+        axios.get(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`, {
+          headers: {
+            Authorization: `token ${token}`,
+            Accept: 'application/vnd.github.v3+json',
+          },
+        }),
         axios.get(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/files`, {
           headers: {
             Authorization: `token ${token}`,
@@ -218,9 +224,24 @@ class MLCodeownersTrainer {
         }),
       ]);
 
+      const pr = prResponse.data;
       const files = filesResponse.data.map(file => file.filename);
-      const approvers = reviewsResponse.data
-        .filter(review => review.state === 'APPROVED')
+
+      // Get only the latest review from each user (GitHub API returns reviews chronologically)
+      const latestReviewByUser = new Map();
+      reviewsResponse.data.forEach(review => {
+        const username = review.user.login;
+        // GitHub API returns reviews in chronological order, so later reviews overwrite earlier ones
+        latestReviewByUser.set(username, review);
+      });
+
+      // Only count users whose LATEST review state is 'APPROVED' AND who are not currently re-requested
+      const currentlyRequestedReviewers = new Set(pr.requested_reviewers?.map(r => r.login) || []);
+      const approvers = Array.from(latestReviewByUser.values())
+        .filter(
+          review =>
+            review.state === 'APPROVED' && !currentlyRequestedReviewers.has(review.user.login)
+        )
         .map(review => review.user.login);
 
       return { files, approvers };
