@@ -283,51 +283,76 @@ app.post('/api/ml/predict', async (req, res) => {
 });
 
 // Get model statistics and summary for CODEOWNERS-aware ML model
-app.get('/api/ml/stats', (req, res) => {
+app.get('/api/ml/stats', async (req, res) => {
   try {
     // Check if CODEOWNERS-aware ML model exists
     const modelPath = path.join(__dirname, '..', 'codeowners_ml_model.pkl');
-    let isModelTrained = false;
-    let summary;
-
+    
     try {
       // Check if model file exists
       fs.accessSync(modelPath, fs.constants.F_OK);
-      isModelTrained = true;
+      
+      // Extract real statistics from the trained model
+      const pythonPath = path.join(__dirname, '..', 'codeowners_ml_stats.py');
+      const pythonCommand = '/Users/azayasankaran/Downloads/pr_review/ml-env/bin/python';
+      
+      const statsPromise = new Promise((resolve, reject) => {
+        const pythonProcess = spawn(pythonCommand, [pythonPath, modelPath], {
+          cwd: path.join(__dirname, '..'),
+          env: { ...process.env, PATH: process.env.PATH },
+        });
 
-      // Provide CODEOWNERS-aware ML model stats
-      summary = {
-        trainingData: {
-          totalPRs: 'Dynamic - CODEOWNERS-aware', // CODEOWNERS ML model scales with data
-          totalApprovals: 'Dynamic - per group',
-          totalApprovers: 'Dynamic - group-based',
-          totalFiles: 'Dynamic - group-matched',
-        },
-        lastTrained: new Date().toISOString(),
-        topApprovers: [
-          { approver: 'CODEOWNERS ML Model', totalApprovals: 'Group-based learning' },
-          { approver: 'Random Forest per Group', totalApprovals: 'Feature-based per group' },
-          { approver: 'Scikit-learn', totalApprovals: 'Cross-validated per group' },
-        ],
-        modelType: 'codeowners_random_forest',
-        features: [
-          'group_file_count',
-          'group_file_ratio',
-          'dev_group_expertise',
-          'group_patterns',
-          'temporal_features',
-        ],
-        isModelLoaded: true,
-        version: '2.0',
-        confidence: 'High - trained on CODEOWNERS groups',
-      };
+        let output = '';
+        let errorOutput = '';
 
-      console.log('✅ CODEOWNERS-aware ML model available at:', modelPath);
+        pythonProcess.stdout.on('data', data => {
+          output += data.toString();
+        });
+
+        pythonProcess.stderr.on('data', data => {
+          errorOutput += data.toString();
+        });
+
+        pythonProcess.on('close', code => {
+          if (code === 0) {
+            try {
+              const statsData = JSON.parse(output);
+              resolve(statsData);
+            } catch (parseError) {
+              reject(new Error(`Failed to parse ML stats output: ${parseError.message}`));
+            }
+          } else {
+            reject(new Error(`Python process failed with code ${code}: ${errorOutput}`));
+          }
+        });
+
+        pythonProcess.on('error', error => {
+          reject(new Error(`Failed to start Python process: ${error.message}`));
+        });
+      });
+
+      // Get real statistics from the trained model
+      const statsResult = await statsPromise;
+      
+      if (statsResult.success) {
+        console.log('✅ CODEOWNERS ML model stats extracted:', statsResult.message);
+        
+        res.json({
+          success: true,
+          stats: statsResult.stats,
+          isModelTrained: true,
+          modelType: 'codeowners_ml_random_forest',
+          message: 'Using real CODEOWNERS ML model statistics',
+        });
+      } else {
+        throw new Error(statsResult.error || 'Failed to extract model statistics');
+      }
+      
     } catch (modelError) {
-      console.warn('⚠️ CODEOWNERS ML model not found, using fallback data:', modelError.message);
+      console.warn('⚠️ CODEOWNERS ML model not found or stats extraction failed:', modelError.message);
 
       // Fallback data when model isn't available
-      summary = {
+      const fallbackStats = {
         trainingData: {
           totalPRs: 'CODEOWNERS model not trained yet',
           totalApprovals: 'CODEOWNERS model not trained yet',
@@ -342,18 +367,16 @@ app.get('/api/ml/stats', (req, res) => {
         version: 'N/A',
         confidence: 'None - CODEOWNERS model not trained',
       };
-      isModelTrained = false;
-    }
 
-    res.json({
-      success: true,
-      stats: summary,
-      isModelTrained,
-      modelType: 'codeowners_ml_random_forest',
-      message: isModelTrained
-        ? 'Using CODEOWNERS-aware ML model'
-        : 'CODEOWNERS ML model not available',
-    });
+      res.json({
+        success: true,
+        stats: fallbackStats,
+        isModelTrained: false,
+        modelType: 'codeowners_ml_random_forest',
+        message: 'CODEOWNERS ML model not available',
+        error: modelError.message,
+      });
+    }
   } catch (error) {
     console.error('❌ CODEOWNERS ML stats error:', error.message);
 
