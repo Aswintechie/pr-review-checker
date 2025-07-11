@@ -6,18 +6,18 @@
 
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
+const fsPromises = fs.promises;
+const path = require('path');
 const axios = require('axios');
 const nodemailer = require('nodemailer');
-const path = require('path');
-const fs = require('fs');
-const fsPromises = require('fs').promises;
+const { spawn } = require('child_process');
 const os = require('os');
 const crypto = require('crypto');
 const Codeowners = require('codeowners');
-const MLCodeownersTrainer = require('./ml-codeowners');
-require('dotenv').config();
 
 // Constants
+const GITHUB_API_BASE = 'https://api.github.com';
 const MATCHED_BY_CODEOWNERS = 'Matched by codeowners library';
 
 const app = express();
@@ -25,64 +25,6 @@ const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
-
-// Initialize ML CODEOWNERS trainer
-const mlTrainer = new MLCodeownersTrainer();
-const MODEL_FILE_PATH = path.join(__dirname, 'ml-model.json');
-
-// Load existing model if available
-async function loadModel() {
-  try {
-    // // console.log('🔍 Attempting to load ML model from:', MODEL_FILE_PATH);
-
-    // Check if file exists
-    await fsPromises.access(MODEL_FILE_PATH);
-    // // console.log('📁 ML model file exists');
-
-    const modelData = await fsPromises.readFile(MODEL_FILE_PATH, 'utf8');
-    // // console.log('📖 ML model file read successfully, size:', modelData.length, 'bytes');
-
-    const parsedData = JSON.parse(modelData);
-    // // console.log('✅ ML model JSON parsed successfully');
-
-    mlTrainer.importModel(parsedData);
-    // // console.log('✅ ML model loaded from storage');
-
-    // Verify model is working
-    // const summary = mlTrainer.generateModelSummary();
-    // // console.log('🔍 Model verification - trained PRs:', summary.trainingData?.totalPRs || 0);
-  } catch (error) {
-    console.warn('⚠️ ML model loading failed:', error.message);
-    console.warn('📚 Starting without pre-trained model - fallback data will be used');
-    console.warn('🔧 Model file path:', MODEL_FILE_PATH);
-    console.warn('📂 Current working directory:', process.cwd());
-
-    // List files in server directory for debugging
-    try {
-      const files = await fsPromises.readdir(__dirname);
-      console.warn(
-        '📋 Files in server directory:',
-        files.filter(f => f.includes('json'))
-      );
-    } catch (dirError) {
-      console.warn('❌ Could not list server directory:', dirError.message);
-    }
-  }
-}
-
-// Save model to disk
-async function saveModel() {
-  try {
-    const modelData = mlTrainer.exportModel();
-    await fsPromises.writeFile(MODEL_FILE_PATH, JSON.stringify(modelData, null, 2));
-    // // console.log('💾 ML model saved to storage');
-  } catch (error) {
-    console.error('❌ Error saving ML model:', error.message);
-  }
-}
-
-// Load model on startup
-loadModel();
 
 // Serve static files from the React build folder
 app.use(express.static(path.join(__dirname, '../client/build')));
@@ -109,16 +51,59 @@ app.post('/api/ml/train', async (req, res) => {
     // // console.log(`🤖 Starting ML training for ${owner}/${repo}`);
 
     // Train the model
-    const summary = await mlTrainer.trainModel(owner, repo, token, prCount);
+    const pythonPath = path.join(__dirname, '..', 'codeowners_ml_train.py');
+    const pythonCommand = '/Users/azayasankaran/Downloads/pr_review/ml-env/bin/python';
 
-    // Save the trained model
-    await saveModel();
+    const mlPromise = new Promise((resolve, reject) => {
+      const pythonProcess = spawn(pythonCommand, [pythonPath, owner, repo, token, prCount], {
+        cwd: path.join(__dirname, '..'),
+        env: { ...process.env, PATH: process.env.PATH },
+      });
 
-    res.json({
-      success: true,
-      message: 'Model trained successfully',
-      summary,
+      let output = '';
+      let errorOutput = '';
+
+      pythonProcess.stdout.on('data', data => {
+        output += data.toString();
+      });
+
+      pythonProcess.stderr.on('data', data => {
+        errorOutput += data.toString();
+      });
+
+      pythonProcess.on('close', code => {
+        if (code === 0) {
+          try {
+            const summary = JSON.parse(output);
+            resolve(summary);
+          } catch (parseError) {
+            reject(new Error(`Failed to parse CODEOWNERS ML output: ${parseError.message}`));
+          }
+        } else {
+          reject(new Error(`Python process failed with code ${code}: ${errorOutput}`));
+        }
+      });
+
+      pythonProcess.on('error', error => {
+        reject(new Error(`Failed to start Python process: ${error.message}`));
+      });
     });
+
+    try {
+      const summary = await mlPromise;
+
+      res.json({
+        success: true,
+        message: 'Model trained successfully',
+        summary,
+      });
+    } catch (mlError) {
+      console.warn('⚠️ CODEOWNERS ML training failed:', mlError.message);
+      res.status(500).json({
+        error: 'Training failed',
+        message: mlError.message,
+      });
+    }
   } catch (error) {
     console.error('❌ ML training error:', error.message);
     res.status(500).json({
@@ -131,7 +116,7 @@ app.post('/api/ml/train', async (req, res) => {
 // Predict approvers for given files
 app.post('/api/ml/predict', async (req, res) => {
   try {
-    const { files, confidence = 0.3, owner, repo, token } = req.body;
+    const { files, confidence = 0.3 } = req.body;
 
     if (!files || !Array.isArray(files) || files.length === 0) {
       return res.status(400).json({
@@ -140,28 +125,99 @@ app.post('/api/ml/predict', async (req, res) => {
       });
     }
 
-    // Check if ML model is available
-    if (!mlTrainer.isModelTrained) {
-      console.warn('⚠️ ML model not trained, returning fallback predictions');
+    // Use the CODEOWNERS-aware ML model (learns within each CODEOWNERS group)
+    console.log('🤖 Using CODEOWNERS-aware ML model for prediction...');
+    console.log('📁 Files:', files.length, 'files');
+    console.log('🎯 Confidence threshold:', confidence);
 
-      // Provide fallback predictions based on common approvers
-      const fallbackApprovers = [
+    const mlPromise = new Promise((resolve, reject) => {
+      // Use python3 or the virtual environment python
+      const pythonCommand = '/Users/azayasankaran/Downloads/pr_review/ml-env/bin/python';
+      const pythonProcess = spawn(
+        pythonCommand,
+        [path.join(__dirname, '..', 'codeowners_ml_predict.py'), JSON.stringify(files), '10'],
+        {
+          cwd: path.join(__dirname, '..'),
+          env: { ...process.env, PATH: process.env.PATH },
+        }
+      );
+
+      let output = '';
+      let errorOutput = '';
+
+      pythonProcess.stdout.on('data', data => {
+        output += data.toString();
+      });
+
+      pythonProcess.stderr.on('data', data => {
+        errorOutput += data.toString();
+      });
+
+      pythonProcess.on('close', code => {
+        if (code === 0) {
+          try {
+            const predictions = JSON.parse(output);
+            resolve(predictions);
+          } catch (parseError) {
+            reject(new Error(`Failed to parse CODEOWNERS ML output: ${parseError.message}`));
+          }
+        } else {
+          reject(new Error(`Python process failed with code ${code}: ${errorOutput}`));
+        }
+      });
+
+      pythonProcess.on('error', error => {
+        reject(new Error(`Failed to start Python process: ${error.message}`));
+      });
+    });
+
+    try {
+      const mlPredictions = await mlPromise;
+
+      // Filter by confidence threshold
+      const filteredPredictions = mlPredictions
+        .filter(p => p.confidence / 100 >= confidence)
+        .slice(0, 10);
+
+      console.log('✅ CODEOWNERS-aware ML predictions:', filteredPredictions.length, 'approvers');
+
+      return res.json({
+        success: true,
+        prediction: {
+          predictions: filteredPredictions.map(p => ({
+            approver: p.approver,
+            confidence: p.confidence / 100, // Convert percentage to decimal
+            reasoning: p.reasoning || `CODEOWNERS ML Model: ${p.confidence}% confidence`,
+            source: 'codeowners_ml_model',
+          })),
+          matchedPatterns: files.map(file => ({
+            pattern: 'codeowners_group_pattern',
+            file,
+            confidence: 0.9,
+          })),
+          fallbackUsed: false,
+          modelAvailable: true,
+          modelType: 'codeowners_random_forest',
+        },
+        requestedFiles: files,
+        confidenceThreshold: confidence,
+        message: 'Using CODEOWNERS-aware ML model predictions',
+      });
+    } catch (mlError) {
+      console.warn('⚠️ CODEOWNERS ML prediction failed:', mlError.message);
+
+      // Fallback to old system if ML fails
+      const fallbackPredictions = [
         { approver: 'tt-aho', confidence: 0.85 },
         { approver: 'tt-rkim', confidence: 0.72 },
         { approver: 'tt-asaigal', confidence: 0.68 },
         { approver: 'tt-dma', confidence: 0.64 },
         { approver: 'tt-bojko', confidence: 0.58 },
-        { approver: 'tt-metal/tt-mlir', confidence: 0.55 },
-        { approver: 'tt-metal/tt-eager', confidence: 0.52 },
-        { approver: 'tt-metal/tt-nn', confidence: 0.48 },
-        { approver: 'tt-metal/tt-forge', confidence: 0.45 },
-        { approver: 'tt-metal/tt-smi', confidence: 0.42 },
       ];
 
-      // Filter predictions based on confidence threshold
-      const filteredPredictions = fallbackApprovers
+      const filteredPredictions = fallbackPredictions
         .filter(p => p.confidence >= confidence)
-        .slice(0, 10); // Limit to top 10 predictions
+        .slice(0, 10);
 
       return res.json({
         success: true,
@@ -174,82 +230,13 @@ app.post('/api/ml/predict', async (req, res) => {
           })),
           fallbackUsed: true,
           modelAvailable: false,
+          error: mlError.message,
         },
         requestedFiles: files,
         confidenceThreshold: confidence,
-        message: 'Using fallback predictions - ML model not available in this deployment',
+        message: 'CODEOWNERS ML model failed, using fallback predictions',
       });
     }
-
-    // For group-based predictions, we need repository context
-    // If not provided, try to extract from a typical GitHub URL pattern
-    let repoOwner = owner;
-    let repoName = repo;
-    const authToken = token;
-
-    if (!repoOwner || !repoName) {
-      // Try to use a default or extract from context
-      // For now, we'll use a placeholder approach
-      repoOwner = 'tenstorrent';
-      repoName = 'tt-metal';
-    }
-
-    let prediction;
-    try {
-      prediction = await mlTrainer.predictApprovers(
-        repoOwner,
-        repoName,
-        files,
-        authToken,
-        confidence
-      );
-    } catch (predictionError) {
-      console.warn('⚠️ ML prediction failed, returning fallback:', predictionError.message);
-
-      // Provide fallback predictions when ML prediction fails
-      const fallbackApprovers = [
-        { approver: 'tt-aho', confidence: 0.85 },
-        { approver: 'tt-rkim', confidence: 0.72 },
-        { approver: 'tt-asaigal', confidence: 0.68 },
-        { approver: 'tt-dma', confidence: 0.64 },
-        { approver: 'tt-bojko', confidence: 0.58 },
-        { approver: 'tt-metal/tt-mlir', confidence: 0.55 },
-        { approver: 'tt-metal/tt-eager', confidence: 0.52 },
-        { approver: 'tt-metal/tt-nn', confidence: 0.48 },
-        { approver: 'tt-metal/tt-forge', confidence: 0.45 },
-        { approver: 'tt-metal/tt-smi', confidence: 0.42 },
-      ];
-
-      // Filter predictions based on confidence threshold
-      const filteredPredictions = fallbackApprovers
-        .filter(p => p.confidence >= confidence)
-        .slice(0, 10); // Limit to top 10 predictions
-
-      return res.json({
-        success: true,
-        prediction: {
-          predictions: filteredPredictions,
-          matchedPatterns: files.map(file => ({
-            pattern: '**/*',
-            file,
-            confidence: 0.5,
-          })),
-          fallbackUsed: true,
-          modelAvailable: true,
-          error: predictionError.message,
-        },
-        requestedFiles: files,
-        confidenceThreshold: confidence,
-        message: 'ML prediction failed, using fallback predictions',
-      });
-    }
-
-    res.json({
-      success: true,
-      prediction,
-      requestedFiles: files,
-      confidenceThreshold: confidence,
-    });
   } catch (error) {
     console.error('❌ ML prediction error:', error.message);
 
@@ -290,181 +277,156 @@ app.post('/api/ml/predict', async (req, res) => {
       },
       requestedFiles: files,
       confidenceThreshold: confidence,
-      message: 'ML prediction service unavailable, using fallback predictions',
+      message: 'CODEOWNERS ML prediction service unavailable, using fallback predictions',
     });
   }
 });
 
-// Get model statistics and summary
-app.get('/api/ml/stats', (req, res) => {
+// Get model statistics and summary for CODEOWNERS-aware ML model
+app.get('/api/ml/stats', async (req, res) => {
   try {
-    let summary;
-    let isModelTrained = false;
-
+    // Check if CODEOWNERS-aware ML model exists
+    const modelPath = path.join(__dirname, '..', 'codeowners_ml_model.pkl');
+    
     try {
-      summary = mlTrainer.generateModelSummary();
-      isModelTrained = mlTrainer.isModelTrained;
+      // Check if model file exists
+      fs.accessSync(modelPath, fs.constants.F_OK);
+      
+      // Extract real statistics from the trained model
+      const pythonPath = path.join(__dirname, '..', 'codeowners_ml_stats.py');
+      const pythonCommand = '/Users/azayasankaran/Downloads/pr_review/ml-env/bin/python';
+      
+      const statsPromise = new Promise((resolve, reject) => {
+        const pythonProcess = spawn(pythonCommand, [pythonPath, modelPath], {
+          cwd: path.join(__dirname, '..'),
+          env: { ...process.env, PATH: process.env.PATH },
+        });
 
-      // console.warn('🔍 Stats debug - isModelTrained:', isModelTrained);
-      // console.warn('🔍 Stats debug - topApprovers length:', summary?.topApprovers?.length || 0);
+        let output = '';
+        let errorOutput = '';
 
-      // Check if model is actually trained and has data
-      if (!isModelTrained || !summary?.topApprovers || summary.topApprovers.length === 0) {
-        throw new Error('Model not trained or empty data - forcing fallback');
+        pythonProcess.stdout.on('data', data => {
+          output += data.toString();
+        });
+
+        pythonProcess.stderr.on('data', data => {
+          errorOutput += data.toString();
+        });
+
+        pythonProcess.on('close', code => {
+          if (code === 0) {
+            try {
+              const statsData = JSON.parse(output);
+              resolve(statsData);
+            } catch (parseError) {
+              reject(new Error(`Failed to parse ML stats output: ${parseError.message}`));
+            }
+          } else {
+            reject(new Error(`Python process failed with code ${code}: ${errorOutput}`));
+          }
+        });
+
+        pythonProcess.on('error', error => {
+          reject(new Error(`Failed to start Python process: ${error.message}`));
+        });
+      });
+
+      // Get real statistics from the trained model
+      const statsResult = await statsPromise;
+      
+      if (statsResult.success) {
+        console.log('✅ CODEOWNERS ML model stats extracted:', statsResult.message);
+        
+        res.json({
+          success: true,
+          stats: statsResult.stats,
+          isModelTrained: true,
+          modelType: 'codeowners_ml_random_forest',
+          message: 'Using real CODEOWNERS ML model statistics',
+        });
+      } else {
+        throw new Error(statsResult.error || 'Failed to extract model statistics');
       }
+      
     } catch (modelError) {
-      console.warn('⚠️ ML model not available, using fallback data:', modelError.message);
+      console.warn('⚠️ CODEOWNERS ML model not found or stats extraction failed:', modelError.message);
 
-      // Provide fallback data when model isn't loaded
-      summary = {
+      // Fallback data when model isn't available
+      const fallbackStats = {
         trainingData: {
-          totalPRs: 933, // Based on the actual trained model
-          totalApprovals: 1847,
-          totalApprovers: 407,
-          totalFiles: 2156,
+          totalPRs: 'CODEOWNERS model not trained yet',
+          totalApprovals: 'CODEOWNERS model not trained yet',
+          totalApprovers: 'CODEOWNERS model not trained yet',
+          totalFiles: 'CODEOWNERS model not trained yet',
         },
-        lastTrained: '2025-01-02T15:45:55.000Z', // ISO format
-        topApprovers: [
-          { approver: 'tt-aho', totalApprovals: 85 },
-          { approver: 'tt-rkim', totalApprovals: 72 },
-          { approver: 'tt-asaigal', totalApprovals: 68 },
-          { approver: 'tt-dma', totalApprovals: 64 },
-          { approver: 'tt-bojko', totalApprovals: 58 },
-        ],
-        groupPatterns: 407,
+        lastTrained: 'Never',
+        topApprovers: [{ approver: 'No CODEOWNERS model trained', totalApprovals: 0 }],
+        modelType: 'none',
+        features: [],
         isModelLoaded: false,
+        version: 'N/A',
+        confidence: 'None - CODEOWNERS model not trained',
       };
-      isModelTrained = false;
+
+      res.json({
+        success: true,
+        stats: fallbackStats,
+        isModelTrained: false,
+        modelType: 'codeowners_ml_random_forest',
+        message: 'CODEOWNERS ML model not available',
+        error: modelError.message,
+      });
     }
-
-    res.json({
-      success: true,
-      stats: summary,
-      isModelTrained,
-    });
   } catch (error) {
-    console.error('❌ ML stats error:', error.message);
+    console.error('❌ CODEOWNERS ML stats error:', error.message);
 
-    // Fallback error response with basic data
+    // Fallback error response
     res.json({
       success: true,
       stats: {
         trainingData: {
-          totalPRs: 933,
-          totalApprovals: 1847,
-          totalApprovers: 407,
-          totalFiles: 2156,
+          totalPRs: 'Error',
+          totalApprovals: 'Error',
+          totalApprovers: 'Error',
+          totalFiles: 'Error',
         },
-        lastTrained: '2025-01-02T15:45:55.000Z',
-        topApprovers: [
-          { approver: 'tt-aho', totalApprovals: 85 },
-          { approver: 'tt-rkim', totalApprovals: 72 },
-          { approver: 'tt-asaigal', totalApprovals: 68 },
-        ],
-        groupPatterns: 407,
+        lastTrained: 'Error',
+        topApprovers: [{ approver: 'Error checking CODEOWNERS model', totalApprovals: 0 }],
+        modelType: 'error',
+        features: [],
         isModelLoaded: false,
+        version: 'N/A',
+        confidence: 'Error',
       },
       isModelTrained: false,
       fallback: true,
+      error: error.message,
     });
   }
 });
 
-// Get detailed model status
-app.get('/api/ml/status', (req, res) => {
+// Clear training log to force fresh training
+app.post('/api/ml/clear-training-log', async (req, res) => {
   try {
-    const status = mlTrainer.getModelStatus();
-    res.json({
-      success: true,
-      status,
-    });
-  } catch (error) {
-    console.error('❌ ML status error:', error.message);
-    res.status(500).json({
-      error: 'Failed to get model status',
-      message: error.message,
-    });
-  }
-});
+    const clearedLogs = [];
 
-// Clear model data
-app.post('/api/ml/clear', async (req, res) => {
-  try {
-    mlTrainer.clearModel();
-
-    // Save the cleared model to disk
-    await saveModel();
-
-    res.json({
-      success: true,
-      message: 'Model cleared successfully',
-    });
-  } catch (error) {
-    console.error('❌ ML clear error:', error.message);
-    res.status(500).json({
-      error: 'Failed to clear model',
-      message: error.message,
-    });
-  }
-});
-
-// Remove duplicate PRs from training data
-app.post('/api/ml/remove-duplicates', async (req, res) => {
-  try {
-    const removedCount = mlTrainer.removeDuplicates();
-
-    // Save the cleaned model to disk
-    await saveModel();
-
-    res.json({
-      success: true,
-      message: `Removed ${removedCount} duplicate PRs`,
-      removedCount,
-    });
-  } catch (error) {
-    console.error('❌ ML remove duplicates error:', error.message);
-    res.status(500).json({
-      error: 'Failed to remove duplicates',
-      message: error.message,
-    });
-  }
-});
-
-// Compare ML predictions with traditional CODEOWNERS
-app.post('/api/ml/compare', async (req, res) => {
-  try {
-    const { files, confidence = 0.3 } = req.body;
-
-    if (!files || !Array.isArray(files) || files.length === 0) {
-      return res.status(400).json({
-        error: 'Missing or invalid files parameter',
-      });
+    // Clear Python training log
+    const pythonLogPath = path.join(__dirname, '..', 'python_training_log.json');
+    if (fs.existsSync(pythonLogPath)) {
+      fs.unlinkSync(pythonLogPath);
+      clearedLogs.push('python_training_log.json');
+      console.log('🗑️ Python training log cleared via API');
     }
 
-    // Get ML predictions
-    const mlPrediction = mlTrainer.predictApprovers(files, confidence);
-
-    // Get traditional CODEOWNERS matches if provided
-    const traditionalOwners = [];
-    // if (codeownersContent) {
-    //   const codeownersData = parseCodeowners(codeownersContent);
-    //   traditionalOwners = getMinimumApprovals(files, codeownersData, {}).requiredApprovers;
-    // }
-
     res.json({
       success: true,
-      comparison: {
-        mlPredictions: mlPrediction.predictions,
-        traditionalOwners,
-        matchedPatterns: mlPrediction.matchedPatterns,
-        totalFiles: files.length,
-        confidenceThreshold: confidence,
-      },
+      message: 'Training log cleared - next training will process all PRs',
+      clearedLogs,
     });
   } catch (error) {
-    console.error('❌ ML comparison error:', error.message);
+    console.error('❌ Clear training log error:', error.message);
     res.status(500).json({
-      error: 'Comparison failed',
+      error: 'Failed to clear training log',
       message: error.message,
     });
   }
@@ -711,7 +673,6 @@ You should now receive feedback notifications when users submit feedback.
 // GitHub API configuration
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_TEAMS_TOKEN = process.env.GITHUB_TEAMS_TOKEN;
-const GITHUB_API_BASE = 'https://api.github.com';
 
 // Email configuration
 let emailTransporter = null;

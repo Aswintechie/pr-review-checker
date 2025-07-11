@@ -53,7 +53,7 @@ The model needs to be trained once on your repository's historical data:
 
 ```bash
 # Using the demo script
-node ml-demo.js
+python train_codeowners_ml.py
 
 # Or via API
 curl -X POST http://localhost:3001/api/ml/train \
@@ -247,7 +247,7 @@ npm run server
 
 To contribute to the ML CODEOWNERS system:
 
-1. Review the algorithm in `server/ml-codeowners.js`
+1. Review the algorithm in `codeowners_ml_system.py`
 2. Test with different repository patterns
 3. Suggest improvements for pattern recognition
 4. Report accuracy issues with specific examples
