@@ -129,6 +129,7 @@ def get_fallback_stats(error_msg):
         {'approver': 'tt-bojko', 'totalApprovals': 58, 'approvalRate': 12.6},
         {'approver': 'tt-soonjaec', 'totalApprovals': 45, 'approvalRate': 9.8},
         {'approver': 'tt-rjordahl', 'totalApprovals': 38, 'approvalRate': 8.3},
+        {'approver': 'blozano-tt', 'totalApprovals': 35, 'approvalRate': 7.6},
         {'approver': 'tt-tenstorrent', 'totalApprovals': 32, 'approvalRate': 7.0},
         {'approver': 'tt-tlawrie', 'totalApprovals': 28, 'approvalRate': 6.1},
         {'approver': 'tt-yichiyang', 'totalApprovals': 25, 'approvalRate': 5.4},
