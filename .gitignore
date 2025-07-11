@@ -102,3 +102,4 @@ Desktop.ini
 *.tmp
 *.temp 
 .vercel
+server/.env.backup
