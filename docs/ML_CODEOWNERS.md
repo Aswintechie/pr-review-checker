@@ -52,10 +52,7 @@ export GITHUB_TOKEN=your_github_token_here
 The model needs to be trained once on your repository's historical data:
 
 ```bash
-# Using the demo script
-python train_codeowners_ml.py
-
-# Or via API
+# Via API
 curl -X POST http://localhost:3001/api/ml/train \
   -H "Content-Type: application/json" \
   -d '{
