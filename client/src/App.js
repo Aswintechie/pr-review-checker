@@ -695,21 +695,47 @@ function App() {
                       <div className='member-name'>{member.name}</div>
                       <div className='member-username'>
                         @{memberUsername}
-                        {approvalResult && (
-                          <span
-                            className={`ml-approval-chance ${approvalResult.isGeneral ? 'general' : ''}`}
-                          >
-                            {approvalResult.percentage}% approver
-                            {approvalResult.isGeneral && (
+                        {(() => {
+                          if (!approvalResult) return null;
+
+                          // For team members, use similar logic but don't have group context
+                          if (viewMode === 'basic') {
+                            // In basic view, show simpler label for team members
+                            return (
                               <span
-                                className='general-indicator'
-                                title='General approval rate (how often this person approves PRs)'
+                                className={`ml-approval-chance likely-label ${approvalResult.isGeneral ? 'general' : ''}`}
+                                title={`${approvalResult.percentage}% likely to approve`}
                               >
-                                ⚡
+                                likely
+                                {approvalResult.isGeneral && (
+                                  <span
+                                    className='general-indicator'
+                                    title='General approval rate (how often this person approves PRs)'
+                                  >
+                                    ⚡
+                                  </span>
+                                )}
                               </span>
-                            )}
-                          </span>
-                        )}
+                            );
+                          } else {
+                            // In advanced view, show percentage
+                            return (
+                              <span
+                                className={`ml-approval-chance ${approvalResult.isGeneral ? 'general' : ''}`}
+                              >
+                                {approvalResult.percentage}% approver
+                                {approvalResult.isGeneral && (
+                                  <span
+                                    className='general-indicator'
+                                    title='General approval rate (how often this person approves PRs)'
+                                  >
+                                    ⚡
+                                  </span>
+                                )}
+                              </span>
+                            );
+                          }
+                        })()}
                       </div>
                       {memberApproved && <div className='member-approved'>✅ Approved</div>}
                     </div>
@@ -778,16 +804,44 @@ function App() {
 
     const percentage = prediction.confidence * 100;
     const result = percentage >= 1 ? Math.round(percentage) : Math.round(percentage * 10) / 10;
-    const isFallback = prediction.isFallback || false;
     // eslint-disable-next-line no-console
-    console.log(
-      '✅ DEBUG: ML prediction for',
-      username,
-      ':',
-      `${result}%`,
-      isFallback ? '(fallback)' : ''
-    );
-    return { percentage: result, isFallback };
+    console.log('✅ DEBUG: ML prediction for', username, ':', `${result}%`);
+    return { percentage: result };
+  };
+
+  const getTopApproversInGroup = (groupUsers, maxCount = 2) => {
+    if (!groupUsers || !Array.isArray(groupUsers)) {
+      return [];
+    }
+
+    // Get ML predictions for all users in the group
+    const usersWithPredictions = groupUsers
+      .map(user => {
+        const prediction = getMLApprovalChance(user.username);
+        const generalPrediction = getGeneralMLApprovalChance(user.username);
+        return {
+          username: user.username,
+          user,
+          mlPrediction: prediction,
+          generalPrediction,
+          // Use ML prediction if available, otherwise use general prediction
+          effectivePrediction: prediction || generalPrediction,
+        };
+      })
+      .filter(userWithPred => userWithPred.effectivePrediction)
+      .sort((a, b) => b.effectivePrediction.percentage - a.effectivePrediction.percentage);
+
+    // Return usernames of top N approvers
+    return usersWithPredictions.slice(0, maxCount).map(u => u.username);
+  };
+
+  const shouldShowLikelyLabel = (username, groupUsers) => {
+    if (viewMode !== 'basic') {
+      return false; // Only show likely labels in basic view
+    }
+
+    const topApprovers = getTopApproversInGroup(groupUsers, 2);
+    return topApprovers.includes(username);
   };
 
   const getGeneralMLApprovalChance = username => {
@@ -818,10 +872,31 @@ function App() {
     return { percentage: result, isGeneral: true };
   };
 
-  const renderUserCard = (user, isApproved = false, approvedMembers = []) => {
+  const renderUserCard = (user, isApproved = false, approvedMembers = [], groupUsers = null) => {
     const approvalResult = getMLApprovalChance(user.username);
     if (user.type === 'team') {
       return renderTeamCard(user, isApproved, approvedMembers);
+    }
+
+    // Determine what to show for ML predictions
+    let mlDisplay = null;
+    if (approvalResult) {
+      if (viewMode === 'basic' && groupUsers) {
+        // In basic view with group context, show "likely" label only for top 2
+        if (shouldShowLikelyLabel(user.username, groupUsers)) {
+          mlDisplay = (
+            <span
+              className='ml-approval-chance likely-label'
+              title={`${approvalResult.percentage}% likely to approve`}
+            >
+              likely
+            </span>
+          );
+        }
+      } else {
+        // In advanced view or without group context, show percentage
+        mlDisplay = <span className='ml-approval-chance'>{approvalResult.percentage}% likely</span>;
+      }
     }
 
     return (
@@ -837,19 +912,7 @@ function App() {
           <div className='user-name'>{user.name}</div>
           <div className='user-username'>
             @{user.username}
-            {approvalResult && (
-              <span className={`ml-approval-chance ${approvalResult.isFallback ? 'fallback' : ''}`}>
-                {approvalResult.percentage}% likely
-                {approvalResult.isFallback && (
-                  <span
-                    className='fallback-indicator'
-                    title='Using file pattern matching (supplemental prediction)'
-                  >
-                    *
-                  </span>
-                )}
-              </span>
-            )}
+            {mlDisplay}
           </div>
         </div>
         {isApproved && <div className='approval-badge'>✅</div>}
@@ -1153,15 +1216,6 @@ function App() {
                     <strong>Training Set:</strong>{' '}
                     {mlModelStats?.trainingData?.totalPRs || 'Loading...'} PRs from
                     tenstorrent/tt-metal repository
-                    {mlModelStats?.isModelLoaded === false && (
-                      <span
-                        className='fallback-indicator'
-                        title='Using cached training data - ML model not fully loaded in this deployment'
-                      >
-                        {' '}
-                        (cached)
-                      </span>
-                    )}
                   </li>
                   <li>
                     <strong>Last Updated:</strong> {formatDateIST(mlModelStats?.lastTrained)}
@@ -1266,15 +1320,6 @@ function App() {
                 <li>
                   <strong>Dataset Size:</strong>{' '}
                   {mlModelStats?.trainingData?.totalPRs || 'Loading...'} PRs used for training
-                  {mlModelStats?.isModelLoaded === false && (
-                    <span
-                      className='fallback-indicator'
-                      title='Using cached training data - ML model not fully loaded in this deployment'
-                    >
-                      {' '}
-                      (cached)
-                    </span>
-                  )}
                 </li>
                 <li>
                   <strong>Last Trained:</strong> {formatDateIST(mlModelStats?.lastTrained)}
@@ -1685,7 +1730,12 @@ function App() {
                                 group.teamName?.endsWith(user.name))
                                 ? group.approvedTeamMembers || []
                                 : [];
-                            return renderUserCard(user, isApproved, approvedMembers);
+                            return renderUserCard(
+                              user,
+                              isApproved,
+                              approvedMembers,
+                              group.ownerDetails
+                            );
                           })}
                         </div>
                       </div>
@@ -1720,23 +1770,25 @@ function App() {
                               @{user.username}
                               {(() => {
                                 const approvalResult = getMLApprovalChance(user.username);
-                                return (
-                                  approvalResult && (
+                                if (!approvalResult) return null;
+
+                                // In basic view, show cleaner labels; in advanced view, show percentages
+                                if (viewMode === 'basic') {
+                                  return (
                                     <span
-                                      className={`ml-approval-chance ${approvalResult.isFallback ? 'fallback' : ''}`}
+                                      className='ml-approval-chance likely-label'
+                                      title={`${approvalResult.percentage}% likely to approve`}
                                     >
-                                      {approvalResult.percentage}% likely
-                                      {approvalResult.isFallback && (
-                                        <span
-                                          className='fallback-indicator'
-                                          title='Using file pattern matching (supplemental prediction)'
-                                        >
-                                          *
-                                        </span>
-                                      )}
+                                      likely
                                     </span>
-                                  )
-                                );
+                                  );
+                                } else {
+                                  return (
+                                    <span className='ml-approval-chance'>
+                                      {approvalResult.percentage}% likely
+                                    </span>
+                                  );
+                                }
                               })()}
                             </div>
                             {isRequested && <div className='user-status'>Requested</div>}
@@ -1860,7 +1912,12 @@ function App() {
                                 group.teamName?.endsWith(user.name))
                                 ? group.approvedTeamMembers || []
                                 : [];
-                            return renderUserCard(user, isApproved, approvedMembers);
+                            return renderUserCard(
+                              user,
+                              isApproved,
+                              approvedMembers,
+                              group.ownerDetails
+                            );
                           })}
                         </div>
                       </div>
