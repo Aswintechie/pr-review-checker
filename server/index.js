@@ -55,7 +55,7 @@ app.post('/api/ml/train', async (req, res) => {
 
     // Train the model
     const pythonPath = path.join(__dirname, '..', 'codeowners_ml_train.py');
-    const pythonCommand = '/Users/azayasankaran/Downloads/pr_review/ml-env/bin/python';
+    const pythonCommand = process.env.PYTHON_CMD || 'python3';
 
     const mlPromise = new Promise((resolve, reject) => {
       const pythonProcess = spawn(pythonCommand, [pythonPath, owner, repo, token, prCount], {
@@ -135,7 +135,7 @@ app.post('/api/ml/predict', async (req, res) => {
 
     const mlPromise = new Promise((resolve, reject) => {
       // Use python3 or the virtual environment python
-      const pythonCommand = '/Users/azayasankaran/Downloads/pr_review/ml-env/bin/python';
+      const pythonCommand = process.env.PYTHON_CMD || 'python3';
       const pythonProcess = spawn(
         pythonCommand,
         [path.join(__dirname, '..', 'codeowners_ml_predict.py'), JSON.stringify(files), '10'],
@@ -246,7 +246,7 @@ app.get('/api/ml/stats', async (req, res) => {
 
       // Extract real statistics from the trained model
       const pythonPath = path.join(__dirname, '..', 'codeowners_ml_stats.py');
-      const pythonCommand = '/Users/azayasankaran/Downloads/pr_review/ml-env/bin/python';
+      const pythonCommand = process.env.PYTHON_CMD || 'python3';
 
       const statsPromise = new Promise((resolve, reject) => {
         const pythonProcess = spawn(pythonCommand, [pythonPath, modelPath], {
