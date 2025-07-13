@@ -1753,6 +1753,7 @@ function App() {
                                 : [];
                             // Generate group context from owner usernames (matches backend group_id format)
                             const groupContext = group.ownerDetails
+                              .filter(owner => owner && owner.username) // Filter out undefined usernames
                               .map(owner => owner.username.replace(/^@/, ''))
                               .sort()
                               .join('_');
@@ -1941,6 +1942,7 @@ function App() {
                                 : [];
                             // Generate group context from owner usernames (matches backend group_id format)
                             const groupContext = group.ownerDetails
+                              .filter(owner => owner && owner.username) // Filter out undefined usernames
                               .map(owner => owner.username.replace(/^@/, ''))
                               .sort()
                               .join('_');
