@@ -15,6 +15,9 @@ function App() {
   const [githubToken, setGithubToken] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
+  const [loadingStep, setLoadingStep] = useState(0);
+  const totalSteps = 4;
   const [error, setError] = useState('');
   const [rateLimitInfo, setRateLimitInfo] = useState(null);
   const [viewMode, setViewMode] = useState('basic'); // 'basic' or 'advanced'
@@ -316,6 +319,8 @@ function App() {
     // console.log('🎬 handleSubmit called');
     e.preventDefault();
     setLoading(true);
+    setLoadingStep(0);
+    setLoadingMessage('Preparing analysis...');
     setError('');
     setRateLimitInfo(null);
     setResult(null);
@@ -324,6 +329,10 @@ function App() {
     // console.log('🧹 State cleared, making API request...');
 
     try {
+      // Step 1: Fetch PR information
+      setLoadingStep(1);
+      setLoadingMessage('Fetching PR information from GitHub...');
+
       // console.log('📡 Making API request to /api/pr-approvers...');
       const response = await axios.post('/api/pr-approvers', {
         prUrl,
@@ -335,7 +344,10 @@ function App() {
       setRateLimitInfo(response.data.rateLimitInfo || null);
       addToRecentPRs(response.data);
 
-      // Get ML predictions for the PR files
+      // Step 2: Get ML predictions for the PR files
+      setLoadingStep(2);
+      setLoadingMessage('Running ML analysis on changed files...');
+
       // console.log('🔍 Checking if we should fetch ML predictions...');
       // console.log('📁 fileApprovalDetails:', response.data.fileApprovalDetails);
       // console.log('📁 Length:', response.data.fileApprovalDetails?.length);
@@ -357,7 +369,10 @@ function App() {
         const predictions = await getMlPredictions(files, repoInfo);
         setMlPredictions(predictions);
 
-        // Also fetch general predictions for team members
+        // Step 3: Fetch general predictions for team members
+        setLoadingStep(3);
+        setLoadingMessage('Analyzing team approval patterns...');
+
         // console.log('🔄 Fetching general predictions for team members...');
         // console.log('📋 Repository info:', repoInfo);
         // console.log('🔑 GitHub token available:', !!githubToken);
@@ -385,7 +400,10 @@ function App() {
         // );
       }
 
-      // Always try to fetch general predictions for team members (independent of file details)
+      // Step 4: Always try to fetch general predictions for team members (independent of file details)
+      setLoadingStep(4);
+      setLoadingMessage('Finalizing recommendations...');
+
       // console.log('🌟 Always attempting general predictions (independent of files)...');
       const urlMatch = prUrl.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
       const repoInfo = urlMatch
@@ -416,6 +434,8 @@ function App() {
       } else {
         // console.log('❌ No repository info found for independent general predictions');
       }
+
+      setLoadingMessage('Analysis complete!');
     } catch (err) {
       // console.log('❌ Error in handleSubmit:', err);
       // console.log('❌ Error response:', err.response?.data);
@@ -424,6 +444,8 @@ function App() {
     } finally {
       // console.log('🏁 handleSubmit finished, setLoading(false)');
       setLoading(false);
+      setLoadingStep(0);
+      setLoadingMessage('');
     }
   };
 
@@ -1490,7 +1512,12 @@ function App() {
             {loading ? (
               <>
                 <span className='spinner'></span>
-                Analyzing...
+                <div className='loading-info'>
+                  <div className='loading-message'>{loadingMessage}</div>
+                  <div className='loading-progress'>
+                    Step {loadingStep} of {totalSteps}
+                  </div>
+                </div>
               </>
             ) : (
               <>

@@ -812,6 +812,33 @@ body {
   }
 }
 
+.loading-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: 0.5rem;
+}
+
+.loading-message {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.95);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.loading-progress {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
 .btn-icon {
   font-size: 1.2rem;
 }
@@ -4252,5 +4279,46 @@ section h2 {
   .ml-stats-summary li {
     font-size: 0.8rem;
     margin-bottom: 0.4rem;
+  }
+}
+
+/* Responsive loading messages */
+@media (max-width: 768px) {
+  .loading-info {
+    margin-left: 0.3rem;
+  }
+  
+  .loading-message {
+    font-size: 0.8rem;
+  }
+  
+  .loading-progress {
+    font-size: 0.7rem;
+    padding: 0.1rem 0.4rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .analyze-btn {
+    padding: 0.8rem 1.5rem;
+    font-size: 0.9rem;
+  }
+  
+  .loading-info {
+    margin-left: 0.2rem;
+  }
+  
+  .loading-message {
+    font-size: 0.75rem;
+  }
+  
+  .loading-progress {
+    font-size: 0.65rem;
+    padding: 0.08rem 0.3rem;
+  }
+  
+  .spinner {
+    width: 14px;
+    height: 14px;
   }
 }
