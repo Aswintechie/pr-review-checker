@@ -988,6 +988,7 @@ class CodeownersMLPredictor:
         
         # Get predictions from each group
         developer_scores = defaultdict(float)
+        developer_group_scores = defaultdict(lambda: defaultdict(float))  # developer -> group_id -> score
         
         for group_id, group_files in file_groups.items():
             if group_id in self.group_models:
@@ -1037,6 +1038,9 @@ class CodeownersMLPredictor:
                                         weight = len(group_files) / len(files)
                                         developer_scores[member] += approval_prob * weight
                                         
+                                        # Store group-specific score (unweighted for cleaner group display)
+                                        developer_group_scores[member][group_id] = approval_prob * 100
+                                        
                                     except Exception as e:
                                         print(f"⚠️ Error predicting for team member {member} in {owner}: {e}", file=sys.stderr)
                                         continue
@@ -1065,6 +1069,9 @@ class CodeownersMLPredictor:
                             # Weight by number of files in this group
                             weight = len(group_files) / len(files)
                             developer_scores[owner] += approval_prob * weight
+                            
+                            # Store group-specific score (unweighted for cleaner group display)
+                            developer_group_scores[owner][group_id] = approval_prob * 100
                         
                     except Exception as e:
                         print(f"⚠️ Error predicting for {owner} in group {group_id}: {e}", file=sys.stderr)
@@ -1118,7 +1125,8 @@ class CodeownersMLPredictor:
                 'approver': developer,
                 'confidence': min(score * 100, 100),  # Convert to percentage, cap at 100
                 'probability': score,
-                'reasoning': f"ML prediction from {' and '.join(reasoning_parts)}"
+                'reasoning': f"ML prediction from {' and '.join(reasoning_parts)}",
+                'group_scores': dict(developer_group_scores[developer])  # Group-specific scores
             })
         
         # Suppress print statements for API mode

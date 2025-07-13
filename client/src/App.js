@@ -760,10 +760,10 @@ function App() {
     );
   };
 
-  const getMLApprovalChance = username => {
+  const getMLApprovalChance = (username, groupContext = null) => {
     // Debug logging to see what's happening
     // eslint-disable-next-line no-console
-    console.log('🔍 DEBUG: getMLApprovalChance called for:', username);
+    console.log('🔍 DEBUG: getMLApprovalChance called for:', username, 'group:', groupContext);
     // eslint-disable-next-line no-console
     console.log('📊 DEBUG: mlPredictions available:', !!mlPredictions);
     // eslint-disable-next-line no-console
@@ -802,14 +802,29 @@ function App() {
       return null;
     }
 
-    const percentage = prediction.confidence * 100;
+    // Use group-specific score if available and group context is provided
+    let percentage = prediction.confidence * 100;
+    if (groupContext && prediction.group_scores && prediction.group_scores[groupContext]) {
+      percentage = prediction.group_scores[groupContext];
+      // eslint-disable-next-line no-console
+      console.log(
+        '✅ DEBUG: Using group-specific score for',
+        username,
+        'in',
+        groupContext,
+        ':',
+        `${percentage}%`
+      );
+    } else {
+      // eslint-disable-next-line no-console
+      console.log('✅ DEBUG: Using aggregated score for', username, ':', `${percentage}%`);
+    }
+
     const result = percentage >= 1 ? Math.round(percentage) : Math.round(percentage * 10) / 10;
-    // eslint-disable-next-line no-console
-    console.log('✅ DEBUG: ML prediction for', username, ':', `${result}%`);
     return { percentage: result };
   };
 
-  const getTopApproversInGroup = (groupUsers, maxCount = 2) => {
+  const getTopApproversInGroup = (groupUsers, maxCount = 2, groupContext = null) => {
     if (!groupUsers || !Array.isArray(groupUsers)) {
       return [];
     }
@@ -817,7 +832,7 @@ function App() {
     // Get ML predictions for all users in the group
     const usersWithPredictions = groupUsers
       .map(user => {
-        const prediction = getMLApprovalChance(user.username);
+        const prediction = getMLApprovalChance(user.username, groupContext);
         const generalPrediction = getGeneralMLApprovalChance(user.username);
         return {
           username: user.username,
@@ -835,12 +850,12 @@ function App() {
     return usersWithPredictions.slice(0, maxCount).map(u => u.username);
   };
 
-  const shouldShowLikelyLabel = (username, groupUsers) => {
+  const shouldShowLikelyLabel = (username, groupUsers, groupContext = null) => {
     if (viewMode !== 'basic') {
       return false; // Only show likely labels in basic view
     }
 
-    const topApprovers = getTopApproversInGroup(groupUsers, 2);
+    const topApprovers = getTopApproversInGroup(groupUsers, 2, groupContext);
     return topApprovers.includes(username);
   };
 
@@ -872,8 +887,14 @@ function App() {
     return { percentage: result, isGeneral: true };
   };
 
-  const renderUserCard = (user, isApproved = false, approvedMembers = [], groupUsers = null) => {
-    const approvalResult = getMLApprovalChance(user.username);
+  const renderUserCard = (
+    user,
+    isApproved = false,
+    approvedMembers = [],
+    groupUsers = null,
+    groupContext = null
+  ) => {
+    const approvalResult = getMLApprovalChance(user.username, groupContext);
     if (user.type === 'team') {
       return renderTeamCard(user, isApproved, approvedMembers);
     }
@@ -883,7 +904,7 @@ function App() {
     if (approvalResult) {
       if (viewMode === 'basic' && groupUsers) {
         // In basic view with group context, show "likely" label only for top 2
-        if (shouldShowLikelyLabel(user.username, groupUsers)) {
+        if (shouldShowLikelyLabel(user.username, groupUsers, groupContext)) {
           mlDisplay = (
             <span
               className='ml-approval-chance likely-label'
@@ -1730,11 +1751,17 @@ function App() {
                                 group.teamName?.endsWith(user.name))
                                 ? group.approvedTeamMembers || []
                                 : [];
+                            // Generate group context from owner usernames (matches backend group_id format)
+                            const groupContext = group.ownerDetails
+                              .map(owner => owner.username.replace(/^@/, ''))
+                              .sort()
+                              .join('_');
                             return renderUserCard(
                               user,
                               isApproved,
                               approvedMembers,
-                              group.ownerDetails
+                              group.ownerDetails,
+                              groupContext
                             );
                           })}
                         </div>
@@ -1912,11 +1939,17 @@ function App() {
                                 group.teamName?.endsWith(user.name))
                                 ? group.approvedTeamMembers || []
                                 : [];
+                            // Generate group context from owner usernames (matches backend group_id format)
+                            const groupContext = group.ownerDetails
+                              .map(owner => owner.username.replace(/^@/, ''))
+                              .sort()
+                              .join('_');
                             return renderUserCard(
                               user,
                               isApproved,
                               approvedMembers,
-                              group.ownerDetails
+                              group.ownerDetails,
+                              groupContext
                             );
                           })}
                         </div>
