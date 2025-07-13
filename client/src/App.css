@@ -1792,6 +1792,25 @@ section h2 {
   flex-shrink: 0;
 }
 
+.ml-approval-chance.likely-label {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 6px;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.ml-approval-chance.likely-label.general {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);
+}
+
 .ml-approval-chance.fallback {
   background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
   border: 1px dashed rgba(255, 255, 255, 0.3);

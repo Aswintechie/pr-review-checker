@@ -4,6 +4,9 @@
  * Licensed under MIT License
  */
 
+// Load environment variables from .env file
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
@@ -204,80 +207,28 @@ app.post('/api/ml/predict', async (req, res) => {
         message: 'Using CODEOWNERS-aware ML model predictions',
       });
     } catch (mlError) {
-      console.warn('⚠️ CODEOWNERS ML prediction failed:', mlError.message);
+      console.error('❌ CODEOWNERS ML prediction failed:', mlError.message);
 
-      // Fallback to old system if ML fails
-      const fallbackPredictions = [
-        { approver: 'tt-aho', confidence: 0.85 },
-        { approver: 'tt-rkim', confidence: 0.72 },
-        { approver: 'tt-asaigal', confidence: 0.68 },
-        { approver: 'tt-dma', confidence: 0.64 },
-        { approver: 'tt-bojko', confidence: 0.58 },
-      ];
-
-      const filteredPredictions = fallbackPredictions
-        .filter(p => p.confidence >= confidence)
-        .slice(0, 10);
-
-      return res.json({
-        success: true,
-        prediction: {
-          predictions: filteredPredictions,
-          matchedPatterns: files.map(file => ({
-            pattern: '**/*',
-            file,
-            confidence: 0.5,
-          })),
-          fallbackUsed: true,
-          modelAvailable: false,
-          error: mlError.message,
-        },
+      return res.status(500).json({
+        success: false,
+        error: 'ML prediction failed',
+        message: mlError.message,
         requestedFiles: files,
         confidenceThreshold: confidence,
-        message: 'CODEOWNERS ML model failed, using fallback predictions',
       });
     }
   } catch (error) {
     console.error('❌ ML prediction error:', error.message);
 
-    // Provide fallback predictions when service is unavailable
-    const fallbackApprovers = [
-      { approver: 'tt-aho', confidence: 0.85 },
-      { approver: 'tt-rkim', confidence: 0.72 },
-      { approver: 'tt-asaigal', confidence: 0.68 },
-      { approver: 'tt-dma', confidence: 0.64 },
-      { approver: 'tt-bojko', confidence: 0.58 },
-      { approver: 'tt-metal/tt-mlir', confidence: 0.55 },
-      { approver: 'tt-metal/tt-eager', confidence: 0.52 },
-      { approver: 'tt-metal/tt-nn', confidence: 0.48 },
-      { approver: 'tt-metal/tt-forge', confidence: 0.45 },
-      { approver: 'tt-metal/tt-smi', confidence: 0.42 },
-    ];
-
     const confidence = req.body.confidence || 0.3;
     const files = req.body.files || [];
 
-    // Filter predictions based on confidence threshold
-    const filteredPredictions = fallbackApprovers
-      .filter(p => p.confidence >= confidence)
-      .slice(0, 10); // Limit to top 10 predictions
-
-    res.json({
-      success: true,
-      prediction: {
-        predictions: filteredPredictions,
-        matchedPatterns: files.map(file => ({
-          pattern: '**/*',
-          file,
-          confidence: 0.5,
-        })),
-        fallbackUsed: true,
-        modelAvailable: false,
-        error: error.message,
-      },
+    res.status(500).json({
+      success: false,
+      error: 'ML prediction service unavailable',
+      message: error.message,
       requestedFiles: files,
       confidenceThreshold: confidence,
-      message: 'CODEOWNERS ML prediction service unavailable, using fallback predictions',
     });
   }
 });
@@ -287,15 +238,15 @@ app.get('/api/ml/stats', async (req, res) => {
   try {
     // Check if CODEOWNERS-aware ML model exists
     const modelPath = path.join(__dirname, '..', 'codeowners_ml_model.pkl');
-    
+
     try {
       // Check if model file exists
       fs.accessSync(modelPath, fs.constants.F_OK);
-      
+
       // Extract real statistics from the trained model
       const pythonPath = path.join(__dirname, '..', 'codeowners_ml_stats.py');
       const pythonCommand = '/Users/azayasankaran/Downloads/pr_review/ml-env/bin/python';
-      
+
       const statsPromise = new Promise((resolve, reject) => {
         const pythonProcess = spawn(pythonCommand, [pythonPath, modelPath], {
           cwd: path.join(__dirname, '..'),
@@ -333,10 +284,10 @@ app.get('/api/ml/stats', async (req, res) => {
 
       // Get real statistics from the trained model
       const statsResult = await statsPromise;
-      
+
       if (statsResult.success) {
         console.log('✅ CODEOWNERS ML model stats extracted:', statsResult.message);
-        
+
         res.json({
           success: true,
           stats: statsResult.stats,
@@ -347,60 +298,27 @@ app.get('/api/ml/stats', async (req, res) => {
       } else {
         throw new Error(statsResult.error || 'Failed to extract model statistics');
       }
-      
     } catch (modelError) {
-      console.warn('⚠️ CODEOWNERS ML model not found or stats extraction failed:', modelError.message);
+      console.error(
+        '❌ CODEOWNERS ML model not found or stats extraction failed:',
+        modelError.message
+      );
 
-      // Fallback data when model isn't available
-      const fallbackStats = {
-        trainingData: {
-          totalPRs: 'CODEOWNERS model not trained yet',
-          totalApprovals: 'CODEOWNERS model not trained yet',
-          totalApprovers: 'CODEOWNERS model not trained yet',
-          totalFiles: 'CODEOWNERS model not trained yet',
-        },
-        lastTrained: 'Never',
-        topApprovers: [{ approver: 'No CODEOWNERS model trained', totalApprovals: 0 }],
-        modelType: 'none',
-        features: [],
-        isModelLoaded: false,
-        version: 'N/A',
-        confidence: 'None - CODEOWNERS model not trained',
-      };
-
-      res.json({
-        success: true,
-        stats: fallbackStats,
+      res.status(500).json({
+        success: false,
+        error: 'CODEOWNERS ML model not available',
+        message: modelError.message,
         isModelTrained: false,
-        modelType: 'codeowners_ml_random_forest',
-        message: 'CODEOWNERS ML model not available',
-        error: modelError.message,
       });
     }
   } catch (error) {
     console.error('❌ CODEOWNERS ML stats error:', error.message);
 
-    // Fallback error response
-    res.json({
-      success: true,
-      stats: {
-        trainingData: {
-          totalPRs: 'Error',
-          totalApprovals: 'Error',
-          totalApprovers: 'Error',
-          totalFiles: 'Error',
-        },
-        lastTrained: 'Error',
-        topApprovers: [{ approver: 'Error checking CODEOWNERS model', totalApprovals: 0 }],
-        modelType: 'error',
-        features: [],
-        isModelLoaded: false,
-        version: 'N/A',
-        confidence: 'Error',
-      },
+    res.status(500).json({
+      success: false,
+      error: 'CODEOWNERS ML stats service unavailable',
+      message: error.message,
       isModelTrained: false,
-      fallback: true,
-      error: error.message,
     });
   }
 });
