@@ -42,7 +42,8 @@ def make_prediction(files, top_k=5):
                 'approver': pred['approver'],
                 'confidence': pred['confidence'],
                 'probability': pred['probability'],
-                'reasoning': pred['reasoning']
+                'reasoning': pred['reasoning'],
+                'group_scores': pred.get('group_scores', {})  # Include group-specific scores
             })
         
         return formatted_predictions
