@@ -12,6 +12,7 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.metrics import classification_report, roc_auc_score
 import joblib
 import json
+import sys
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Tuple
 import requests
@@ -33,6 +34,14 @@ class CodeownersMLPredictor:
         self.codeowners_patterns = []  # parsed CODEOWNERS rules
         self.developer_stats = {}  # developer -> stats across groups
         self.group_developer_stats = {}  # group_id -> developer -> stats
+        
+        # Team approval model (separate from file-pattern-based models)
+        self.team_models = {}  # team_name -> RandomForestClassifier
+        self.team_features = {}  # team_name -> feature names
+        self.team_encoders = {}  # team_name -> label encoders
+        self.team_scalers = {}  # team_name -> standard scalers
+        self.team_member_stats = {}  # team_name -> member -> approval stats
+        
         self.is_trained = False
         self.training_date = None
         self.training_log_path = 'python_training_log.json'
@@ -118,11 +127,19 @@ class CodeownersMLPredictor:
         except re.error:
             return False
     
-    def collect_codeowners_training_data(self, repo_owner: str, repo_name: str, token: str, months: int = 6) -> List[Dict]:
+    def collect_codeowners_training_data(self, repo_owner: str, repo_name: str, token: str, months: int = 6, pr_limit: int = 1000) -> List[Dict]:
         """
         Collect training data specifically focused on CODEOWNERS groups.
+        
+        Args:
+            repo_owner: Repository owner
+            repo_name: Repository name
+            token: GitHub API token
+            months: Number of months to look back (not used currently)
+            pr_limit: Maximum number of PRs to collect
         """
         print(f"📊 Collecting CODEOWNERS-aware training data from {repo_owner}/{repo_name}...")
+        print(f"🎯 PR limit: {pr_limit}")
         
         headers = {
             'Authorization': f'token {token}',
@@ -141,7 +158,7 @@ class CodeownersMLPredictor:
         page = 1
         consecutive_skipped_pages = 0
         
-        while len(training_data) < 1000 and page <= 15:
+        while len(training_data) < pr_limit and page <= 15:
             url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/pulls"
             params = {
                 'state': 'closed',
@@ -164,6 +181,10 @@ class CodeownersMLPredictor:
             page_skipped_prs = 0
                 
             for pr in prs:
+                # Stop if we've reached the limit
+                if len(training_data) >= pr_limit:
+                    break
+                    
                 if pr['merged_at']:
                     # Skip if already processed (early filter)
                     if pr['number'] in self.processed_prs:
@@ -193,7 +214,7 @@ class CodeownersMLPredictor:
                         
             page += 1
             
-        print(f"✅ Collected {len(training_data)} CODEOWNERS-aware training samples")
+        print(f"✅ Collected {len(training_data)} CODEOWNERS-aware training samples (limit: {pr_limit})")
         return training_data
     
     def _fetch_codeowners(self, repo_owner: str, repo_name: str, headers: Dict) -> str:
@@ -514,9 +535,259 @@ class CodeownersMLPredictor:
             approval_count = stats.get('dev_group_approval_count', 0)
             print(f"   {dev}: {approval_count} approvals, {approval_rate:.2%} rate")
     
-    def train(self, repo_owner: str, repo_name: str, token: str, months: int = 6) -> Dict:
+    def prepare_team_training_data(self, raw_data: List[Dict]) -> Dict[str, Tuple]:
+        """
+        Prepare training data for team-based approval models.
+        This model learns who approves more within teams, regardless of file patterns.
+        
+        Args:
+            raw_data: List of PR data from collect_codeowners_training_data
+            
+        Returns:
+            Dict mapping team names to (features, labels) tuples
+        """
+        team_datasets = {}
+        
+        # Get all teams (entries with '/' in the name)
+        all_teams = set()
+        for pr_data in raw_data:
+            file_groups = pr_data.get('file_groups', {})
+            for group_id in file_groups.keys():
+                group_owners = group_id.split('_')
+                for owner in group_owners:
+                    if '/' in owner:  # Team identifier
+                        all_teams.add(owner)
+        
+        print(f"📊 Found {len(all_teams)} teams for training: {list(all_teams)}")
+        
+        # For each team, prepare training data
+        for team_name in all_teams:
+            team_samples = []
+            team_labels = []
+            
+            # Get team members (would need to be fetched from GitHub API in real implementation)
+            # For now, we'll use a simplified approach - extract members from historical approvals
+            team_members = set()
+            for pr_data in raw_data:
+                approvers = pr_data.get('approvers', [])
+                file_groups = pr_data.get('file_groups', {})
+                
+                # Check if this PR has files that belong to this team
+                team_has_files = False
+                for group_id in file_groups.keys():
+                    if team_name in group_id.split('_'):
+                        team_has_files = True
+                        break
+                
+                if team_has_files:
+                    # Add all approvers as potential team members
+                    for approver in approvers:
+                        if approver and isinstance(approver, str):
+                            clean_approver = approver.strip().lstrip('@')
+                            if clean_approver and '/' not in clean_approver:  # Individual, not team
+                                team_members.add(clean_approver)
+            
+            print(f"🎯 Team {team_name}: Found {len(team_members)} potential members")
+            
+            if len(team_members) < 2:
+                print(f"⚠️ Team {team_name}: Too few members ({len(team_members)}), skipping")
+                continue
+            
+            # Create training samples for each PR where this team is involved
+            for pr_data in raw_data:
+                file_groups = pr_data.get('file_groups', {})
+                approvers = set(pr_data.get('approvers', []))
+                
+                # Check if this team is involved in this PR
+                team_involved = False
+                for group_id in file_groups.keys():
+                    if team_name in group_id.split('_'):
+                        team_involved = True
+                        break
+                
+                if not team_involved:
+                    continue
+                
+                # Create samples for each team member
+                for member in team_members:
+                    features = self.engineer_team_features(pr_data, team_name, member, raw_data)
+                    
+                    # Label: 1 if member approved, 0 if not
+                    label = 1 if member in approvers else 0
+                    
+                    team_samples.append(features)
+                    team_labels.append(label)
+            
+            # Check if we have enough samples for training
+            if len(team_samples) < 20:
+                print(f"⚠️ Team {team_name}: Insufficient samples ({len(team_samples)}), need ≥20")
+                continue
+            
+            positive_samples = sum(team_labels)
+            negative_samples = len(team_labels) - positive_samples
+            
+            # Need at least 3 positive and 3 negative samples for balanced training
+            if positive_samples < 3 or negative_samples < 3:
+                print(f"⚠️ Team {team_name}: Unbalanced samples (pos:{positive_samples}, neg:{negative_samples})")
+                continue
+            
+            # Convert to arrays
+            X = np.array([list(sample.values()) for sample in team_samples])
+            y = np.array(team_labels)
+            
+            # Store feature names for this team
+            self.team_features[team_name] = list(team_samples[0].keys())
+            
+            # Store team member stats
+            self._store_team_member_stats(team_name, raw_data, team_members)
+            
+            team_datasets[team_name] = (X, y)
+            print(f"✅ Team {team_name}: {len(X)} samples, {positive_samples} positive, {negative_samples} negative")
+        
+        return team_datasets
+    
+    def engineer_team_features(self, pr_data: Dict, team_name: str, member: str, all_training_data: List[Dict]) -> Dict:
+        """
+        Engineer features for team-based approval prediction.
+        Focus on approval frequency and patterns, not file patterns.
+        
+        Args:
+            pr_data: Current PR data
+            team_name: Team name (e.g., 'org/team')
+            member: Team member username
+            all_training_data: All historical training data
+            
+        Returns:
+            Dict of engineered features
+        """
+        features = {}
+        
+        # Basic PR features
+        features['pr_additions'] = pr_data.get('additions', 0)
+        features['pr_deletions'] = pr_data.get('deletions', 0)
+        features['pr_total_changes'] = features['pr_additions'] + features['pr_deletions']
+        features['pr_file_count'] = len(pr_data.get('files', []))
+        
+        # Member's historical approval behavior (across all PRs)
+        member_approvals = 0
+        member_pr_appearances = 0
+        member_total_prs = 0
+        
+        for historical_pr in all_training_data:
+            member_total_prs += 1
+            approvers = historical_pr.get('approvers', [])
+            
+            # Check if this member could have approved (team was involved)
+            file_groups = historical_pr.get('file_groups', {})
+            team_involved = False
+            for group_id in file_groups.keys():
+                if team_name in group_id.split('_'):
+                    team_involved = True
+                    break
+            
+            if team_involved:
+                member_pr_appearances += 1
+                if member in approvers:
+                    member_approvals += 1
+        
+        # Member approval statistics
+        features['member_total_approvals'] = member_approvals
+        features['member_pr_appearances'] = member_pr_appearances
+        features['member_approval_rate'] = member_approvals / member_pr_appearances if member_pr_appearances > 0 else 0
+        features['member_approval_frequency'] = member_approvals / member_total_prs if member_total_prs > 0 else 0
+        
+        # Team context features
+        features['team_member_count'] = len(self.team_member_stats.get(team_name, {}))
+        
+        # Time-based features (if available)
+        if 'created_at' in pr_data:
+            # Could add time-based features here (day of week, time of day, etc.)
+            pass
+        
+        return features
+    
+    def _store_team_member_stats(self, team_name: str, raw_data: List[Dict], team_members: set):
+        """Store team member statistics for prediction"""
+        team_stats = {}
+        
+        for member in team_members:
+            approvals = 0
+            appearances = 0
+            
+            for pr_data in raw_data:
+                file_groups = pr_data.get('file_groups', {})
+                approvers = pr_data.get('approvers', [])
+                
+                # Check if team was involved
+                team_involved = False
+                for group_id in file_groups.keys():
+                    if team_name in group_id.split('_'):
+                        team_involved = True
+                        break
+                
+                if team_involved:
+                    appearances += 1
+                    if member in approvers:
+                        approvals += 1
+            
+            team_stats[member] = {
+                'total_approvals': approvals,
+                'team_appearances': appearances,
+                'team_approval_rate': approvals / appearances if appearances > 0 else 0,
+            }
+        
+        self.team_member_stats[team_name] = team_stats
+        print(f"📊 Stored stats for {len(team_stats)} members in team {team_name}")
+    
+    def engineer_team_features_for_prediction(self, pr_data: Dict, team_name: str, member: str) -> Dict:
+        """
+        Engineer features for team-based prediction (similar to training but uses stored stats).
+        
+        Args:
+            pr_data: Current PR data
+            team_name: Team name (e.g., 'org/team')
+            member: Team member username
+            
+        Returns:
+            Dict of engineered features
+        """
+        features = {}
+        
+        # Basic PR features
+        features['pr_additions'] = pr_data.get('additions', 0)
+        features['pr_deletions'] = pr_data.get('deletions', 0)
+        features['pr_total_changes'] = features['pr_additions'] + features['pr_deletions']
+        features['pr_file_count'] = len(pr_data.get('files', []))
+        
+        # Use stored member statistics if available
+        if team_name in self.team_member_stats and member in self.team_member_stats[team_name]:
+            member_stats = self.team_member_stats[team_name][member]
+            features['member_total_approvals'] = member_stats.get('total_approvals', 0)
+            features['member_pr_appearances'] = member_stats.get('team_appearances', 0)
+            features['member_approval_rate'] = member_stats.get('team_approval_rate', 0)
+            features['member_approval_frequency'] = member_stats.get('team_approval_rate', 0)  # Using rate as proxy
+        else:
+            # Fallback to default values
+            features['member_total_approvals'] = 0
+            features['member_pr_appearances'] = 0
+            features['member_approval_rate'] = 0
+            features['member_approval_frequency'] = 0
+        
+        # Team context features
+        features['team_member_count'] = len(self.team_member_stats.get(team_name, {}))
+        
+        return features
+    
+    def train(self, repo_owner: str, repo_name: str, token: str, months: int = 6, pr_limit: int = 1000) -> Dict:
         """
         Train CODEOWNERS-aware ML models.
+        
+        Args:
+            repo_owner: Repository owner
+            repo_name: Repository name
+            token: GitHub API token
+            months: Number of months to look back (not used currently)
+            pr_limit: Maximum number of PRs to collect and train on
         
         Returns:
             Training summary statistics
@@ -528,7 +799,7 @@ class CodeownersMLPredictor:
         self.processed_prs = set(log_data.get('processed_prs', []))
         
         # Collect training data (already filtered during collection)
-        new_prs = self.collect_codeowners_training_data(repo_owner, repo_name, token, months)
+        new_prs = self.collect_codeowners_training_data(repo_owner, repo_name, token, months, pr_limit)
         
         # Check if there are new PRs to process
         if len(new_prs) == 0:
@@ -614,18 +885,75 @@ class CodeownersMLPredictor:
             trained_groups += 1
             total_samples += len(X)
         
+        # Train team-based models
+        print(f"🚀 Starting team-based model training...")
+        team_datasets = self.prepare_team_training_data(new_prs)
+        
+        trained_teams = 0
+        team_samples = 0
+        
+        for team_name, (X, y) in team_datasets.items():
+            print(f"🧠 Training team model for: {team_name}")
+            
+            # Split data - use stratification only if we have enough samples of each class
+            min_class_count = min(np.bincount(y))
+            if min_class_count >= 2:  # Need at least 2 samples of each class for stratification
+                X_train, X_test, y_train, y_test = train_test_split(
+                    X, y, test_size=0.2, random_state=42, stratify=y
+                )
+            else:
+                # Don't stratify if classes are too small
+                X_train, X_test, y_train, y_test = train_test_split(
+                    X, y, test_size=0.2, random_state=42
+                )
+            
+            # Scale features
+            scaler = StandardScaler()
+            X_train_scaled = scaler.fit_transform(X_train)
+            X_test_scaled = scaler.transform(X_test)
+            
+            # Train model
+            model = RandomForestClassifier(
+                n_estimators=100,
+                max_depth=10,
+                min_samples_split=5,
+                random_state=42,
+                class_weight='balanced'
+            )
+            
+            model.fit(X_train_scaled, y_train)
+            
+            # Evaluate
+            train_score = model.score(X_train_scaled, y_train)
+            test_score = model.score(X_test_scaled, y_test)
+            
+            print(f"📊 Team {team_name}: Train={train_score:.3f}, Test={test_score:.3f}")
+            
+            # Store model and preprocessing
+            self.team_models[team_name] = model
+            self.team_scalers[team_name] = scaler
+            
+            trained_teams += 1
+            team_samples += len(X)
+        
         self.is_trained = True
         self.training_date = datetime.now().isoformat()
         
         summary = {
             'trained_groups': trained_groups,
+            'trained_teams': trained_teams,
             'total_samples': total_samples,
+            'team_samples': team_samples,
             'training_date': self.training_date,
             'group_models': list(self.group_models.keys()),
-            'codeowners_rules': len(self.codeowners_patterns)
+            'team_models': list(self.team_models.keys()),
+            'codeowners_rules': len(self.codeowners_patterns),
+            'pr_limit': pr_limit,
+            'new_prs_processed': len(new_prs)
         }
         
         print(f"✅ Training complete! Trained {trained_groups} group models on {total_samples} samples")
+        print(f"✅ Team training complete! Trained {trained_teams} team models on {team_samples} samples")
         
         # Save training log
         self.save_training_log(summary)
@@ -652,7 +980,7 @@ class CodeownersMLPredictor:
         file_groups = self.match_files_to_groups(files, self.codeowners_patterns)
         
         if not file_groups:
-            print("⚠️ No files match any CODEOWNERS patterns")
+            print("⚠️ No files match any CODEOWNERS patterns", file=sys.stderr)
             return []
         
         # Suppress print statements for API mode
@@ -679,42 +1007,72 @@ class CodeownersMLPredictor:
                 # Predict for each owner in this group
                 for owner in group_owners:
                     try:
-                        # Use stored developer statistics instead of recalculating
-                        features = self.engineer_group_features_for_prediction(
-                            dummy_pr, group_id, owner
-                        )
-                        
-                        # Convert to array
-                        feature_array = np.array([list(features.values())])
-                        
-                        # Scale features
-                        scaler = self.group_scalers[group_id]
-                        feature_array_scaled = scaler.transform(feature_array)
-                        
-                        # Get prediction probability
-                        model = self.group_models[group_id]
-                        prob = model.predict_proba(feature_array_scaled)[0]
-                        
-                        # Use probability of approval (class 1)
-                        approval_prob = prob[1] if len(prob) > 1 else prob[0]
-                        
-                        # Weight by number of files in this group
-                        weight = len(group_files) / len(files)
-                        developer_scores[owner] += approval_prob * weight
+                        if '/' in owner:
+                            # This is a team - use team model
+                            if owner in self.team_models:
+                                # Get team members and predict for each
+                                team_members = self.team_member_stats.get(owner, {}).keys()
+                                for member in team_members:
+                                    try:
+                                        # Use team features for prediction
+                                        features = self.engineer_team_features_for_prediction(
+                                            dummy_pr, owner, member
+                                        )
+                                        
+                                        # Convert to array
+                                        feature_array = np.array([list(features.values())])
+                                        
+                                        # Scale features
+                                        scaler = self.team_scalers[owner]
+                                        feature_array_scaled = scaler.transform(feature_array)
+                                        
+                                        # Get prediction probability
+                                        model = self.team_models[owner]
+                                        prob = model.predict_proba(feature_array_scaled)[0]
+                                        
+                                        # Use probability of approval (class 1)
+                                        approval_prob = prob[1] if len(prob) > 1 else prob[0]
+                                        
+                                        # Weight by number of files in this group
+                                        weight = len(group_files) / len(files)
+                                        developer_scores[member] += approval_prob * weight
+                                        
+                                    except Exception as e:
+                                        print(f"⚠️ Error predicting for team member {member} in {owner}: {e}", file=sys.stderr)
+                                        continue
+                            else:
+                                print(f"⚠️ Team {owner} has no trained model, skipping", file=sys.stderr)
+                        else:
+                            # This is an individual codeowner - use group model
+                            features = self.engineer_group_features_for_prediction(
+                                dummy_pr, group_id, owner
+                            )
+                            
+                            # Convert to array
+                            feature_array = np.array([list(features.values())])
+                            
+                            # Scale features
+                            scaler = self.group_scalers[group_id]
+                            feature_array_scaled = scaler.transform(feature_array)
+                            
+                            # Get prediction probability
+                            model = self.group_models[group_id]
+                            prob = model.predict_proba(feature_array_scaled)[0]
+                            
+                            # Use probability of approval (class 1)
+                            approval_prob = prob[1] if len(prob) > 1 else prob[0]
+                            
+                            # Weight by number of files in this group
+                            weight = len(group_files) / len(files)
+                            developer_scores[owner] += approval_prob * weight
                         
                     except Exception as e:
-                        print(f"⚠️ Error predicting for {owner} in group {group_id}: {e}")
+                        print(f"⚠️ Error predicting for {owner} in group {group_id}: {e}", file=sys.stderr)
                         continue
             else:
-                # Group doesn't have a trained model - fall back to equal probability for all owners
-                # Suppress print statements for API mode
-                # print(f"📊 Group {group_id} has no trained model, using fallback scoring")
-                group_owners = group_id.split('_')
-                fallback_score = 0.5  # neutral probability
-                weight = len(group_files) / len(files)
-                
-                for owner in group_owners:
-                    developer_scores[owner] += fallback_score * weight * 0.5  # Reduce confidence for untrained groups
+                # Group doesn't have a trained model - skip this group
+                print(f"⚠️ Group {group_id} has no trained model, skipping", file=sys.stderr)
+                continue
         
         # Sort by score and return top predictions
         sorted_predictions = sorted(
@@ -725,11 +1083,42 @@ class CodeownersMLPredictor:
         
         predictions = []
         for developer, score in sorted_predictions[:top_k]:
+            # Determine which model(s) were used for this developer
+            reasoning_parts = []
+            
+            # Check if this developer appears in any group models
+            group_count = 0
+            for group_id in file_groups.keys():
+                if group_id in self.group_models:
+                    group_owners = group_id.split('_')
+                    if developer in group_owners:
+                        group_count += 1
+            
+            # Check if this developer appears in any team models
+            team_count = 0
+            for group_id in file_groups.keys():
+                group_owners = group_id.split('_')
+                for owner in group_owners:
+                    if '/' in owner and owner in self.team_models:
+                        team_members = self.team_member_stats.get(owner, {}).keys()
+                        if developer in team_members:
+                            team_count += 1
+            
+            if group_count > 0 and team_count > 0:
+                reasoning_parts.append(f"CODEOWNERS group model ({group_count} groups)")
+                reasoning_parts.append(f"team approval model ({team_count} teams)")
+            elif group_count > 0:
+                reasoning_parts.append(f"CODEOWNERS group model ({group_count} groups)")
+            elif team_count > 0:
+                reasoning_parts.append(f"team approval model ({team_count} teams)")
+            else:
+                reasoning_parts.append("unknown model")
+            
             predictions.append({
                 'approver': developer,
                 'confidence': min(score * 100, 100),  # Convert to percentage, cap at 100
                 'probability': score,
-                'reasoning': f"CODEOWNERS group ML model prediction based on {len(file_groups)} matching groups"
+                'reasoning': f"ML prediction from {' and '.join(reasoning_parts)}"
             })
         
         # Suppress print statements for API mode
@@ -743,13 +1132,17 @@ class CodeownersMLPredictor:
             'group_features': self.group_features,
             'group_scalers': self.group_scalers,
             'group_developer_stats': self.group_developer_stats,
+            'team_models': {tid: model for tid, model in self.team_models.items()},
+            'team_features': self.team_features,
+            'team_scalers': self.team_scalers,
+            'team_member_stats': self.team_member_stats,
             'codeowners_patterns': self.codeowners_patterns,
             'is_trained': self.is_trained,
             'training_date': self.training_date
         }
         
         joblib.dump(model_data, filepath)
-        print(f"💾 Saved CODEOWNERS ML model to {filepath}")
+        print(f"💾 Saved CODEOWNERS ML model with {len(self.group_models)} group models and {len(self.team_models)} team models to {filepath}")
     
     def load_model(self, filepath: str):
         """Load trained models from disk"""
@@ -759,13 +1152,17 @@ class CodeownersMLPredictor:
         self.group_features = model_data['group_features']
         self.group_scalers = model_data['group_scalers']
         self.group_developer_stats = model_data.get('group_developer_stats', {})
+        self.team_models = model_data.get('team_models', {})
+        self.team_features = model_data.get('team_features', {})
+        self.team_scalers = model_data.get('team_scalers', {})
+        self.team_member_stats = model_data.get('team_member_stats', {})
         self.codeowners_patterns = model_data['codeowners_patterns']
         self.is_trained = model_data['is_trained']
         self.training_date = model_data['training_date']
         
         # Suppress print statements for API mode
         # print(f"📖 Loaded CODEOWNERS ML model from {filepath}")
-        # print(f"🎯 Model has {len(self.group_models)} trained groups")
+        # print(f"🎯 Model has {len(self.group_models)} trained groups and {len(self.team_models)} trained teams")
 
     def load_training_log(self) -> Dict:
         """Load training log from disk"""

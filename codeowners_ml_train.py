@@ -25,8 +25,8 @@ def main():
     predictor = CodeownersMLPredictor()
     
     try:
-        # Train the model
-        summary = predictor.train(owner, repo, token, months=1)
+        # Train the model with the specified PR limit
+        summary = predictor.train(owner, repo, token, months=1, pr_limit=pr_count)
         
         # Save the model
         model_path = "codeowners_ml_model.pkl"
@@ -37,10 +37,10 @@ def main():
             "success": True,
             "summary": {
                 "trainingData": {
-                    "totalPRs": summary.get('total_samples', 0),
-                    "totalApprovals": summary.get('trained_groups', 0),
-                    "totalApprovers": summary.get('trained_groups', 0),
-                    "totalFiles": summary.get('total_samples', 0),
+                    "totalPRs": summary.get('new_prs_processed', 0),
+                    "totalApprovals": summary.get('total_samples', 0),
+                    "totalApprovers": summary.get('trained_groups', 0) + summary.get('trained_teams', 0),
+                    "totalFiles": summary.get('total_samples', 0) * 5,  # Estimate
                 },
                 "lastTrained": summary.get('training_date', ''),
                 "topApprovers": [],
@@ -50,13 +50,17 @@ def main():
                 "version": '2.0',
                 "confidence": 'High - trained on CODEOWNERS groups',
                 "trained_groups": summary.get('trained_groups', 0),
+                "trained_teams": summary.get('trained_teams', 0),
                 "total_samples": summary.get('total_samples', 0),
+                "team_samples": summary.get('team_samples', 0),
                 "codeowners_rules": summary.get('codeowners_rules', 0),
+                "pr_limit": summary.get('pr_limit', pr_count),
+                "new_prs_processed": summary.get('new_prs_processed', 0),
                 "model_path": model_path
             }
         }
         
-        print(json.dumps(output))
+        print(json.dumps(output, indent=2))
         
     except Exception as e:
         error_output = {
@@ -64,7 +68,7 @@ def main():
             "error": str(e),
             "message": f"Training failed: {str(e)}"
         }
-        print(json.dumps(error_output))
+        print(json.dumps(error_output, indent=2))
         sys.exit(1)
 
 if __name__ == "__main__":
