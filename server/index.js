@@ -192,7 +192,7 @@ app.post('/api/ml/predict', async (req, res) => {
             confidence: p.confidence / 100, // Convert percentage to decimal
             reasoning: p.reasoning || `CODEOWNERS ML Model: ${p.confidence}% confidence`,
             source: 'codeowners_ml_model',
-            group_scores: p.group_scores || {},  // Include group-specific scores
+            group_scores: p.group_scores || {}, // Include group-specific scores
           })),
           matchedPatterns: files.map(file => ({
             pattern: 'codeowners_group_pattern',

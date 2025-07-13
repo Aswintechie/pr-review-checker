@@ -4287,11 +4287,11 @@ section h2 {
   .loading-info {
     margin-left: 0.3rem;
   }
-  
+
   .loading-message {
     font-size: 0.8rem;
   }
-  
+
   .loading-progress {
     font-size: 0.7rem;
     padding: 0.1rem 0.4rem;
@@ -4303,20 +4303,20 @@ section h2 {
     padding: 0.8rem 1.5rem;
     font-size: 0.9rem;
   }
-  
+
   .loading-info {
     margin-left: 0.2rem;
   }
-  
+
   .loading-message {
     font-size: 0.75rem;
   }
-  
+
   .loading-progress {
     font-size: 0.65rem;
     padding: 0.08rem 0.3rem;
   }
-  
+
   .spinner {
     width: 14px;
     height: 14px;
