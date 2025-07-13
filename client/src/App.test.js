@@ -99,7 +99,7 @@ describe('App Component', () => {
 
     // Check loading state
     await waitFor(() => {
-      expect(screen.getByText(/Analyzing.../i)).toBeInTheDocument();
+      expect(screen.getByText(/Fetching PR information from GitHub.../i)).toBeInTheDocument();
     });
 
     expect(submitButton).toBeDisabled();
