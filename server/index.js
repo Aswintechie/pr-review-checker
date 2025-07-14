@@ -193,6 +193,7 @@ app.post('/api/ml/predict', async (req, res) => {
             reasoning: p.reasoning || `CODEOWNERS ML Model: ${p.confidence}% confidence`,
             source: 'codeowners_ml_model',
             group_scores: p.group_scores || {}, // Include group-specific scores
+            group_labels: p.group_labels || [], // Include human-readable group labels
           })),
           matchedPatterns: files.map(file => ({
             pattern: 'codeowners_group_pattern',

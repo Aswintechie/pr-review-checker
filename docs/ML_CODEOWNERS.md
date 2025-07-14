@@ -4,6 +4,50 @@
 
 The ML CODEOWNERS system uses machine learning to predict who is most likely to approve your Pull Request based on historical approval patterns. It analyzes past PRs to learn which reviewers typically approve which types of file changes.
 
+## 🏷️ NEW: Group Labeling Feature
+
+The system now automatically extracts human-readable labels from CODEOWNERS patterns to improve user experience and analytics.
+
+### Label Extraction Examples
+
+The system intelligently extracts meaningful labels from CODEOWNERS patterns:
+
+- `ttnn/cpp/ttnn/operations/eltwise/quantization/` → **"quantization"**
+- `tests/ttnn/unit_tests/operations/eltwise/` → **"eltwise"**
+- `ttnn/cpp/ttnn/operations/experimental/reduction/**/CMakeLists.txt` → **"reduction"**
+- `*.md` → **"md_files"**
+- `*` → **"global"**
+- `/client/` → **"client"**
+- `/server/` → **"server"**
+- `package.json` → **"package"**
+
+### Benefits
+
+- **Better UX**: Instead of seeing `wenbinlyuTT_patrickroberts_sjameelTT`, users see meaningful labels like "quantization team"
+- **Improved Analytics**: Track approval patterns by functional area
+- **Better Insights**: Understand which teams/areas need more reviewers
+- **Enhanced Debugging**: Clearer logging and error messages
+
+### API Response Format
+
+The ML prediction API now includes group labels in the response:
+
+```json
+{
+  "predictions": [
+    {
+      "approver": "wenbinlyuTT",
+      "confidence": 0.85,
+      "reasoning": "ML prediction from CODEOWNERS group model (2 groups)",
+      "group_scores": {
+        "wenbinlyuTT_patrickroberts_sjameelTT": 0.85
+      },
+      "group_labels": ["quantization", "eltwise"]
+    }
+  ]
+}
+```
+
 ## How It Works
 
 ### 1. Training Phase
@@ -11,12 +55,14 @@ The ML CODEOWNERS system uses machine learning to predict who is most likely to 
 - Analyzes which files were changed in each PR
 - Records who actually approved each PR
 - Extracts patterns from file paths (extensions, directories, special patterns)
+- **NEW**: Extracts human-readable labels from CODEOWNERS patterns
 - Builds a model correlating file patterns to approvers
 
 ### 2. Prediction Phase
 - When you analyze a PR, the system extracts patterns from the changed files
 - Matches these patterns against the trained model
 - Calculates confidence scores for each potential approver
+- **NEW**: Includes group labels in the prediction response
 - Shows percentage likelihood inline with existing CODEOWNERS
 
 ## Features
@@ -37,6 +83,7 @@ The ML system recognizes various file patterns:
 ### Seamless Integration
 - No separate tabs or complex UI
 - Approval percentages appear inline with usernames
+- **NEW**: Group labels provide context about which functional areas are involved
 - Only shows predictions for existing CODEOWNERS
 - Automatic background fetching when analyzing PRs
 

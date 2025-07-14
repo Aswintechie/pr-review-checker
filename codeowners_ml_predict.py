@@ -43,7 +43,8 @@ def make_prediction(files, top_k=5):
                 'confidence': pred['confidence'],
                 'probability': pred['probability'],
                 'reasoning': pred['reasoning'],
-                'group_scores': pred.get('group_scores', {})  # Include group-specific scores
+                'group_scores': pred.get('group_scores', {}),  # Include group-specific scores
+                'group_labels': pred.get('group_labels', [])  # Include human-readable group labels
             })
         
         return formatted_predictions
