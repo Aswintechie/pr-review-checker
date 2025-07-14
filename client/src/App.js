@@ -2040,37 +2040,7 @@ function App() {
                           </div>
                           <div className='user-info'>
                             <div className='user-name'>{user.name}</div>
-                            <div className='user-username'>
-                              @{user.username}
-                              {(() => {
-                                const approvalResult = getMLApprovalChance(user.username);
-                                if (!approvalResult) return null;
-
-                                // In All Possible Reviewers section, don't show group labels
-                                // since they're not contextually relevant without group context
-
-                                // In basic view, show cleaner labels; in advanced view, show percentages
-                                if (viewMode === 'basic') {
-                                  return (
-                                    <span
-                                      className='ml-approval-chance likely-label'
-                                      title={`${approvalResult.percentage}% likely to approve`}
-                                    >
-                                      likely
-                                    </span>
-                                  );
-                                } else {
-                                  return (
-                                    <span
-                                      className='ml-approval-chance'
-                                      title={`${approvalResult.percentage}% approval rate`}
-                                    >
-                                      {approvalResult.percentage}% likely
-                                    </span>
-                                  );
-                                }
-                              })()}
-                            </div>
+                            <div className='user-username'>@{user.username}</div>
                             {isRequested && <div className='user-status'>Requested</div>}
                           </div>
                           {isApproved && <div className='approval-badge'>✅</div>}
