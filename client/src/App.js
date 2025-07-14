@@ -653,8 +653,12 @@ function App() {
   // Build a lookup map from generalPredictions for O(1) access
   // This achieves true O(n+m) complexity where n=members, m=predictions
   const buildPredictionsLookup = () => {
-    if (!generalPredictions?.predictions) return {};
+    if (!generalPredictions?.predictions) {
+      console.log('🔍 DEBUG: No generalPredictions available for sorting');
+      return {};
+    }
 
+    console.log('✅ DEBUG: Building predictions lookup from', generalPredictions.predictions.length, 'predictions');
     const lookupMap = {};
     generalPredictions.predictions.forEach(prediction => {
       // Handle both @username and username formats
@@ -674,10 +678,12 @@ function App() {
   const sortTeamMembersByLikelihood = members => {
     if (!members || members.length === 0) return [];
 
+    console.log('🔄 DEBUG: Sorting', members.length, 'team members');
+
     // Pre-build predictions lookup map for O(1) access (true O(n+m) complexity)
     const predictionsLookup = buildPredictionsLookup();
 
-    return members
+    const sortedMembers = members
       .map(member => {
         // Extract actual GitHub username from member object
         const username = member.login || member.username;
@@ -685,13 +691,19 @@ function App() {
 
         // Create a new object with additional properties (non-mutating approach)
         // This enhances the original member data with sorting and approval information
-        return {
+        const result = {
           ...member, // Copy all original member properties
           approvalResult: prediction || null, // Add ML approval prediction data
           sortKey: prediction ? prediction.percentage : NO_PREDICTION_SORT_VALUE, // Add sort key for ordering
         };
+
+        console.log(`📊 DEBUG: ${username} -> sortKey: ${result.sortKey}${prediction ? ` (${prediction.percentage}%)` : ' (no prediction)'}`);
+        return result;
       })
       .sort((a, b) => b.sortKey - a.sortKey); // Sort by likelihood percentage in descending order
+
+    console.log('✅ DEBUG: Sorted team members:', sortedMembers.map(m => `${m.login || m.username}:${m.sortKey}`));
+    return sortedMembers;
   };
 
   const renderTeamCard = (team, isApproved = false, approvedMembers = []) => {
