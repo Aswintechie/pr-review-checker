@@ -1838,6 +1838,51 @@ section h2 {
   box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);
 }
 
+.group-labels {
+  display: block;
+  font-size: 8px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 2px;
+  letter-spacing: 0.3px;
+  text-transform: lowercase;
+  opacity: 0.9;
+}
+
+.group-labels-hint {
+  display: block;
+  font-size: 7px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 1px;
+  letter-spacing: 0.2px;
+  text-transform: lowercase;
+  opacity: 0.8;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-areas-badge {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: lowercase;
+  letter-spacing: 0.3px;
+  margin-left: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+  display: inline-block;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .ml-approval-chance.fallback {
   background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
   border: 1px dashed rgba(255, 255, 255, 0.3);

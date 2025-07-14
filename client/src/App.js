@@ -924,21 +924,38 @@ function App() {
     // Determine what to show for ML predictions
     let mlDisplay = null;
     if (approvalResult) {
+      // Get the prediction object to access group_labels
+      const prediction = mlPredictions?.predictions?.find(p => 
+        p.approver === user.username || p.approver === `@${user.username}`
+      );
+      
+      const groupLabels = prediction?.group_labels || [];
+      const labelsText = groupLabels.length > 0 ? groupLabels.join(', ') : '';
+      
       if (viewMode === 'basic' && groupUsers) {
         // In basic view with group context, show "likely" label only for top 2
         if (shouldShowLikelyLabel(user.username, groupUsers, groupContext)) {
           mlDisplay = (
             <span
               className='ml-approval-chance likely-label'
-              title={`${approvalResult.percentage}% likely to approve`}
+              title={`${approvalResult.percentage}% likely to approve${labelsText ? ` (${labelsText})` : ''}`}
             >
               likely
+              {labelsText && <span className='group-labels-hint'>({labelsText})</span>}
             </span>
           );
         }
       } else {
         // In advanced view or without group context, show percentage
-        mlDisplay = <span className='ml-approval-chance'>{approvalResult.percentage}% likely</span>;
+        mlDisplay = (
+          <span 
+            className='ml-approval-chance'
+            title={labelsText ? `Based on: ${labelsText}` : undefined}
+          >
+            {approvalResult.percentage}% likely
+            {labelsText && <span className='group-labels'>{labelsText}</span>}
+          </span>
+        );
       }
     }
 
@@ -1730,6 +1747,30 @@ function App() {
                           {group.needsApproval ? '❌' : '✅'}
                           Group {index + 1} ({group.files.length} file
                           {group.files.length !== 1 ? 's' : ''})
+                          {(() => {
+                            // Extract group labels from ML predictions
+                            const groupLabels = new Set();
+                            if (mlPredictions?.predictions) {
+                              group.owners.forEach(owner => {
+                                const prediction = mlPredictions.predictions.find(p => 
+                                  p.approver === owner || p.approver === `@${owner}`
+                                );
+                                if (prediction?.group_labels) {
+                                  prediction.group_labels.forEach(label => groupLabels.add(label));
+                                }
+                              });
+                            }
+                            
+                            if (groupLabels.size > 0) {
+                              const labelsArray = Array.from(groupLabels);
+                              return (
+                                <span className='group-areas-badge'>
+                                  {labelsArray.join(', ')}
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
                         </h3>
                         {!group.needsApproval && (
                           <span className='approved-by'>
@@ -1827,20 +1868,33 @@ function App() {
                                 const approvalResult = getMLApprovalChance(user.username);
                                 if (!approvalResult) return null;
 
+                                // Get the prediction object to access group_labels
+                                const prediction = mlPredictions?.predictions?.find(p => 
+                                  p.approver === user.username || p.approver === `@${user.username}`
+                                );
+                                
+                                const groupLabels = prediction?.group_labels || [];
+                                const labelsText = groupLabels.length > 0 ? groupLabels.join(', ') : '';
+
                                 // In basic view, show cleaner labels; in advanced view, show percentages
                                 if (viewMode === 'basic') {
                                   return (
                                     <span
                                       className='ml-approval-chance likely-label'
-                                      title={`${approvalResult.percentage}% likely to approve`}
+                                      title={`${approvalResult.percentage}% likely to approve${labelsText ? ` (${labelsText})` : ''}`}
                                     >
                                       likely
+                                      {labelsText && <span className='group-labels-hint'>({labelsText})</span>}
                                     </span>
                                   );
                                 } else {
                                   return (
-                                    <span className='ml-approval-chance'>
+                                    <span 
+                                      className='ml-approval-chance'
+                                      title={labelsText ? `Based on: ${labelsText}` : undefined}
+                                    >
                                       {approvalResult.percentage}% likely
+                                      {labelsText && <span className='group-labels'>{labelsText}</span>}
                                     </span>
                                   );
                                 }
@@ -1906,6 +1960,30 @@ function App() {
                           {group.needsApproval ? '❌' : '✅'}
                           Group {index + 1} ({group.files.length} file
                           {group.files.length !== 1 ? 's' : ''})
+                          {(() => {
+                            // Extract group labels from ML predictions
+                            const groupLabels = new Set();
+                            if (mlPredictions?.predictions) {
+                              group.owners.forEach(owner => {
+                                const prediction = mlPredictions.predictions.find(p => 
+                                  p.approver === owner || p.approver === `@${owner}`
+                                );
+                                if (prediction?.group_labels) {
+                                  prediction.group_labels.forEach(label => groupLabels.add(label));
+                                }
+                              });
+                            }
+                            
+                            if (groupLabels.size > 0) {
+                              const labelsArray = Array.from(groupLabels);
+                              return (
+                                <span className='group-areas-badge'>
+                                  {labelsArray.join(', ')}
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
                         </h3>
                         {!group.needsApproval && (
                           <span className='approved-by'>
