@@ -2003,7 +2003,26 @@ function App() {
                   <h2>👥 All Possible Reviewers</h2>
                   <div className='users-grid'>
                     {result.allUserDetails.map(user => {
-                      const isApproved = result.approvals.includes(user.username);
+                      // For teams, check if any team member has approved
+                      let isApproved = result.approvals.includes(user.username);
+
+                      if (!isApproved && user.type === 'team') {
+                        // Check if team is approved through any of its members
+                        // Look through all groups to see if this team is approved
+                        isApproved = result.minRequiredApprovals.some(group => {
+                          return (
+                            !group.needsApproval &&
+                            (group.teamName === user.username ||
+                              group.teamName?.endsWith(user.name) ||
+                              (group.allGroupApprovers &&
+                                user.members &&
+                                user.members.some(member =>
+                                  group.allGroupApprovers.includes(member.login || member.username)
+                                )))
+                          );
+                        });
+                      }
+
                       const isRequested = result.requestedReviewers.includes(user.username);
                       return (
                         <div
