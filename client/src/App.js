@@ -746,17 +746,16 @@ function App() {
             <div className='team-members-title'>Team Members:</div>
             <div className='team-members-grid'>
               {sortedTeamMembers.map(member => {
-                const { memberUsername, approvalResult } = member;
-                const memberApproved = approvedMembers.includes(memberUsername);
-                // Debug: console.log('Team member:', memberUsername);
+                // Extract username from member object (consistent with our optimization)
+                const username = member.login || member.username;
+                const { approvalResult } = member;
+                const memberApproved = approvedMembers.includes(username);
+                // Debug: console.log('Team member:', username);
                 return (
-                  <div
-                    key={memberUsername}
-                    className={`team-member ${memberApproved ? 'approved' : ''}`}
-                  >
+                  <div key={username} className={`team-member ${memberApproved ? 'approved' : ''}`}>
                     <div className='member-avatar'>
                       {member.avatar_url ? (
-                        <img src={member.avatar_url} alt={memberUsername} />
+                        <img src={member.avatar_url} alt={username} />
                       ) : (
                         <div className='avatar-placeholder'>👤</div>
                       )}
@@ -764,7 +763,7 @@ function App() {
                     <div className='member-info'>
                       <div className='member-name'>{member.name}</div>
                       <div className='member-username'>
-                        @{memberUsername}
+                        @{username}
                         {(() => {
                           if (!approvalResult) return null;
 
