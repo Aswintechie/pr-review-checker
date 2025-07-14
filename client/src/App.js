@@ -881,6 +881,103 @@ function App() {
     return topApprovers.includes(username);
   };
 
+  const extractCurrentGroupLabels = (group) => {
+    // Extract group labels that are most relevant to this specific group
+    const currentGroupLabels = [];
+    if (mlPredictions?.predictions) {
+      // Get labels for each owner in this group
+      const ownerLabels = [];
+      group.owners.forEach(owner => {
+        const prediction = mlPredictions.predictions.find(
+          p => p.approver === owner || p.approver === `@${owner}`
+        );
+        if (prediction?.group_labels) {
+          ownerLabels.push(new Set(prediction.group_labels));
+        }
+      });
+      
+      // Find intersection of all owner labels (labels common to all owners)
+      if (ownerLabels.length > 0) {
+        let commonLabels = ownerLabels[0];
+        for (let i = 1; i < ownerLabels.length; i++) {
+          commonLabels = new Set([...commonLabels].filter(x => ownerLabels[i].has(x)));
+        }
+        currentGroupLabels.push(...Array.from(commonLabels));
+      }
+      
+      // If no common labels, use a smarter approach:
+      // For each label, check if it appears in most of the owners
+      if (currentGroupLabels.length === 0) {
+        const labelCounts = {};
+        ownerLabels.forEach(labelSet => {
+          labelSet.forEach(label => {
+            labelCounts[label] = (labelCounts[label] || 0) + 1;
+          });
+        });
+        
+        // Include labels that appear in at least half of the owners
+        const threshold = Math.ceil(ownerLabels.length / 2);
+        Object.entries(labelCounts).forEach(([label, count]) => {
+          if (count >= threshold) {
+            currentGroupLabels.push(label);
+          }
+        });
+      }
+    }
+    return currentGroupLabels;
+  };
+
+  const extractTeamShortName = (teamName) => {
+    if (!teamName) return teamName;
+    
+    // Common patterns to extract meaningful parts from team names
+    const patterns = [
+      // Pattern: "prefix-developers-suffix" -> "suffix" 
+      /^[\w-]+-developers?-(.+)$/,
+      // Pattern: "prefix-team-suffix" -> "suffix"
+      /^[\w-]+-teams?-(.+)$/,
+      // Pattern: "prefix-group-suffix" -> "suffix"  
+      /^[\w-]+-groups?-(.+)$/,
+      // Pattern: "org-suffix" -> "suffix" (for simple org-name patterns)
+      /^[\w-]+-(.+)$/
+    ];
+    
+    for (const pattern of patterns) {
+      const match = teamName.match(pattern);
+      if (match && match[1]) {
+        // Return the extracted part, replacing any remaining hyphens with spaces for readability
+        return match[1].replace(/-/g, '-'); // Keep hyphens as-is for technical terms
+      }
+    }
+    
+    // If no pattern matches, return the original name
+    return teamName;
+  };
+
+  const extractGroupTeamLabels = (group) => {
+    const teamLabels = [];
+    if (group.ownerDetails) {
+      group.ownerDetails.forEach(owner => {
+        if (owner.type === 'team' && owner.name) {
+          const shortName = extractTeamShortName(owner.name);
+          if (shortName !== owner.name && !teamLabels.includes(shortName)) {
+            teamLabels.push(shortName);
+          }
+        }
+      });
+    }
+    
+    // Also check teamName if it exists (for approved groups)
+    if (group.teamName) {
+      const shortName = extractTeamShortName(group.teamName);
+      if (shortName !== group.teamName && !teamLabels.includes(shortName)) {
+        teamLabels.push(shortName);
+      }
+    }
+    
+    return teamLabels;
+  };
+
   const getGeneralMLApprovalChance = username => {
     if (!generalPredictions?.predictions || !username) {
       // console.log('No general approval rates or username:', {
@@ -914,7 +1011,8 @@ function App() {
     isApproved = false,
     approvedMembers = [],
     groupUsers = null,
-    groupContext = null
+    groupContext = null,
+    currentGroupLabels = []
   ) => {
     const approvalResult = getMLApprovalChance(user.username, groupContext);
     if (user.type === 'team') {
@@ -925,13 +1023,39 @@ function App() {
     let mlDisplay = null;
     if (approvalResult) {
       // Get the prediction object to access group_labels
-      const prediction = mlPredictions?.predictions?.find(p => 
-        p.approver === user.username || p.approver === `@${user.username}`
+      const prediction = mlPredictions?.predictions?.find(
+        p => p.approver === user.username || p.approver === `@${user.username}`
       );
+
+      const allGroupLabels = prediction?.group_labels || [];
       
-      const groupLabels = prediction?.group_labels || [];
-      const labelsText = groupLabels.length > 0 ? groupLabels.join(', ') : '';
+      // Filter labels to only show those relevant to current group
+      let filteredLabels = allGroupLabels;
       
+      if (groupContext && prediction?.group_scores && prediction.group_scores[groupContext]) {
+        // If we have group context and this user has scores for this specific group,
+        // we need to determine which labels are specifically relevant to this group.
+        // For now, use a simpler approach: if this is a mixed group (multiple labels),
+        // only show labels that the user is actually responsible for in this group.
+        
+        // Check if this is a single-label group or multi-label group
+        const uniqueLabels = new Set();
+        if (currentGroupLabels.length > 0) {
+          currentGroupLabels.forEach(label => uniqueLabels.add(label));
+          
+          // If it's a single-label group, only show that label
+          if (uniqueLabels.size === 1) {
+            const groupLabel = Array.from(uniqueLabels)[0];
+            filteredLabels = allGroupLabels.filter(label => label === groupLabel);
+          } else {
+            // Multi-label group: use the provided currentGroupLabels filter
+            filteredLabels = allGroupLabels.filter(label => currentGroupLabels.includes(label));
+          }
+        }
+      }
+      
+      const labelsText = filteredLabels.length > 0 ? filteredLabels.join(', ') : '';
+
       if (viewMode === 'basic' && groupUsers) {
         // In basic view with group context, show "likely" label only for top 2
         if (shouldShowLikelyLabel(user.username, groupUsers, groupContext)) {
@@ -941,19 +1065,17 @@ function App() {
               title={`${approvalResult.percentage}% likely to approve${labelsText ? ` (${labelsText})` : ''}`}
             >
               likely
-              {labelsText && <span className='group-labels-hint'>({labelsText})</span>}
             </span>
           );
         }
       } else {
         // In advanced view or without group context, show percentage
         mlDisplay = (
-          <span 
+          <span
             className='ml-approval-chance'
             title={labelsText ? `Based on: ${labelsText}` : undefined}
           >
             {approvalResult.percentage}% likely
-            {labelsText && <span className='group-labels'>{labelsText}</span>}
           </span>
         );
       }
@@ -1745,31 +1867,37 @@ function App() {
                       <div className='group-header'>
                         <h3>
                           {group.needsApproval ? '❌' : '✅'}
-                          Group {index + 1} ({group.files.length} file
-                          {group.files.length !== 1 ? 's' : ''})
+                          Group {index + 1}
+                          {' '}({group.files.length} file{group.files.length !== 1 ? 's' : ''})
                           {(() => {
-                            // Extract group labels from ML predictions
-                            const groupLabels = new Set();
-                            if (mlPredictions?.predictions) {
-                              group.owners.forEach(owner => {
-                                const prediction = mlPredictions.predictions.find(p => 
-                                  p.approver === owner || p.approver === `@${owner}`
-                                );
-                                if (prediction?.group_labels) {
-                                  prediction.group_labels.forEach(label => groupLabels.add(label));
-                                }
-                              });
-                            }
+                            // Extract group labels using the same smart filtering logic
+                            const groupLabels = extractCurrentGroupLabels(group);
+                            const teamLabels = extractGroupTeamLabels(group);
                             
-                            if (groupLabels.size > 0) {
-                              const labelsArray = Array.from(groupLabels);
-                              return (
-                                <span className='group-areas-badge'>
-                                  {labelsArray.join(', ')}
-                                </span>
-                              );
-                            }
-                            return null;
+                            return (
+                              <>
+                                {groupLabels.length > 0 && (
+                                  <>
+                                    {' '}
+                                    {groupLabels.map((label, labelIndex) => (
+                                      <span key={`group-${labelIndex}`} className='group-label-badge'>
+                                        {label}
+                                      </span>
+                                    ))}
+                                  </>
+                                )}
+                                {teamLabels.length > 0 && (
+                                  <>
+                                    {' '}
+                                    {teamLabels.map((label, labelIndex) => (
+                                      <span key={`team-${labelIndex}`} className='group-label-badge'>
+                                        {label}
+                                      </span>
+                                    ))}
+                                  </>
+                                )}
+                              </>
+                            );
                           })()}
                         </h3>
                         {!group.needsApproval && (
@@ -1825,12 +1953,17 @@ function App() {
                               .map(owner => owner.username.replace(/^@/, ''))
                               .sort()
                               .join('_');
+                            
+                            // Extract group labels for current group
+                            const currentGroupLabels = extractCurrentGroupLabels(group);
+                            
                             return renderUserCard(
                               user,
                               isApproved,
                               approvedMembers,
                               group.ownerDetails,
-                              groupContext
+                              groupContext,
+                              currentGroupLabels
                             );
                           })}
                         </div>
@@ -1869,12 +2002,15 @@ function App() {
                                 if (!approvalResult) return null;
 
                                 // Get the prediction object to access group_labels
-                                const prediction = mlPredictions?.predictions?.find(p => 
-                                  p.approver === user.username || p.approver === `@${user.username}`
+                                const prediction = mlPredictions?.predictions?.find(
+                                  p =>
+                                    p.approver === user.username ||
+                                    p.approver === `@${user.username}`
                                 );
-                                
+
                                 const groupLabels = prediction?.group_labels || [];
-                                const labelsText = groupLabels.length > 0 ? groupLabels.join(', ') : '';
+                                const labelsText =
+                                  groupLabels.length > 0 ? groupLabels.join(', ') : '';
 
                                 // In basic view, show cleaner labels; in advanced view, show percentages
                                 if (viewMode === 'basic') {
@@ -1884,17 +2020,21 @@ function App() {
                                       title={`${approvalResult.percentage}% likely to approve${labelsText ? ` (${labelsText})` : ''}`}
                                     >
                                       likely
-                                      {labelsText && <span className='group-labels-hint'>({labelsText})</span>}
+                                      {labelsText && (
+                                        <span className='group-labels-hint'>({labelsText})</span>
+                                      )}
                                     </span>
                                   );
                                 } else {
                                   return (
-                                    <span 
+                                    <span
                                       className='ml-approval-chance'
                                       title={labelsText ? `Based on: ${labelsText}` : undefined}
                                     >
                                       {approvalResult.percentage}% likely
-                                      {labelsText && <span className='group-labels'>{labelsText}</span>}
+                                      {labelsText && (
+                                        <span className='group-labels'>{labelsText}</span>
+                                      )}
                                     </span>
                                   );
                                 }
@@ -1958,31 +2098,37 @@ function App() {
                       <div className='group-header'>
                         <h3>
                           {group.needsApproval ? '❌' : '✅'}
-                          Group {index + 1} ({group.files.length} file
-                          {group.files.length !== 1 ? 's' : ''})
+                          Group {index + 1}
+                          {' '}({group.files.length} file{group.files.length !== 1 ? 's' : ''})
                           {(() => {
-                            // Extract group labels from ML predictions
-                            const groupLabels = new Set();
-                            if (mlPredictions?.predictions) {
-                              group.owners.forEach(owner => {
-                                const prediction = mlPredictions.predictions.find(p => 
-                                  p.approver === owner || p.approver === `@${owner}`
-                                );
-                                if (prediction?.group_labels) {
-                                  prediction.group_labels.forEach(label => groupLabels.add(label));
-                                }
-                              });
-                            }
+                            // Extract group labels using the same smart filtering logic
+                            const groupLabels = extractCurrentGroupLabels(group);
+                            const teamLabels = extractGroupTeamLabels(group);
                             
-                            if (groupLabels.size > 0) {
-                              const labelsArray = Array.from(groupLabels);
-                              return (
-                                <span className='group-areas-badge'>
-                                  {labelsArray.join(', ')}
-                                </span>
-                              );
-                            }
-                            return null;
+                            return (
+                              <>
+                                {groupLabels.length > 0 && (
+                                  <>
+                                    {' '}
+                                    {groupLabels.map((label, labelIndex) => (
+                                      <span key={`group-${labelIndex}`} className='group-label-badge'>
+                                        {label}
+                                      </span>
+                                    ))}
+                                  </>
+                                )}
+                                {teamLabels.length > 0 && (
+                                  <>
+                                    {' '}
+                                    {teamLabels.map((label, labelIndex) => (
+                                      <span key={`team-${labelIndex}`} className='group-label-badge'>
+                                        {label}
+                                      </span>
+                                    ))}
+                                  </>
+                                )}
+                              </>
+                            );
                           })()}
                         </h3>
                         {!group.needsApproval && (
@@ -2051,12 +2197,17 @@ function App() {
                               .map(owner => owner.username.replace(/^@/, ''))
                               .sort()
                               .join('_');
+                            
+                            // Extract group labels for current group
+                            const currentGroupLabels = extractCurrentGroupLabels(group);
+                            
                             return renderUserCard(
                               user,
                               isApproved,
                               approvedMembers,
                               group.ownerDetails,
-                              groupContext
+                              groupContext,
+                              currentGroupLabels
                             );
                           })}
                         </div>
