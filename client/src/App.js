@@ -654,11 +654,21 @@ function App() {
   const sortTeamMembersByLikelihood = members => {
     if (!members || members.length === 0) return [];
 
+    // Performance optimization: Precompute a lookup map for approval percentages
+    // This reduces time complexity from O(n*m) to O(n+m) where n=members, m=predictions
+    const approvalLookup = members.reduce((map, member) => {
+      const memberUsername = member.login || member.username;
+      if (!map[memberUsername]) {
+        map[memberUsername] = getGeneralMLApprovalChance(memberUsername);
+      }
+      return map;
+    }, {});
+
     return members
       .map(member => {
         // Extract actual GitHub username from member object
         const memberUsername = member.login || member.username;
-        const approvalResult = getGeneralMLApprovalChance(memberUsername);
+        const approvalResult = approvalLookup[memberUsername];
 
         // Create a new object with additional properties (non-mutating approach)
         // This enhances the original member data with sorting and approval information
