@@ -2027,40 +2027,26 @@ function App() {
                                 const approvalResult = getMLApprovalChance(user.username);
                                 if (!approvalResult) return null;
 
-                                // Get the prediction object to access group_labels
-                                const prediction = mlPredictions?.predictions?.find(
-                                  p =>
-                                    p.approver === user.username ||
-                                    p.approver === `@${user.username}`
-                                );
-
-                                const groupLabels = prediction?.group_labels || [];
-                                const labelsText =
-                                  groupLabels.length > 0 ? groupLabels.join(', ') : '';
+                                // In All Possible Reviewers section, don't show group labels
+                                // since they're not contextually relevant without group context
 
                                 // In basic view, show cleaner labels; in advanced view, show percentages
                                 if (viewMode === 'basic') {
                                   return (
                                     <span
                                       className='ml-approval-chance likely-label'
-                                      title={`${approvalResult.percentage}% likely to approve${labelsText ? ` (${labelsText})` : ''}`}
+                                      title={`${approvalResult.percentage}% likely to approve`}
                                     >
                                       likely
-                                      {labelsText && (
-                                        <span className='group-labels-hint'>({labelsText})</span>
-                                      )}
                                     </span>
                                   );
                                 } else {
                                   return (
                                     <span
                                       className='ml-approval-chance'
-                                      title={labelsText ? `Based on: ${labelsText}` : undefined}
+                                      title={`${approvalResult.percentage}% approval rate`}
                                     >
                                       {approvalResult.percentage}% likely
-                                      {labelsText && (
-                                        <span className='group-labels'>{labelsText}</span>
-                                      )}
                                     </span>
                                   );
                                 }
