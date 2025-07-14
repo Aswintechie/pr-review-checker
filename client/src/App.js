@@ -647,11 +647,33 @@ function App() {
     });
   };
 
+  // Utility function to sort team members by likelihood percentage
+  const sortTeamMembersByLikelihood = members => {
+    if (!members || members.length === 0) return [];
+
+    return members
+      .map(member => {
+        // Extract actual GitHub username from member object
+        const memberUsername = member.login || member.username;
+        const approvalResult = getGeneralMLApprovalChance(memberUsername);
+        return {
+          ...member,
+          memberUsername,
+          approvalResult,
+          sortKey: approvalResult ? approvalResult.percentage : -1, // -1 for members without predictions
+        };
+      })
+      .sort((a, b) => b.sortKey - a.sortKey); // Sort by likelihood percentage in descending order
+  };
+
   const renderTeamCard = (team, isApproved = false, approvedMembers = []) => {
     const teamKey = team.slug || team.username;
     const isExpanded = expandedTeams.has(teamKey);
     const memberCount = team.members ? team.members.length : team.memberCount || 0;
     const approvedCount = approvedMembers.length;
+
+    // Sort team members by likelihood percentage for optimal display
+    const sortedTeamMembers = sortTeamMembersByLikelihood(team.members);
 
     return (
       <div
@@ -691,96 +713,83 @@ function App() {
           {isApproved && <div className='approval-badge'>✅</div>}
         </div>
 
-        {isExpanded && team.members && team.members.length > 0 && (
+        {isExpanded && sortedTeamMembers.length > 0 && (
           <div className='team-members'>
             <div className='team-members-title'>Team Members:</div>
             <div className='team-members-grid'>
-              {team.members
-                .map(member => {
-                  // Extract actual GitHub username from member object
-                  const memberUsername = member.login || member.username;
-                  const approvalResult = getGeneralMLApprovalChance(memberUsername);
-                  return {
-                    ...member,
-                    memberUsername,
-                    approvalResult,
-                    sortKey: approvalResult ? approvalResult.percentage : -1, // -1 for members without predictions
-                  };
-                })
-                .sort((a, b) => b.sortKey - a.sortKey) // Sort by likelihood percentage in descending order
-                .map(member => {
-                  const { memberUsername, approvalResult } = member;
-                  const memberApproved = approvedMembers.includes(memberUsername);
-                  // Debug: console.log('Team member:', memberUsername);
-                  return (
-                    <div
-                      key={memberUsername}
-                      className={`team-member ${memberApproved ? 'approved' : ''}`}
-                    >
-                      <div className='member-avatar'>
-                        {member.avatar_url ? (
-                          <img src={member.avatar_url} alt={memberUsername} />
-                        ) : (
-                          <div className='avatar-placeholder'>👤</div>
-                        )}
-                      </div>
-                      <div className='member-info'>
-                        <div className='member-name'>{member.name}</div>
-                        <div className='member-username'>
-                          @{memberUsername}
-                          {(() => {
-                            if (!approvalResult) return null;
-
-                            // For team members, use similar logic but don't have group context
-                            if (viewMode === 'basic') {
-                              // In basic view, show simpler label for team members
-                              return (
-                                <span
-                                  className={`ml-approval-chance likely-label ${approvalResult.isGeneral ? 'general' : ''}`}
-                                  title={`${approvalResult.percentage}% likely to approve`}
-                                >
-                                  likely
-                                  {approvalResult.isGeneral && (
-                                    <span
-                                      className='general-indicator'
-                                      title='General approval rate (how often this person approves PRs)'
-                                    >
-                                      ⚡
-                                    </span>
-                                  )}
-                                </span>
-                              );
-                            } else {
-                              // In advanced view, show percentage
-                              return (
-                                <span
-                                  className={`ml-approval-chance ${approvalResult.isGeneral ? 'general' : ''}`}
-                                >
-                                  {approvalResult.percentage}% approver
-                                  {approvalResult.isGeneral && (
-                                    <span
-                                      className='general-indicator'
-                                      title='General approval rate (how often this person approves PRs)'
-                                    >
-                                      ⚡
-                                    </span>
-                                  )}
-                                </span>
-                              );
-                            }
-                          })()}
-                        </div>
-                        {memberApproved && <div className='member-approved'>✅ Approved</div>}
-                      </div>
-                      {memberApproved && <div className='member-approval-badge'>✅</div>}
+              {sortedTeamMembers.map(member => {
+                const { memberUsername, approvalResult } = member;
+                const memberApproved = approvedMembers.includes(memberUsername);
+                // Debug: console.log('Team member:', memberUsername);
+                return (
+                  <div
+                    key={memberUsername}
+                    className={`team-member ${memberApproved ? 'approved' : ''}`}
+                  >
+                    <div className='member-avatar'>
+                      {member.avatar_url ? (
+                        <img src={member.avatar_url} alt={memberUsername} />
+                      ) : (
+                        <div className='avatar-placeholder'>👤</div>
+                      )}
                     </div>
-                  );
-                })}
+                    <div className='member-info'>
+                      <div className='member-name'>{member.name}</div>
+                      <div className='member-username'>
+                        @{memberUsername}
+                        {(() => {
+                          if (!approvalResult) return null;
+
+                          // For team members, use similar logic but don't have group context
+                          if (viewMode === 'basic') {
+                            // In basic view, show simpler label for team members
+                            return (
+                              <span
+                                className={`ml-approval-chance likely-label ${approvalResult.isGeneral ? 'general' : ''}`}
+                                title={`${approvalResult.percentage}% likely to approve`}
+                              >
+                                likely
+                                {approvalResult.isGeneral && (
+                                  <span
+                                    className='general-indicator'
+                                    title='General approval rate (how often this person approves PRs)'
+                                  >
+                                    ⚡
+                                  </span>
+                                )}
+                              </span>
+                            );
+                          } else {
+                            // In advanced view, show percentage
+                            return (
+                              <span
+                                className={`ml-approval-chance ${approvalResult.isGeneral ? 'general' : ''}`}
+                              >
+                                {approvalResult.percentage}% approver
+                                {approvalResult.isGeneral && (
+                                  <span
+                                    className='general-indicator'
+                                    title='General approval rate (how often this person approves PRs)'
+                                  >
+                                    ⚡
+                                  </span>
+                                )}
+                              </span>
+                            );
+                          }
+                        })()}
+                      </div>
+                      {memberApproved && <div className='member-approved'>✅ Approved</div>}
+                    </div>
+                    {memberApproved && <div className='member-approval-badge'>✅</div>}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
 
-        {isExpanded && (!team.members || team.members.length === 0) && (
+        {isExpanded && sortedTeamMembers.length === 0 && (
           <div className='team-members'>
             <div className='team-members-empty'>
               {result?.teamsConfigured
