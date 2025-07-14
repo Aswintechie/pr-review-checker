@@ -153,11 +153,20 @@ class CodeownersMLPredictor:
                 group_id = '_'.join(sorted(matched_rule['owners']))
                 file_groups[group_id]['files'].append(file_path)
                 file_groups[group_id]['owners'] = matched_rule['owners']
-                file_groups[group_id]['label'] = matched_rule['label']
+                
+                # Handle backward compatibility - older models may not have labels
+                if 'label' in matched_rule:
+                    file_groups[group_id]['label'] = matched_rule['label']
+                    self.group_labels[group_id] = matched_rule['label']
+                else:
+                    # Generate label from pattern for backward compatibility
+                    label = self.extract_group_label(matched_rule['pattern'])
+                    file_groups[group_id]['label'] = label
+                    self.group_labels[group_id] = label
+                
                 file_groups[group_id]['pattern'] = matched_rule['pattern']
                 
                 # Store in class-level mappings for later use
-                self.group_labels[group_id] = matched_rule['label']
                 self.group_patterns[group_id] = matched_rule['pattern']
                 
         # Convert defaultdict to regular dict and return only files list for compatibility
@@ -1248,6 +1257,9 @@ class CodeownersMLPredictor:
         self.is_trained = model_data['is_trained']
         self.training_date = model_data['training_date']
         
+        # Migrate old patterns to include labels if they don't have them
+        self._migrate_codeowners_patterns()
+        
         # Suppress print statements for API mode
         # print(f"📖 Loaded CODEOWNERS ML model from {filepath}")
         # print(f"🎯 Model has {len(self.group_models)} trained groups and {len(self.team_models)} trained teams")
@@ -1313,6 +1325,24 @@ class CodeownersMLPredictor:
             info['owners'] = group_id.split('_')
         
         return info
+    
+    def _migrate_codeowners_patterns(self):
+        """
+        Migrate old codeowners patterns to include labels for backward compatibility.
+        """
+        if not self.codeowners_patterns:
+            return
+            
+        updated_patterns = []
+        for pattern in self.codeowners_patterns:
+            if 'label' not in pattern:
+                # Add label to old pattern
+                pattern['label'] = self.extract_group_label(pattern['pattern'])
+                
+            updated_patterns.append(pattern)
+            
+        self.codeowners_patterns = updated_patterns
+        print(f"🔄 Migrated {len(self.codeowners_patterns)} CODEOWNERS patterns to include labels")
 
 # Example usage
 if __name__ == "__main__":
