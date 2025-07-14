@@ -695,12 +695,23 @@ function App() {
           <div className='team-members'>
             <div className='team-members-title'>Team Members:</div>
             <div className='team-members-grid'>
-              {team.members.map(member => {
-                // Extract actual GitHub username from member object
-                const memberUsername = member.login || member.username;
-                const memberApproved = approvedMembers.includes(memberUsername);
-                // Debug: console.log('Team member:', memberUsername);
-                const approvalResult = getGeneralMLApprovalChance(memberUsername);
+              {team.members
+                .map(member => {
+                  // Extract actual GitHub username from member object
+                  const memberUsername = member.login || member.username;
+                  const approvalResult = getGeneralMLApprovalChance(memberUsername);
+                  return {
+                    ...member,
+                    memberUsername,
+                    approvalResult,
+                    sortKey: approvalResult ? approvalResult.percentage : -1, // -1 for members without predictions
+                  };
+                })
+                .sort((a, b) => b.sortKey - a.sortKey) // Sort by likelihood percentage in descending order
+                .map(member => {
+                  const { memberUsername, approvalResult } = member;
+                  const memberApproved = approvedMembers.includes(memberUsername);
+                  // Debug: console.log('Team member:', memberUsername);
                 return (
                   <div
                     key={memberUsername}
