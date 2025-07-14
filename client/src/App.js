@@ -881,7 +881,7 @@ function App() {
     return topApprovers.includes(username);
   };
 
-  const extractCurrentGroupLabels = (group) => {
+  const extractCurrentGroupLabels = group => {
     // Extract group labels that are most relevant to this specific group
     const currentGroupLabels = [];
     if (mlPredictions?.predictions) {
@@ -895,7 +895,7 @@ function App() {
           ownerLabels.push(new Set(prediction.group_labels));
         }
       });
-      
+
       // Find intersection of all owner labels (labels common to all owners)
       if (ownerLabels.length > 0) {
         let commonLabels = ownerLabels[0];
@@ -904,7 +904,7 @@ function App() {
         }
         currentGroupLabels.push(...Array.from(commonLabels));
       }
-      
+
       // If no common labels, use a smarter approach:
       // For each label, check if it appears in most of the owners
       if (currentGroupLabels.length === 0) {
@@ -914,7 +914,7 @@ function App() {
             labelCounts[label] = (labelCounts[label] || 0) + 1;
           });
         });
-        
+
         // Include labels that appear in at least half of the owners
         const threshold = Math.ceil(ownerLabels.length / 2);
         Object.entries(labelCounts).forEach(([label, count]) => {
@@ -927,21 +927,21 @@ function App() {
     return currentGroupLabels;
   };
 
-  const extractTeamShortName = (teamName) => {
+  const extractTeamShortName = teamName => {
     if (!teamName) return teamName;
-    
+
     // Common patterns to extract meaningful parts from team names
     const patterns = [
-      // Pattern: "prefix-developers-suffix" -> "suffix" 
+      // Pattern: "prefix-developers-suffix" -> "suffix"
       /^[\w-]+-developers?-(.+)$/,
       // Pattern: "prefix-team-suffix" -> "suffix"
       /^[\w-]+-teams?-(.+)$/,
-      // Pattern: "prefix-group-suffix" -> "suffix"  
+      // Pattern: "prefix-group-suffix" -> "suffix"
       /^[\w-]+-groups?-(.+)$/,
       // Pattern: "org-suffix" -> "suffix" (for simple org-name patterns)
-      /^[\w-]+-(.+)$/
+      /^[\w-]+-(.+)$/,
     ];
-    
+
     for (const pattern of patterns) {
       const match = teamName.match(pattern);
       if (match && match[1]) {
@@ -949,12 +949,12 @@ function App() {
         return match[1].replace(/-/g, '-'); // Keep hyphens as-is for technical terms
       }
     }
-    
+
     // If no pattern matches, return the original name
     return teamName;
   };
 
-  const extractGroupTeamLabels = (group) => {
+  const extractGroupTeamLabels = group => {
     const teamLabels = [];
     if (group.ownerDetails) {
       group.ownerDetails.forEach(owner => {
@@ -966,7 +966,7 @@ function App() {
         }
       });
     }
-    
+
     // Also check teamName if it exists (for approved groups)
     if (group.teamName) {
       const shortName = extractTeamShortName(group.teamName);
@@ -974,7 +974,7 @@ function App() {
         teamLabels.push(shortName);
       }
     }
-    
+
     return teamLabels;
   };
 
@@ -1028,21 +1028,21 @@ function App() {
       );
 
       const allGroupLabels = prediction?.group_labels || [];
-      
+
       // Filter labels to only show those relevant to current group
       let filteredLabels = allGroupLabels;
-      
+
       if (groupContext && prediction?.group_scores && prediction.group_scores[groupContext]) {
         // If we have group context and this user has scores for this specific group,
         // we need to determine which labels are specifically relevant to this group.
         // For now, use a simpler approach: if this is a mixed group (multiple labels),
         // only show labels that the user is actually responsible for in this group.
-        
+
         // Check if this is a single-label group or multi-label group
         const uniqueLabels = new Set();
         if (currentGroupLabels.length > 0) {
           currentGroupLabels.forEach(label => uniqueLabels.add(label));
-          
+
           // If it's a single-label group, only show that label
           if (uniqueLabels.size === 1) {
             const groupLabel = Array.from(uniqueLabels)[0];
@@ -1053,7 +1053,7 @@ function App() {
           }
         }
       }
-      
+
       const labelsText = filteredLabels.length > 0 ? filteredLabels.join(', ') : '';
 
       if (viewMode === 'basic' && groupUsers) {
@@ -1867,20 +1867,23 @@ function App() {
                       <div className='group-header'>
                         <h3>
                           {group.needsApproval ? '❌' : '✅'}
-                          Group {index + 1}
-                          {' '}({group.files.length} file{group.files.length !== 1 ? 's' : ''})
+                          Group {index + 1} ({group.files.length} file
+                          {group.files.length !== 1 ? 's' : ''})
                           {(() => {
                             // Extract group labels using the same smart filtering logic
                             const groupLabels = extractCurrentGroupLabels(group);
                             const teamLabels = extractGroupTeamLabels(group);
-                            
+
                             return (
                               <>
                                 {groupLabels.length > 0 && (
                                   <>
                                     {' '}
                                     {groupLabels.map((label, labelIndex) => (
-                                      <span key={`group-${labelIndex}`} className='group-label-badge'>
+                                      <span
+                                        key={`group-${labelIndex}`}
+                                        className='group-label-badge'
+                                      >
                                         {label}
                                       </span>
                                     ))}
@@ -1890,7 +1893,10 @@ function App() {
                                   <>
                                     {' '}
                                     {teamLabels.map((label, labelIndex) => (
-                                      <span key={`team-${labelIndex}`} className='group-label-badge'>
+                                      <span
+                                        key={`team-${labelIndex}`}
+                                        className='group-label-badge'
+                                      >
                                         {label}
                                       </span>
                                     ))}
@@ -1953,10 +1959,10 @@ function App() {
                               .map(owner => owner.username.replace(/^@/, ''))
                               .sort()
                               .join('_');
-                            
+
                             // Extract group labels for current group
                             const currentGroupLabels = extractCurrentGroupLabels(group);
-                            
+
                             return renderUserCard(
                               user,
                               isApproved,
@@ -2098,20 +2104,23 @@ function App() {
                       <div className='group-header'>
                         <h3>
                           {group.needsApproval ? '❌' : '✅'}
-                          Group {index + 1}
-                          {' '}({group.files.length} file{group.files.length !== 1 ? 's' : ''})
+                          Group {index + 1} ({group.files.length} file
+                          {group.files.length !== 1 ? 's' : ''})
                           {(() => {
                             // Extract group labels using the same smart filtering logic
                             const groupLabels = extractCurrentGroupLabels(group);
                             const teamLabels = extractGroupTeamLabels(group);
-                            
+
                             return (
                               <>
                                 {groupLabels.length > 0 && (
                                   <>
                                     {' '}
                                     {groupLabels.map((label, labelIndex) => (
-                                      <span key={`group-${labelIndex}`} className='group-label-badge'>
+                                      <span
+                                        key={`group-${labelIndex}`}
+                                        className='group-label-badge'
+                                      >
                                         {label}
                                       </span>
                                     ))}
@@ -2121,7 +2130,10 @@ function App() {
                                   <>
                                     {' '}
                                     {teamLabels.map((label, labelIndex) => (
-                                      <span key={`team-${labelIndex}`} className='group-label-badge'>
+                                      <span
+                                        key={`team-${labelIndex}`}
+                                        className='group-label-badge'
+                                      >
                                         {label}
                                       </span>
                                     ))}
@@ -2197,10 +2209,10 @@ function App() {
                               .map(owner => owner.username.replace(/^@/, ''))
                               .sort()
                               .join('_');
-                            
+
                             // Extract group labels for current group
                             const currentGroupLabels = extractCurrentGroupLabels(group);
-                            
+
                             return renderUserCard(
                               user,
                               isApproved,
