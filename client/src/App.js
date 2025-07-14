@@ -650,33 +650,45 @@ function App() {
   // Constant for members without ML predictions to avoid magic numbers
   const NO_PREDICTION_SORT_VALUE = -1;
 
+  // Build a lookup map from generalPredictions for O(1) access
+  // This achieves true O(n+m) complexity where n=members, m=predictions
+  const buildPredictionsLookup = () => {
+    if (!generalPredictions?.predictions) return {};
+
+    const lookupMap = {};
+    generalPredictions.predictions.forEach(prediction => {
+      // Handle both @username and username formats
+      const cleanUsername = prediction.approver.startsWith('@')
+        ? prediction.approver.substring(1)
+        : prediction.approver;
+
+      lookupMap[cleanUsername] = prediction;
+      // Also store with @ prefix for compatibility
+      lookupMap[prediction.approver] = prediction;
+    });
+
+    return lookupMap;
+  };
+
   // Utility function to sort team members by likelihood percentage
   const sortTeamMembersByLikelihood = members => {
     if (!members || members.length === 0) return [];
 
-    // Performance optimization: Precompute a lookup map for approval percentages
-    // This reduces time complexity from O(n*m) to O(n+m) where n=members, m=predictions
-    const approvalLookup = members.reduce((map, member) => {
-      const memberUsername = member.login || member.username;
-      if (!map[memberUsername]) {
-        map[memberUsername] = getGeneralMLApprovalChance(memberUsername);
-      }
-      return map;
-    }, {});
+    // Pre-build predictions lookup map for O(1) access (true O(n+m) complexity)
+    const predictionsLookup = buildPredictionsLookup();
 
     return members
       .map(member => {
         // Extract actual GitHub username from member object
-        const memberUsername = member.login || member.username;
-        const approvalResult = approvalLookup[memberUsername];
+        const username = member.login || member.username;
+        const prediction = predictionsLookup[username];
 
         // Create a new object with additional properties (non-mutating approach)
         // This enhances the original member data with sorting and approval information
         return {
           ...member, // Copy all original member properties
-          memberUsername, // Add extracted username for consistency
-          approvalResult, // Add ML approval prediction data
-          sortKey: approvalResult ? approvalResult.percentage : NO_PREDICTION_SORT_VALUE, // Add sort key for ordering
+          approvalResult: prediction || null, // Add ML approval prediction data
+          sortKey: prediction ? prediction.percentage : NO_PREDICTION_SORT_VALUE, // Add sort key for ordering
         };
       })
       .sort((a, b) => b.sortKey - a.sortKey); // Sort by likelihood percentage in descending order
