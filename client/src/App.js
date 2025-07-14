@@ -647,6 +647,9 @@ function App() {
     });
   };
 
+  // Constant for members without ML predictions to avoid magic numbers
+  const NO_PREDICTION_SORT_VALUE = -1;
+
   // Utility function to sort team members by likelihood percentage
   const sortTeamMembersByLikelihood = members => {
     if (!members || members.length === 0) return [];
@@ -656,11 +659,14 @@ function App() {
         // Extract actual GitHub username from member object
         const memberUsername = member.login || member.username;
         const approvalResult = getGeneralMLApprovalChance(memberUsername);
+
+        // Create a new object with additional properties (non-mutating approach)
+        // This enhances the original member data with sorting and approval information
         return {
-          ...member,
-          memberUsername,
-          approvalResult,
-          sortKey: approvalResult ? approvalResult.percentage : -1, // -1 for members without predictions
+          ...member, // Copy all original member properties
+          memberUsername, // Add extracted username for consistency
+          approvalResult, // Add ML approval prediction data
+          sortKey: approvalResult ? approvalResult.percentage : NO_PREDICTION_SORT_VALUE, // Add sort key for ordering
         };
       })
       .sort((a, b) => b.sortKey - a.sortKey); // Sort by likelihood percentage in descending order
