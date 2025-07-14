@@ -35,6 +35,10 @@ class CodeownersMLPredictor:
         self.developer_stats = {}  # developer -> stats across groups
         self.group_developer_stats = {}  # group_id -> developer -> stats
         
+        # Group labels for better UX and analytics
+        self.group_labels = {}  # group_id -> human-readable label
+        self.group_patterns = {}  # group_id -> pattern that created this group
+        
         # Team approval model (separate from file-pattern-based models)
         self.team_models = {}  # team_name -> RandomForestClassifier
         self.team_features = {}  # team_name -> feature names
@@ -47,12 +51,59 @@ class CodeownersMLPredictor:
         self.training_log_path = 'python_training_log.json'
         self.processed_prs = set()  # Track processed PR numbers
         
+    def extract_group_label(self, pattern: str) -> str:
+        """
+        Extract a human-readable label from a CODEOWNERS pattern.
+        
+        Examples:
+        - ttnn/cpp/ttnn/operations/eltwise/quantization/ -> "quantization"
+        - tests/ttnn/unit_tests/operations/eltwise/ -> "eltwise"
+        - ttnn/cpp/ttnn/operations/experimental/reduction/**/CMakeLists.txt -> "reduction"
+        - * -> "global"
+        - *.md -> "markdown"
+        """
+        # Handle global patterns
+        if pattern.strip() == '*':
+            return 'global'
+        
+        # Handle file extension patterns
+        if pattern.startswith('*.'):
+            ext = pattern[2:]
+            return f"{ext}_files"
+        
+        # Remove wildcards and clean up pattern
+        clean_pattern = pattern.replace('**/', '').replace('*', '').replace('//', '/')
+        clean_pattern = clean_pattern.strip('/')
+        
+        if not clean_pattern:
+            return 'global'
+        
+        # Split into parts
+        parts = clean_pattern.split('/')
+        parts = [p for p in parts if p]  # Remove empty parts
+        
+        if not parts:
+            return 'global'
+        
+        # Check if pattern ends with a specific file (has extension)
+        last_part = parts[-1]
+        if '.' in last_part and not last_part.startswith('.'):
+            # Has specific file, use directory before it
+            if len(parts) > 1:
+                return parts[-2]
+            else:
+                # Just a filename, extract meaningful part
+                return last_part.split('.')[0]
+        else:
+            # No specific file, use last directory
+            return parts[-1]
+    
     def parse_codeowners(self, codeowners_content: str) -> List[Dict]:
         """
-        Parse CODEOWNERS file into rules.
+        Parse CODEOWNERS file into rules with labels.
         
         Returns:
-            List of rules: [{'pattern': str, 'owners': List[str], 'rule_index': int}]
+            List of rules: [{'pattern': str, 'owners': List[str], 'rule_index': int, 'label': str}]
         """
         rules = []
         lines = codeowners_content.strip().split('\n')
@@ -68,24 +119,26 @@ class CodeownersMLPredictor:
                 
             pattern = parts[0]
             owners = [owner.lstrip('@') for owner in parts[1:]]
+            label = self.extract_group_label(pattern)
             
             rules.append({
                 'pattern': pattern,
                 'owners': owners,
-                'rule_index': i
+                'rule_index': i,
+                'label': label
             })
             
-        print(f"📋 Parsed {len(rules)} CODEOWNERS rules")
+        print(f"📋 Parsed {len(rules)} CODEOWNERS rules with labels")
         return rules
     
-    def match_files_to_groups(self, files: List[str], codeowners_rules: List[Dict]) -> Dict[str, List[str]]:
+    def match_files_to_groups(self, files: List[str], codeowners_rules: List[Dict]) -> Dict[str, Dict]:
         """
-        Match files to CODEOWNERS groups.
+        Match files to CODEOWNERS groups with labels.
         
         Returns:
-            Dict mapping group_id to list of files
+            Dict mapping group_id to {'files': List[str], 'owners': List[str], 'label': str, 'pattern': str}
         """
-        file_groups = defaultdict(list)
+        file_groups = defaultdict(lambda: {'files': [], 'owners': [], 'label': '', 'pattern': ''})
         
         for file_path in files:
             matched_rule = None
@@ -98,9 +151,21 @@ class CodeownersMLPredictor:
             if matched_rule:
                 # Create group ID from sorted owners
                 group_id = '_'.join(sorted(matched_rule['owners']))
-                file_groups[group_id].append(file_path)
+                file_groups[group_id]['files'].append(file_path)
+                file_groups[group_id]['owners'] = matched_rule['owners']
+                file_groups[group_id]['label'] = matched_rule['label']
+                file_groups[group_id]['pattern'] = matched_rule['pattern']
                 
-        return dict(file_groups)
+                # Store in class-level mappings for later use
+                self.group_labels[group_id] = matched_rule['label']
+                self.group_patterns[group_id] = matched_rule['pattern']
+                
+        # Convert defaultdict to regular dict and return only files list for compatibility
+        result = {}
+        for group_id, group_info in file_groups.items():
+            result[group_id] = group_info['files']
+            
+        return result
     
     def _matches_pattern(self, pattern: str, file_path: str) -> bool:
         """Check if a file matches a CODEOWNERS pattern"""
@@ -1121,12 +1186,22 @@ class CodeownersMLPredictor:
             else:
                 reasoning_parts.append("unknown model")
             
+            # Add group label information
+            group_labels = []
+            for group_id in file_groups.keys():
+                if group_id in self.group_models:
+                    group_owners = group_id.split('_')
+                    if developer in group_owners:
+                        label = self.group_labels.get(group_id, group_id)
+                        group_labels.append(label)
+            
             predictions.append({
                 'approver': developer,
                 'confidence': min(score * 100, 100),  # Convert to percentage, cap at 100
                 'probability': score,
                 'reasoning': f"ML prediction from {' and '.join(reasoning_parts)}",
-                'group_scores': dict(developer_group_scores[developer])  # Group-specific scores
+                'group_scores': dict(developer_group_scores[developer]),  # Group-specific scores
+                'group_labels': group_labels  # Human-readable group labels
             })
         
         # Suppress print statements for API mode
@@ -1140,6 +1215,8 @@ class CodeownersMLPredictor:
             'group_features': self.group_features,
             'group_scalers': self.group_scalers,
             'group_developer_stats': self.group_developer_stats,
+            'group_labels': self.group_labels,
+            'group_patterns': self.group_patterns,
             'team_models': {tid: model for tid, model in self.team_models.items()},
             'team_features': self.team_features,
             'team_scalers': self.team_scalers,
@@ -1151,6 +1228,7 @@ class CodeownersMLPredictor:
         
         joblib.dump(model_data, filepath)
         print(f"💾 Saved CODEOWNERS ML model with {len(self.group_models)} group models and {len(self.team_models)} team models to {filepath}")
+        print(f"📋 Saved {len(self.group_labels)} group labels")
     
     def load_model(self, filepath: str):
         """Load trained models from disk"""
@@ -1160,6 +1238,8 @@ class CodeownersMLPredictor:
         self.group_features = model_data['group_features']
         self.group_scalers = model_data['group_scalers']
         self.group_developer_stats = model_data.get('group_developer_stats', {})
+        self.group_labels = model_data.get('group_labels', {})
+        self.group_patterns = model_data.get('group_patterns', {})
         self.team_models = model_data.get('team_models', {})
         self.team_features = model_data.get('team_features', {})
         self.team_scalers = model_data.get('team_scalers', {})
@@ -1171,6 +1251,7 @@ class CodeownersMLPredictor:
         # Suppress print statements for API mode
         # print(f"📖 Loaded CODEOWNERS ML model from {filepath}")
         # print(f"🎯 Model has {len(self.group_models)} trained groups and {len(self.team_models)} trained teams")
+        # print(f"📋 Loaded {len(self.group_labels)} group labels")
 
     def load_training_log(self) -> Dict:
         """Load training log from disk"""
@@ -1213,6 +1294,25 @@ class CodeownersMLPredictor:
         print(f"   🆕 New PRs to process: {len(new_prs)}")
         
         return new_prs
+
+    def get_group_info(self, group_id: str) -> Dict:
+        """
+        Get comprehensive information about a group.
+        
+        Returns:
+            Dict with 'label', 'pattern', 'owners' if available
+        """
+        info = {
+            'label': self.group_labels.get(group_id, group_id),
+            'pattern': self.group_patterns.get(group_id, ''),
+            'owners': []
+        }
+        
+        # Extract owners from group_id if not stored elsewhere
+        if '_' in group_id:
+            info['owners'] = group_id.split('_')
+        
+        return info
 
 # Example usage
 if __name__ == "__main__":
