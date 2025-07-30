@@ -16,8 +16,8 @@ const axios = require('axios');
 const nodemailer = require('nodemailer');
 const { spawn } = require('child_process');
 const os = require('os');
-const crypto = require('crypto');
-const Codeowners = require('codeowners');
+// crypto is no longer used after removing the old codeowners implementation
+const CustomCodeownersParser = require('./codeowners-parser');
 
 // Constants
 const GITHUB_API_BASE = 'https://api.github.com';
@@ -622,100 +622,45 @@ if (process.env.SMTP_USER && process.env.SMTP_PASS) {
 }
 
 // Optimized temp directory management with shared base directory
-let sharedBaseTempDir = null;
-let initializationPromise = null;
+// Note: These variables are no longer used after switching to custom parser
+const sharedBaseTempDir = null;
+// const initializationPromise = null;
 
 // Initialize shared base directory at startup for optimal performance
 // This function uses a caching mechanism with 'initializationPromise' to ensure
-// that the shared base directory is initialized only once. If multiple calls
-// are made concurrently, they will share the same promise to prevent race conditions.
-async function initializeSharedBaseDir() {
-  // If already initialized, return immediately
-  if (sharedBaseTempDir) {
-    return Promise.resolve();
-  }
-
-  // Return existing promise if initialization is already in progress
-  if (initializationPromise) {
-    return initializationPromise;
-  }
-
-  // Create and store the initialization promise to prevent race conditions
-  initializationPromise = (async () => {
-    const tempDir = os.tmpdir();
-    const proposedDir = path.join(tempDir, 'codeowners-base');
-
-    try {
-      await fsPromises.mkdir(proposedDir, { recursive: true });
-      sharedBaseTempDir = proposedDir;
-    } catch (error) {
-      console.warn('Could not create shared base temp directory:');
-      console.warn('  Error Message:', error.message);
-      console.warn('  Error Stack:', error.stack);
-      console.warn('  Attempted Path:', proposedDir);
-      console.warn('  Fallback: Using system temp directory directly');
-      // Fallback to using system temp directory directly
-      sharedBaseTempDir = tempDir;
-    }
-  })();
-
-  return initializationPromise;
-}
+// Note: initializeSharedBaseDir function removed - no longer needed with custom parser
 
 // Thread-safe CODEOWNERS analysis with optimized directory management
 async function analyzeCodeownersContent(codeownersContent, changedFiles) {
-  // Ensure shared base directory exists
-  await initializeSharedBaseDir();
-
-  // Create unique subdirectory for this request to avoid race conditions
-  const requestId = `${Date.now()}-${crypto.randomUUID()}`;
-  const tempCodeownersDir = path.join(sharedBaseTempDir, `req-${requestId}`);
-  const tempCodeownersFile = path.join(tempCodeownersDir, 'CODEOWNERS');
-
   try {
-    // Create unique subdirectory and CODEOWNERS file for this request
-    await fsPromises.mkdir(tempCodeownersDir, { recursive: true });
-    await fsPromises.writeFile(tempCodeownersFile, codeownersContent);
-
-    // Create codeowners instance (requires exact "CODEOWNERS" filename)
-    const codeowners = new Codeowners(tempCodeownersDir);
+    // Use our custom CODEOWNERS parser that correctly handles /* pattern
+    const parser = new CustomCodeownersParser(codeownersContent);
 
     // Process all files and return results
     const results = [];
     for (const file of changedFiles) {
       try {
-        const owners = codeowners.getOwner(file);
-        results.push({ file, owners });
+        const owners = parser.getOwners(file);
+        const matchingRule = parser.getMatchingRule(file);
+
+        results.push({
+          file,
+          owners,
+          matchingRule: matchingRule ? matchingRule.pattern : null,
+          ruleIndex: matchingRule ? matchingRule.lineNumber : -1,
+        });
       } catch (fileError) {
-        console.warn(`Error getting owners for file ${file}:`);
-        console.warn('  File Error Message:', fileError.message);
-        console.warn('  File Error Stack:', fileError.stack);
-        console.warn('  Request ID:', requestId);
-        results.push({ file, owners: [] });
+        console.warn(`Error getting owners for file ${file}:`, fileError.message);
+        results.push({ file, owners: [], matchingRule: null, ruleIndex: -1 });
       }
     }
 
     return results;
   } catch (error) {
-    console.warn('Error in analyzeCodeownersContent:');
-    console.warn('  Message:', error.message);
-    console.warn('  Stack:', error.stack);
-    console.warn('  Request ID:', requestId);
-    console.warn('  Temp Directory:', tempCodeownersDir);
-    console.warn('  Changed Files Count:', changedFiles.length);
-    console.warn('  CODEOWNERS Content Length:', codeownersContent.length);
+    console.warn('Error in analyzeCodeownersContent:', error.message);
 
     // Return empty results for all files if there's an error
-    return changedFiles.map(file => ({ file, owners: [] }));
-  } finally {
-    // Clean up request-specific directory - this always runs regardless of success or error
-    try {
-      await fsPromises.rm(tempCodeownersDir, { recursive: true, force: true });
-    } catch (cleanupError) {
-      console.info(
-        `Cleanup failed for Request ID ${requestId} - Temp Directory: ${tempCodeownersDir}`
-      );
-    }
+    return changedFiles.map(file => ({ file, owners: [], matchingRule: null, ruleIndex: -1 }));
   }
 }
 
@@ -971,7 +916,7 @@ app.post('/api/pr-approvers', async (req, res) => {
         const fileOwnerResults = await analyzeCodeownersContent(codeownersContent, changedFiles);
 
         // Process each file's owners
-        for (const { file, owners: fileOwners } of fileOwnerResults) {
+        for (const { file, owners: fileOwners, matchingRule, ruleIndex } of fileOwnerResults) {
           if (fileOwners && fileOwners.length > 0) {
             // Only accept entries that originally started with @ (valid CODEOWNERS entries)
             const cleanOwners = fileOwners
@@ -993,9 +938,9 @@ app.post('/api/pr-approvers', async (req, res) => {
             if (cleanOwners.length > 0) {
               fileApprovalDetails.push({
                 file,
-                pattern: MATCHED_BY_CODEOWNERS,
+                pattern: matchingRule || MATCHED_BY_CODEOWNERS,
                 owners: cleanOwners,
-                ruleIndex: -1,
+                ruleIndex,
               });
 
               // Add owners to the global set
@@ -1005,7 +950,7 @@ app.post('/api/pr-approvers', async (req, res) => {
                 file,
                 pattern: 'No valid owners found',
                 owners: [],
-                ruleIndex: -1,
+                ruleIndex,
               });
             }
           } else {
@@ -1013,7 +958,7 @@ app.post('/api/pr-approvers', async (req, res) => {
               file,
               pattern: 'No matching rule',
               owners: [],
-              ruleIndex: -1,
+              ruleIndex,
             });
           }
         }
@@ -1064,7 +1009,9 @@ app.post('/api/pr-approvers', async (req, res) => {
 
       // Safety check to prevent infinite loops
       if (reviewsPage > 100) {
-        console.warn(`⚠️  Stopped fetching reviews at page ${reviewsPage} - possible infinite loop`);
+        console.warn(
+          `⚠️  Stopped fetching reviews at page ${reviewsPage} - possible infinite loop`
+        );
         hasMoreReviewPages = false;
       }
     }
@@ -1382,11 +1329,11 @@ app.post('/api/pr-approvers', async (req, res) => {
 
     // Extract rate limit information from the last response headers
     let rateLimitInfo = null;
-    
+
     // Get rate limit info from the last reviews API call
     if (lastReviewsResponse && lastReviewsResponse.headers) {
       const lastResponseHeaders = lastReviewsResponse.headers;
-      
+
       if (lastResponseHeaders['x-ratelimit-remaining'] !== undefined) {
         const remaining = parseInt(lastResponseHeaders['x-ratelimit-remaining']);
         const resetTimestamp = lastResponseHeaders['x-ratelimit-reset'];
