@@ -313,14 +313,36 @@ class CodeownersMLPredictor:
             files = files_response.json()
             file_paths = [f['filename'] for f in files]
             
-            # Get reviews
+            # Get reviews with pagination support
             reviews_url = pr['url'] + '/reviews'
-            reviews_response = requests.get(reviews_url, headers=headers)
-            if reviews_response.status_code != 200:
-                return None
+            all_reviews = []
+            page = 1
+            per_page = 100
+            
+            while True:
+                params = {'per_page': per_page, 'page': page}
+                reviews_response = requests.get(reviews_url, headers=headers, params=params)
+                if reviews_response.status_code != 200:
+                    return None
+                    
+                reviews = reviews_response.json()
+                if not reviews:  # No more reviews
+                    break
+                    
+                all_reviews.extend(reviews)
                 
-            reviews = reviews_response.json()
-            approvers = [r['user']['login'] for r in reviews if r['state'] == 'APPROVED']
+                # If we got fewer than per_page, we've reached the end
+                if len(reviews) < per_page:
+                    break
+                    
+                page += 1
+                
+                # Safety check to prevent infinite loops
+                if page > 100:
+                    print(f"⚠️  Stopped fetching reviews at page {page} for PR {pr['number']}")
+                    break
+            
+            approvers = [r['user']['login'] for r in all_reviews if r['state'] == 'APPROVED']
             
             # Match files to CODEOWNERS groups
             file_groups = self.match_files_to_groups(file_paths, self.codeowners_patterns)

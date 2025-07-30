@@ -1032,17 +1032,48 @@ app.post('/api/pr-approvers', async (req, res) => {
       }
     }
 
-    // Get current reviews
-    const reviewsResponse = await axios.get(
-      `${GITHUB_API_BASE}/repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
-      { headers }
-    );
+    // Get current reviews with pagination support
+    let allReviews = [];
+    let reviewsPage = 1;
+    const reviewsPerPage = 100; // GitHub's max per_page for reviews
+    let hasMoreReviewPages = true;
+    let lastReviewsResponse = null; // Store the last response for rate limit info
 
-    const reviews = reviewsResponse.data;
+    while (hasMoreReviewPages) {
+      const reviewsResponse = await axios.get(
+        `${GITHUB_API_BASE}/repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
+        {
+          headers,
+          params: {
+            per_page: reviewsPerPage,
+            page: reviewsPage,
+          },
+        }
+      );
+
+      const reviews = reviewsResponse.data;
+      allReviews = allReviews.concat(reviews);
+      lastReviewsResponse = reviewsResponse; // Store for rate limit info
+
+      // If we got fewer reviews than per_page, we've reached the last page
+      if (reviews.length < reviewsPerPage) {
+        hasMoreReviewPages = false;
+      }
+
+      reviewsPage++;
+
+      // Safety check to prevent infinite loops
+      if (reviewsPage > 100) {
+        console.warn(`⚠️  Stopped fetching reviews at page ${reviewsPage} - possible infinite loop`);
+        hasMoreReviewPages = false;
+      }
+    }
+
+    // console.log(`📝 Successfully fetched ${allReviews.length} reviews from ${reviewsPage - 1} page(s)`);
 
     // Get only the latest review from each user (GitHub API returns reviews chronologically)
     const latestReviewByUser = new Map();
-    reviews.forEach(review => {
+    allReviews.forEach(review => {
       const username = review.user.login;
       // GitHub API returns reviews in chronological order, so later reviews overwrite earlier ones
       latestReviewByUser.set(username, review);
@@ -1350,36 +1381,40 @@ app.post('/api/pr-approvers', async (req, res) => {
     }));
 
     // Extract rate limit information from the last response headers
-    const lastResponseHeaders = reviewsResponse.headers;
     let rateLimitInfo = null;
+    
+    // Get rate limit info from the last reviews API call
+    if (lastReviewsResponse && lastReviewsResponse.headers) {
+      const lastResponseHeaders = lastReviewsResponse.headers;
+      
+      if (lastResponseHeaders['x-ratelimit-remaining'] !== undefined) {
+        const remaining = parseInt(lastResponseHeaders['x-ratelimit-remaining']);
+        const resetTimestamp = lastResponseHeaders['x-ratelimit-reset'];
+        const limit = parseInt(lastResponseHeaders['x-ratelimit-limit']);
 
-    if (lastResponseHeaders['x-ratelimit-remaining'] !== undefined) {
-      const remaining = parseInt(lastResponseHeaders['x-ratelimit-remaining']);
-      const resetTimestamp = lastResponseHeaders['x-ratelimit-reset'];
-      const limit = parseInt(lastResponseHeaders['x-ratelimit-limit']);
+        if (resetTimestamp) {
+          const resetTime = new Date(parseInt(resetTimestamp) * 1000);
+          const now = new Date();
+          const minutesUntilReset = Math.ceil((resetTime - now) / (1000 * 60));
 
-      if (resetTimestamp) {
-        const resetTime = new Date(parseInt(resetTimestamp) * 1000);
-        const now = new Date();
-        const minutesUntilReset = Math.ceil((resetTime - now) / (1000 * 60));
-
-        rateLimitInfo = {
-          remaining: parseInt(remaining),
-          limit: parseInt(limit),
-          resetTime: resetTime.toISOString(),
-          resetTimestamp: parseInt(resetTimestamp),
-          minutesUntilReset: Math.max(0, minutesUntilReset),
-          resetTimeFormatted: resetTime.toLocaleString('en-US', {
-            weekday: 'short',
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            timeZoneName: 'short',
-          }),
-          showWarning: parseInt(remaining) < 100, // Only show warning when < 100 requests remaining
-        };
+          rateLimitInfo = {
+            remaining: parseInt(remaining),
+            limit: parseInt(limit),
+            resetTime: resetTime.toISOString(),
+            resetTimestamp: parseInt(resetTimestamp),
+            minutesUntilReset: Math.max(0, minutesUntilReset),
+            resetTimeFormatted: resetTime.toLocaleString('en-US', {
+              weekday: 'short',
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              timeZoneName: 'short',
+            }),
+            showWarning: parseInt(remaining) < 100, // Only show warning when < 100 requests remaining
+          };
+        }
       }
     }
 
