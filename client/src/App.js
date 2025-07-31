@@ -338,7 +338,7 @@ function App() {
     setGeneralPredictions(null);
     // console.log('🧹 State cleared, making API request...');
 
-        try {
+    try {
       // Fetch parser status to show accurate messages
       const status = await fetchParserStatus();
       const parserName = status?.defaultParser || 'intelligent';
@@ -346,11 +346,15 @@ function App() {
       // Create a progress simulation that runs during the API call
       const progressSteps = [
         { step: 1, message: 'Fetching PR data from GitHub API...', duration: 800 },
-        { step: 2, message: `Parsing CODEOWNERS file (using ${parserName} parser for accuracy)...`, duration: 1200 },
+        {
+          step: 2,
+          message: `Parsing CODEOWNERS file (using ${parserName} parser for accuracy)...`,
+          duration: 1200,
+        },
         { step: 3, message: 'Processing team memberships and user details...', duration: 1000 },
         { step: 4, message: 'Running ML analysis on changed files...', duration: 1500 },
         { step: 5, message: 'Analyzing team approval patterns...', duration: 800 },
-        { step: 6, message: 'Finalizing recommendations...', duration: 500 }
+        { step: 6, message: 'Finalizing recommendations...', duration: 500 },
       ];
 
       // Start the progress simulation

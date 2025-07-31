@@ -105,13 +105,11 @@ describe('App Component', () => {
         /Processing team memberships/i,
         /Running ML analysis/i,
         /Analyzing team approval patterns/i,
-        /Finalizing recommendations/i
+        /Finalizing recommendations/i,
       ];
-      
-      const hasLoadingMessage = loadingMessages.some(message => 
-        screen.queryByText(message)
-      );
-      
+
+      const hasLoadingMessage = loadingMessages.some(message => screen.queryByText(message));
+
       expect(hasLoadingMessage).toBeTruthy();
     });
 
