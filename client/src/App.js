@@ -17,7 +17,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [loadingStep, setLoadingStep] = useState(0);
-  const totalSteps = 4;
+  const totalSteps = 6;
   const [error, setError] = useState('');
   const [rateLimitInfo, setRateLimitInfo] = useState(null);
   const [viewMode, setViewMode] = useState('basic'); // 'basic' or 'advanced'
@@ -315,6 +315,16 @@ function App() {
     return null;
   };
 
+  const fetchParserStatus = async () => {
+    try {
+      const response = await axios.get('/api/parser-status');
+      return response.data;
+    } catch (error) {
+      // Silent fallback - parser status is optional
+      return null;
+    }
+  };
+
   const handleSubmit = async e => {
     // console.log('🎬 handleSubmit called');
     e.preventDefault();
@@ -329,9 +339,20 @@ function App() {
     // console.log('🧹 State cleared, making API request...');
 
     try {
-      // Step 1: Fetch PR information
+      // Step 1: Fetch PR data from GitHub
       setLoadingStep(1);
-      setLoadingMessage('Fetching PR information from GitHub...');
+      setLoadingMessage('Fetching PR data from GitHub API...');
+
+      // Fetch parser status to show accurate messages
+      const status = await fetchParserStatus();
+
+      // Add a small delay to show the step
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Step 2: Parse CODEOWNERS and analyze files
+      setLoadingStep(2);
+      const parserName = status?.defaultParser || 'intelligent';
+      setLoadingMessage(`Parsing CODEOWNERS file (using ${parserName} parser for accuracy)...`);
 
       // console.log('📡 Making API request to /api/pr-approvers...');
       const response = await axios.post('/api/pr-approvers', {
@@ -344,8 +365,15 @@ function App() {
       setRateLimitInfo(response.data.rateLimitInfo || null);
       addToRecentPRs(response.data);
 
-      // Step 2: Get ML predictions for the PR files
-      setLoadingStep(2);
+      // Step 3: Processing team and user details
+      setLoadingStep(3);
+      setLoadingMessage('Processing team memberships and user details...');
+
+      // Add a small delay to show this step
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Step 4: Get ML predictions for the PR files
+      setLoadingStep(4);
       setLoadingMessage('Running ML analysis on changed files...');
 
       // console.log('🔍 Checking if we should fetch ML predictions...');
@@ -369,8 +397,8 @@ function App() {
         const predictions = await getMlPredictions(files, repoInfo);
         setMlPredictions(predictions);
 
-        // Step 3: Fetch general predictions for team members
-        setLoadingStep(3);
+        // Step 5: Fetch general predictions for team members
+        setLoadingStep(5);
         setLoadingMessage('Analyzing team approval patterns...');
 
         // console.log('🔄 Fetching general predictions for team members...');
@@ -400,8 +428,8 @@ function App() {
         // );
       }
 
-      // Step 4: Always try to fetch general predictions for team members (independent of file details)
-      setLoadingStep(4);
+      // Step 6: Always try to fetch general predictions for team members (independent of file details)
+      setLoadingStep(6);
       setLoadingMessage('Finalizing recommendations...');
 
       // console.log('🌟 Always attempting general predictions (independent of files)...');

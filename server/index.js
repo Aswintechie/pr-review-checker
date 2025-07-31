@@ -18,6 +18,7 @@ const { spawn } = require('child_process');
 const os = require('os');
 // crypto is no longer used after removing the old codeowners implementation
 const CustomCodeownersParser = require('./codeowners-parser');
+const PythonCodeownersParser = require('./codeowners-python-bridge');
 
 // Constants
 const GITHUB_API_BASE = 'https://api.github.com';
@@ -35,6 +36,39 @@ app.use(express.static(path.join(__dirname, '../client/build')));
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', service: 'PR Approval Finder' });
+});
+
+// Parser status endpoint
+app.get('/api/parser-status', async (req, res) => {
+  const forceJavaScriptParser = process.env.FORCE_JS_CODEOWNERS === 'true';
+  
+  if (forceJavaScriptParser) {
+    return res.json({
+      defaultParser: 'JavaScript',
+      reason: 'Forced via FORCE_JS_CODEOWNERS environment variable',
+      pythonAvailable: false
+    });
+  }
+  
+  try {
+    const pythonParser = new PythonCodeownersParser();
+    const pythonAvailable = await pythonParser.isAvailable();
+    
+    return res.json({
+      defaultParser: pythonAvailable ? 'Python' : 'JavaScript',
+      reason: pythonAvailable 
+        ? 'Python environment available, using for enhanced accuracy'
+        : 'Python environment not available, falling back to JavaScript',
+      pythonAvailable
+    });
+  } catch (error) {
+    return res.json({
+      defaultParser: 'JavaScript',
+      reason: 'Python parser initialization failed',
+      pythonAvailable: false,
+      error: error.message
+    });
+  }
 });
 
 // ML CODEOWNERS endpoints
@@ -630,10 +664,44 @@ const sharedBaseTempDir = null;
 // This function uses a caching mechanism with 'initializationPromise' to ensure
 // Note: initializeSharedBaseDir function removed - no longer needed with custom parser
 
-// Thread-safe CODEOWNERS analysis with optimized directory management
+// Enhanced CODEOWNERS analysis with Python parser as default, JavaScript as fallback
 async function analyzeCodeownersContent(codeownersContent, changedFiles) {
+  const forceJavaScriptParser = process.env.FORCE_JS_CODEOWNERS === 'true';
+  
+  // Try Python parser first (default behavior)
+  if (!forceJavaScriptParser) {
+    try {
+      const pythonParser = new PythonCodeownersParser();
+      
+      // Check if Python environment is available
+      if (await pythonParser.isAvailable()) {
+        console.log('🐍 Using Python CODEOWNERS parser (default)...');
+        const pythonResults = await pythonParser.analyzeFiles(codeownersContent, changedFiles);
+        
+        // Convert Python results to expected format
+        return pythonResults.map(result => ({
+          file: result.file,
+          owners: result.owners || [],
+          matchingRule: result.matchingRule,
+          ruleIndex: result.ruleIndex || -1,
+        }));
+      } else {
+        console.warn('⚠️ Python environment not available, falling back to JavaScript parser');
+      }
+    } catch (pythonError) {
+      console.warn('⚠️ Python parser failed, falling back to JavaScript parser:', pythonError.message);
+    }
+  } else {
+    console.log('🟨 JavaScript parser forced via FORCE_JS_CODEOWNERS environment variable');
+  }
+
+  // Use JavaScript parser (fallback or forced)
   try {
-    // Use our custom CODEOWNERS parser that correctly handles /* pattern
+    if (forceJavaScriptParser) {
+      console.log('🟨 Using JavaScript CODEOWNERS parser (forced)...');
+    } else {
+      console.log('🟨 Using JavaScript CODEOWNERS parser (fallback)...');
+    }
     const parser = new CustomCodeownersParser(codeownersContent);
 
     // Process all files and return results
