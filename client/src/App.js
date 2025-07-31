@@ -338,43 +338,43 @@ function App() {
     setGeneralPredictions(null);
     // console.log('🧹 State cleared, making API request...');
 
-    try {
-      // Step 1: Fetch PR data from GitHub
-      setLoadingStep(1);
-      setLoadingMessage('Fetching PR data from GitHub API...');
-
+        try {
       // Fetch parser status to show accurate messages
       const status = await fetchParserStatus();
-
-      // Add a small delay to show the step
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      // Step 2: Parse CODEOWNERS and analyze files
-      setLoadingStep(2);
       const parserName = status?.defaultParser || 'intelligent';
-      setLoadingMessage(`Parsing CODEOWNERS file (using ${parserName} parser for accuracy)...`);
 
-      // console.log('📡 Making API request to /api/pr-approvers...');
-      const response = await axios.post('/api/pr-approvers', {
+      // Create a progress simulation that runs during the API call
+      const progressSteps = [
+        { step: 1, message: 'Fetching PR data from GitHub API...', duration: 800 },
+        { step: 2, message: `Parsing CODEOWNERS file (using ${parserName} parser for accuracy)...`, duration: 1200 },
+        { step: 3, message: 'Processing team memberships and user details...', duration: 1000 },
+        { step: 4, message: 'Running ML analysis on changed files...', duration: 1500 },
+        { step: 5, message: 'Analyzing team approval patterns...', duration: 800 },
+        { step: 6, message: 'Finalizing recommendations...', duration: 500 }
+      ];
+
+      // Start the progress simulation
+      const progressPromise = (async () => {
+        for (const { step, message, duration } of progressSteps) {
+          setLoadingStep(step);
+          setLoadingMessage(message);
+          await new Promise(resolve => setTimeout(resolve, duration));
+        }
+      })();
+
+      // Start the API call simultaneously
+      const apiPromise = axios.post('/api/pr-approvers', {
         prUrl,
         githubToken: githubToken || undefined,
       });
+
+      // Wait for both the progress simulation and API call to complete
+      const [, response] = await Promise.all([progressPromise, apiPromise]);
 
       // console.log('✅ API response received:', response.data);
       setResult(response.data);
       setRateLimitInfo(response.data.rateLimitInfo || null);
       addToRecentPRs(response.data);
-
-      // Step 3: Processing team and user details
-      setLoadingStep(3);
-      setLoadingMessage('Processing team memberships and user details...');
-
-      // Add a small delay to show this step
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      // Step 4: Get ML predictions for the PR files
-      setLoadingStep(4);
-      setLoadingMessage('Running ML analysis on changed files...');
 
       // console.log('🔍 Checking if we should fetch ML predictions...');
       // console.log('📁 fileApprovalDetails:', response.data.fileApprovalDetails);
@@ -396,10 +396,6 @@ function App() {
 
         const predictions = await getMlPredictions(files, repoInfo);
         setMlPredictions(predictions);
-
-        // Step 5: Fetch general predictions for team members
-        setLoadingStep(5);
-        setLoadingMessage('Analyzing team approval patterns...');
 
         // console.log('🔄 Fetching general predictions for team members...');
         // console.log('📋 Repository info:', repoInfo);
@@ -428,10 +424,7 @@ function App() {
         // );
       }
 
-      // Step 6: Always try to fetch general predictions for team members (independent of file details)
-      setLoadingStep(6);
-      setLoadingMessage('Finalizing recommendations...');
-
+      // Always try to fetch general predictions for team members (independent of file details)
       // console.log('🌟 Always attempting general predictions (independent of files)...');
       const urlMatch = prUrl.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
       const repoInfo = urlMatch
