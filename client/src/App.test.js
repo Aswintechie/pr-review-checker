@@ -97,9 +97,22 @@ describe('App Component', () => {
     // Click submit
     fireEvent.click(submitButton);
 
-    // Check loading state
+    // Check loading state - should show one of the loading messages
     await waitFor(() => {
-      expect(screen.getByText(/Fetching PR information from GitHub.../i)).toBeInTheDocument();
+      const loadingMessages = [
+        /Fetching PR data from GitHub API.../i,
+        /Parsing CODEOWNERS file/i,
+        /Processing team memberships/i,
+        /Running ML analysis/i,
+        /Analyzing team approval patterns/i,
+        /Finalizing recommendations/i
+      ];
+      
+      const hasLoadingMessage = loadingMessages.some(message => 
+        screen.queryByText(message)
+      );
+      
+      expect(hasLoadingMessage).toBeTruthy();
     });
 
     expect(submitButton).toBeDisabled();

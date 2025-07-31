@@ -67,7 +67,8 @@
     "lint-staged": "^16.1.2"
   },
   "dependencies": {
-    "axios": "^1.10.0"
+    "axios": "^1.10.0",
+    "minimatch": "^10.0.3"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
