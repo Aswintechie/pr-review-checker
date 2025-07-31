@@ -23,28 +23,30 @@ class PythonCodeownersParser {
       // Prepare arguments for Python script
       const args = [
         this.pythonScript,
-        '--codeowners', codeownersContent,
-        '--files', JSON.stringify(changedFiles)
+        '--codeowners',
+        codeownersContent,
+        '--files',
+        JSON.stringify(changedFiles),
       ];
 
       // Spawn Python process with virtual environment
       const pythonProcess = spawn(this.pythonEnv, args, {
         stdio: ['pipe', 'pipe', 'pipe'],
-        env: { ...process.env }
+        env: { ...process.env },
       });
 
       let stdout = '';
       let stderr = '';
 
-      pythonProcess.stdout.on('data', (data) => {
+      pythonProcess.stdout.on('data', data => {
         stdout += data.toString();
       });
 
-      pythonProcess.stderr.on('data', (data) => {
+      pythonProcess.stderr.on('data', data => {
         stderr += data.toString();
       });
 
-      pythonProcess.on('close', (code) => {
+      pythonProcess.on('close', code => {
         if (code === 0) {
           try {
             const results = JSON.parse(stdout);
@@ -57,7 +59,7 @@ class PythonCodeownersParser {
         }
       });
 
-      pythonProcess.on('error', (error) => {
+      pythonProcess.on('error', error => {
         reject(new Error(`Failed to start Python process: ${error.message}`));
       });
     });
@@ -82,12 +84,12 @@ class PythonCodeownersParser {
    * @returns {Promise<boolean>} True if Python bridge is available
    */
   async isAvailable() {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const testProcess = spawn(this.pythonEnv, ['--version'], {
-        stdio: ['pipe', 'pipe', 'pipe']
+        stdio: ['pipe', 'pipe', 'pipe'],
       });
 
-      testProcess.on('close', (code) => {
+      testProcess.on('close', code => {
         resolve(code === 0);
       });
 

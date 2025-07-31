@@ -41,32 +41,32 @@ app.get('/health', (req, res) => {
 // Parser status endpoint
 app.get('/api/parser-status', async (req, res) => {
   const forceJavaScriptParser = process.env.FORCE_JS_CODEOWNERS === 'true';
-  
+
   if (forceJavaScriptParser) {
     return res.json({
       defaultParser: 'JavaScript',
       reason: 'Forced via FORCE_JS_CODEOWNERS environment variable',
-      pythonAvailable: false
+      pythonAvailable: false,
     });
   }
-  
+
   try {
     const pythonParser = new PythonCodeownersParser();
     const pythonAvailable = await pythonParser.isAvailable();
-    
+
     return res.json({
       defaultParser: pythonAvailable ? 'Python' : 'JavaScript',
-      reason: pythonAvailable 
+      reason: pythonAvailable
         ? 'Python environment available, using for enhanced accuracy'
         : 'Python environment not available, falling back to JavaScript',
-      pythonAvailable
+      pythonAvailable,
     });
   } catch (error) {
     return res.json({
       defaultParser: 'JavaScript',
       reason: 'Python parser initialization failed',
       pythonAvailable: false,
-      error: error.message
+      error: error.message,
     });
   }
 });
@@ -667,17 +667,17 @@ const sharedBaseTempDir = null;
 // Enhanced CODEOWNERS analysis with Python parser as default, JavaScript as fallback
 async function analyzeCodeownersContent(codeownersContent, changedFiles) {
   const forceJavaScriptParser = process.env.FORCE_JS_CODEOWNERS === 'true';
-  
+
   // Try Python parser first (default behavior)
   if (!forceJavaScriptParser) {
     try {
       const pythonParser = new PythonCodeownersParser();
-      
+
       // Check if Python environment is available
       if (await pythonParser.isAvailable()) {
         console.log('🐍 Using Python CODEOWNERS parser (default)...');
         const pythonResults = await pythonParser.analyzeFiles(codeownersContent, changedFiles);
-        
+
         // Convert Python results to expected format
         return pythonResults.map(result => ({
           file: result.file,
@@ -689,7 +689,10 @@ async function analyzeCodeownersContent(codeownersContent, changedFiles) {
         console.warn('⚠️ Python environment not available, falling back to JavaScript parser');
       }
     } catch (pythonError) {
-      console.warn('⚠️ Python parser failed, falling back to JavaScript parser:', pythonError.message);
+      console.warn(
+        '⚠️ Python parser failed, falling back to JavaScript parser:',
+        pythonError.message
+      );
     }
   } else {
     console.log('🟨 JavaScript parser forced via FORCE_JS_CODEOWNERS environment variable');
