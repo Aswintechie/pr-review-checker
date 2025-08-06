@@ -1089,21 +1089,36 @@ app.post('/api/pr-approvers', async (req, res) => {
 
     // console.log(`📝 Successfully fetched ${allReviews.length} reviews from ${reviewsPage - 1} page(s)`);
 
-    // Get only the latest review from each user (GitHub API returns reviews chronologically)
-    const latestReviewByUser = new Map();
+    // Get reviews organized by user
+    const reviewsByUser = new Map();
     allReviews.forEach(review => {
       const username = review.user.login;
-      // GitHub API returns reviews in chronological order, so later reviews overwrite earlier ones
-      latestReviewByUser.set(username, review);
+      if (!reviewsByUser.has(username)) {
+        reviewsByUser.set(username, []);
+      }
+      reviewsByUser.get(username).push(review);
     });
 
-    // Only count users whose LATEST review state is 'APPROVED' AND who are not currently re-requested
-    const currentlyRequestedReviewers = new Set(pr.requested_reviewers?.map(r => r.login) || []);
-    const approvals = Array.from(latestReviewByUser.values())
-      .filter(
-        review => review.state === 'APPROVED' && !currentlyRequestedReviewers.has(review.user.login)
-      )
-      .map(review => review.user.login);
+    // Determine approval status for each user
+    // A user is considered approved if:
+    // 1. Their latest review is APPROVED, OR
+    // 2. They have an APPROVED review and their latest review is just a COMMENT (not CHANGES_REQUESTED or DISMISSED)
+    const approvals = [];
+
+    reviewsByUser.forEach((userReviews, username) => {
+      const latestReview = userReviews[userReviews.length - 1]; // Last review (most recent)
+
+      if (latestReview.state === 'APPROVED') {
+        approvals.push(username);
+      } else if (latestReview.state === 'COMMENTED') {
+        // Check if there was a previous APPROVED review
+        const hasApprovedReview = userReviews.some(review => review.state === 'APPROVED');
+        if (hasApprovedReview) {
+          approvals.push(username);
+        }
+      }
+      // CHANGES_REQUESTED or DISMISSED would override any previous approval
+    });
 
     // Get requested reviewers
     const requestedReviewers = pr.requested_reviewers?.map(reviewer => reviewer.login) || [];
