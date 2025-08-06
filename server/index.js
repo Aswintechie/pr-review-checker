@@ -1101,30 +1101,41 @@ app.post('/api/pr-approvers', async (req, res) => {
 
     // Determine approval status for each user
     // A user is considered approved if:
-    // 1. Their latest review is APPROVED, OR
-    // 2. They have an APPROVED review and their latest review is just a COMMENT (not CHANGES_REQUESTED or DISMISSED)
-    //    AND they have NOT been re-requested for review
+    // 1. Their latest review is APPROVED AND they have NOT been re-requested, OR
+    // 2. They have an APPROVED review and their latest review is just a COMMENT AND they have NOT been re-requested
+    // 3. CHANGES_REQUESTED or DISMISSED always override any previous approval
     const approvals = [];
     const currentlyRequestedReviewers = new Set(pr.requested_reviewers?.map(r => r.login) || []);
+    
+    // Pre-compute approval status for efficiency
+    const userHasApproved = new Map();
+    reviewsByUser.forEach((userReviews, username) => {
+      userHasApproved.set(username, userReviews.some(review => review.state === 'APPROVED'));
+    });
 
     reviewsByUser.forEach((userReviews, username) => {
       const latestReview = userReviews[userReviews.length - 1]; // Last review (most recent)
       const isReRequested = currentlyRequestedReviewers.has(username);
 
-      if (latestReview.state === 'APPROVED') {
-        // If their latest review is APPROVED, count it regardless of re-request status
-        // (re-requesting someone whose latest action was approval is unusual)
+      if (latestReview.state === 'APPROVED' && !isReRequested) {
+        // Only count approval if they haven't been re-requested
+        // If they're re-requested after approval, we need a fresh review from them
         approvals.push(username);
       } else if (latestReview.state === 'COMMENTED' && !isReRequested) {
         // Only count previous approval if they haven't been re-requested
         // If they're re-requested, we need a fresh review from them
-        const hasApprovedReview = userReviews.some(review => review.state === 'APPROVED');
+        const hasApprovedReview = userHasApproved.get(username);
         if (hasApprovedReview) {
           approvals.push(username);
         }
+      } else if (
+        latestReview.state === 'CHANGES_REQUESTED' ||
+        latestReview.state === 'DISMISSED'
+      ) {
+        // CHANGES_REQUESTED or DISMISSED override any previous approval; do not count as approved
+        // No action needed, user is not added to approvals
       }
-      // CHANGES_REQUESTED or DISMISSED would override any previous approval
-      // Being re-requested after COMMENTING means we need a fresh review
+      // Any other state (or re-requested users) are not counted as approved
     });
 
     // Get requested reviewers
