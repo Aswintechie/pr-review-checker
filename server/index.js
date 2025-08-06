@@ -1125,14 +1125,6 @@ app.post('/api/pr-approvers', async (req, res) => {
       }
       // CHANGES_REQUESTED or DISMISSED would override any previous approval
       // Being re-requested after COMMENTING means we need a fresh review
-      
-      // Debug logging for edge cases
-      if (username === 'aagarwalTT' || isReRequested) {
-        console.log(`🔍 Review Logic for ${username}:`);
-        console.log(`  Latest review: ${latestReview.state}`);
-        console.log(`  Is re-requested: ${isReRequested}`);
-        console.log(`  Will be counted as approved: ${approvals.includes(username) || (latestReview.state === 'APPROVED') || (latestReview.state === 'COMMENTED' && !isReRequested && userReviews.some(r => r.state === 'APPROVED'))}`);
-      }
     });
 
     // Get requested reviewers
