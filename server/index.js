@@ -1106,11 +1106,14 @@ app.post('/api/pr-approvers', async (req, res) => {
     // 3. CHANGES_REQUESTED or DISMISSED always override any previous approval
     const approvals = [];
     const currentlyRequestedReviewers = new Set(pr.requested_reviewers?.map(r => r.login) || []);
-    
+
     // Pre-compute approval status for efficiency
     const userHasApproved = new Map();
     reviewsByUser.forEach((userReviews, username) => {
-      userHasApproved.set(username, userReviews.some(review => review.state === 'APPROVED'));
+      userHasApproved.set(
+        username,
+        userReviews.some(review => review.state === 'APPROVED')
+      );
     });
 
     reviewsByUser.forEach((userReviews, username) => {
@@ -1128,10 +1131,7 @@ app.post('/api/pr-approvers', async (req, res) => {
         if (hasApprovedReview) {
           approvals.push(username);
         }
-      } else if (
-        latestReview.state === 'CHANGES_REQUESTED' ||
-        latestReview.state === 'DISMISSED'
-      ) {
+      } else if (latestReview.state === 'CHANGES_REQUESTED' || latestReview.state === 'DISMISSED') {
         // CHANGES_REQUESTED or DISMISSED override any previous approval; do not count as approved
         // No action needed, user is not added to approvals
       }
