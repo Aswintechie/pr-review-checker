@@ -1103,21 +1103,36 @@ app.post('/api/pr-approvers', async (req, res) => {
     // A user is considered approved if:
     // 1. Their latest review is APPROVED, OR
     // 2. They have an APPROVED review and their latest review is just a COMMENT (not CHANGES_REQUESTED or DISMISSED)
+    //    AND they have NOT been re-requested for review
     const approvals = [];
+    const currentlyRequestedReviewers = new Set(pr.requested_reviewers?.map(r => r.login) || []);
 
     reviewsByUser.forEach((userReviews, username) => {
       const latestReview = userReviews[userReviews.length - 1]; // Last review (most recent)
+      const isReRequested = currentlyRequestedReviewers.has(username);
 
       if (latestReview.state === 'APPROVED') {
+        // If their latest review is APPROVED, count it regardless of re-request status
+        // (re-requesting someone whose latest action was approval is unusual)
         approvals.push(username);
-      } else if (latestReview.state === 'COMMENTED') {
-        // Check if there was a previous APPROVED review
+      } else if (latestReview.state === 'COMMENTED' && !isReRequested) {
+        // Only count previous approval if they haven't been re-requested
+        // If they're re-requested, we need a fresh review from them
         const hasApprovedReview = userReviews.some(review => review.state === 'APPROVED');
         if (hasApprovedReview) {
           approvals.push(username);
         }
       }
       // CHANGES_REQUESTED or DISMISSED would override any previous approval
+      // Being re-requested after COMMENTING means we need a fresh review
+      
+      // Debug logging for edge cases
+      if (username === 'aagarwalTT' || isReRequested) {
+        console.log(`🔍 Review Logic for ${username}:`);
+        console.log(`  Latest review: ${latestReview.state}`);
+        console.log(`  Is re-requested: ${isReRequested}`);
+        console.log(`  Will be counted as approved: ${approvals.includes(username) || (latestReview.state === 'APPROVED') || (latestReview.state === 'COMMENTED' && !isReRequested && userReviews.some(r => r.state === 'APPROVED'))}`);
+      }
     });
 
     // Get requested reviewers
