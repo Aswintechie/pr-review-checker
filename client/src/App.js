@@ -808,44 +808,19 @@ function App() {
   };
 
   const getMLApprovalChance = (username, groupContext = null) => {
-    // Debug logging to see what's happening
-    // eslint-disable-next-line no-console
-    console.log('🔍 DEBUG: getMLApprovalChance called for:', username, 'group:', groupContext);
-    // eslint-disable-next-line no-console
-    console.log('📊 DEBUG: mlPredictions available:', !!mlPredictions);
-    // eslint-disable-next-line no-console
-    console.log('📊 DEBUG: mlPredictions structure:', mlPredictions);
-    // eslint-disable-next-line no-console
-    console.log('📊 DEBUG: mlPredictions.predictions:', mlPredictions?.predictions?.length || 0);
-
     if (!mlPredictions?.predictions || !username) {
-      // eslint-disable-next-line no-console
-      console.log('❌ DEBUG: No ML predictions or username for:', username);
       return null;
     }
 
-    // Debug: show available predictions
-    // eslint-disable-next-line no-console
-    console.log(
-      '👥 DEBUG: Available predictions:',
-      mlPredictions.predictions.map(p => p.approver)
-    );
-
     // Try exact match first
     let prediction = mlPredictions.predictions.find(p => p.approver === username);
-    // eslint-disable-next-line no-console
-    console.log('🎯 DEBUG: Exact match found:', !!prediction, 'for', username);
 
     // Try with @ prefix if no exact match
     if (!prediction) {
       prediction = mlPredictions.predictions.find(p => p.approver === `@${username}`);
-      // eslint-disable-next-line no-console
-      console.log('🎯 DEBUG: @ prefix match found:', !!prediction, `for @${username}`);
     }
 
     if (!prediction) {
-      // eslint-disable-next-line no-console
-      console.log('❌ DEBUG: No prediction found for:', username);
       return null;
     }
 
@@ -853,18 +828,6 @@ function App() {
     let percentage = prediction.confidence * 100;
     if (groupContext && prediction.group_scores && prediction.group_scores[groupContext]) {
       percentage = prediction.group_scores[groupContext];
-      // eslint-disable-next-line no-console
-      console.log(
-        '✅ DEBUG: Using group-specific score for',
-        username,
-        'in',
-        groupContext,
-        ':',
-        `${percentage}%`
-      );
-    } else {
-      // eslint-disable-next-line no-console
-      console.log('✅ DEBUG: Using aggregated score for', username, ':', `${percentage}%`);
     }
 
     const result = percentage >= 1 ? Math.round(percentage) : Math.round(percentage * 10) / 10;
