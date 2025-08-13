@@ -13,7 +13,7 @@ This error typically indicates a Cloudflare Access configuration problem.
 1. **Check CLOUDFLARE_HOSTNAME Secret**
    ```bash
    # The hostname should match exactly what's configured in Cloudflare Access
-   # Example: ubuntu.aswinlocal.in
+   # Example: ubuntu.aswincloud.com
    ```
 
 2. **Verify Cloudflare Access SSH is Enabled**
@@ -33,7 +33,7 @@ Test the connection from your local machine:
 
 ```bash
 # Test if you can connect manually
-ssh -o ProxyCommand="cloudflared access ssh --hostname ubuntu.aswinlocal.in" aswin@ubuntu.aswinlocal.in
+ssh -o ProxyCommand="cloudflared access ssh --hostname ubuntu.aswincloud.com" aswin@ubuntu.aswincloud.com
 ```
 
 If this fails, the issue is with your Cloudflare Access setup.
@@ -44,8 +44,8 @@ Check that all secrets are correctly set:
 
 | Secret | What to Check |
 |--------|---------------|
-| `CLOUDFLARE_HOSTNAME` | Must match exactly: `ubuntu.aswinlocal.in` |
-| `SSH_HOST` | Should be: `ubuntu.aswinlocal.in` |
+| `CLOUDFLARE_HOSTNAME` | Must match exactly: `ubuntu.aswincloud.com` |
+| `SSH_HOST` | Should be: `ubuntu.aswincloud.com` |
 | `SSH_USER` | Should be: `aswin` |
 | `SSH_PRIVATE_KEY` | Complete private key content (including BEGIN/END lines) |
 
@@ -138,10 +138,10 @@ If SSH over Cloudflare Access isn't working, consider:
 cloudflared --version
 
 # Test access configuration
-cloudflared access ssh --hostname ubuntu.aswinlocal.in --dry-run
+cloudflared access ssh --hostname ubuntu.aswincloud.com --dry-run
 
 # Test with verbose output
-cloudflared access ssh --hostname ubuntu.aswinlocal.in --loglevel debug
+cloudflared access ssh --hostname ubuntu.aswincloud.com --loglevel debug
 ```
 
 ### Test SSH Configuration
@@ -154,7 +154,7 @@ ssh -T vm-deploy
 ssh -vvv vm-deploy "echo test"
 
 # Test specific hostname
-ssh -o ProxyCommand="cloudflared access ssh --hostname ubuntu.aswinlocal.in" aswin@ubuntu.aswinlocal.in
+ssh -o ProxyCommand="cloudflared access ssh --hostname ubuntu.aswincloud.com" aswin@ubuntu.aswincloud.com
 ```
 
 ## 📋 Checklist

@@ -49,7 +49,7 @@
   ],
   "author": {
     "name": "Aswin",
-    "email": "contact@aswinlocal.in",
+    "email": "contact@aswincloud.com",
     "url": "https://github.com/Aswin-coder"
   },
   "license": "MIT",
@@ -60,7 +60,7 @@
   "bugs": {
     "url": "https://github.com/Aswin-coder/pr-review-checker/issues"
   },
-  "homepage": "https://pr-reviewer.aswinlocal.in",
+  "homepage": "https://pr-reviewer.aswincloud.com",
   "devDependencies": {
     "concurrently": "^8.2.2",
     "husky": "^9.1.7",

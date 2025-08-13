@@ -87,10 +87,10 @@ const FeedbackForm = ({ onClose, prefillData = {} }) => {
             <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: '8px 0' }}>
               💡 You can also email us directly at{' '}
               <a
-                href='mailto:contact@aswinlocal.in'
+                href='mailto:contact@aswincloud.com'
                 style={{ color: 'var(--accent-color)', textDecoration: 'none' }}
               >
-                contact@aswinlocal.in
+                contact@aswincloud.com
               </a>
             </p>
           </div>

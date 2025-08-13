@@ -9,7 +9,7 @@ This guide covers the enhanced email functionality added to PR Approval Finder, 
 - **Feedback Form (💬)**: Structured form submission with email notifications
 
 ### 2. Contact Button Features
-- **Email**: `contact@aswinlocal.in`
+- **Email**: `contact@aswincloud.com`
 - **Subject**: "PR Approval Finder - Contact"
 - **Pre-filled body** with professional greeting
 - **Instant access** via default email client
@@ -34,10 +34,10 @@ SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=your-gmail@gmail.com
 SMTP_PASS=your-app-password
-FEEDBACK_EMAIL=contact@aswinlocal.in
+FEEDBACK_EMAIL=contact@aswincloud.com
 
 # Custom Contact Information
-CONTACT_EMAIL=contact@aswinlocal.in
+CONTACT_EMAIL=contact@aswincloud.com
 CONTACT_NAME=Aswin
 ```
 
@@ -85,7 +85,7 @@ SMTP_PASS=your-password
 - **Hover effects** with smooth animations
 
 ### Feedback Form Enhancements
-- **Contact option mention** with direct link to `contact@aswinlocal.in`
+- **Contact option mention** with direct link to `contact@aswincloud.com`
 - **Professional styling** matching the app theme
 - **Validation** and character counting
 - **Success animation** with celebration effects
@@ -171,7 +171,7 @@ curl -X POST http://localhost:3001/api/test-email
    - Check CSS loading
 
 ### Support
-For technical support, contact: `contact@aswinlocal.in`
+For technical support, contact: `contact@aswincloud.com`
 
 ---
 
