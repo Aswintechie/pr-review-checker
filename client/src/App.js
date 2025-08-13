@@ -2320,7 +2320,7 @@ function App() {
             <div className='copyright' title='Assisted with Cursor AI'>
               © 2025{' '}
               <a
-                href='https://aswinlocal.in'
+                href='https://aswincloud.com'
                 target='_blank'
                 rel='noopener noreferrer'
                 className='portfolio-link'

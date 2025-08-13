@@ -25,10 +25,10 @@ You need to configure these secrets in your GitHub repository:
 
 | Secret Name | Description | Example Value |
 |-------------|-------------|---------------|
-| `SSH_HOST` | The internal hostname/IP of your VM | `ubuntu.aswinlocal.in` |
+| `SSH_HOST` | The internal hostname/IP of your VM | `ubuntu.aswincloud.com` |
 | `SSH_USER` | SSH username for the VM | `aswin` |
 | `SSH_PRIVATE_KEY` | SSH private key content (ed25519 recommended) | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
-| `CLOUDFLARE_HOSTNAME` | Cloudflare Access hostname | `ubuntu.aswinlocal.in` |
+| `CLOUDFLARE_HOSTNAME` | Cloudflare Access hostname | `ubuntu.aswincloud.com` |
 
 ## 🎛️ Manual Deployment
 

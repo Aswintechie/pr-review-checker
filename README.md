@@ -10,7 +10,7 @@
 
 **A modern web application that analyzes GitHub Pull Requests to determine minimum required approvals based on CODEOWNERS files. Now featuring AI-powered approval predictions that learn from your team's historical patterns.**
 
-[🚀 Live Demo](https://pr-reviewer.aswinlocal.in/) • [📖 Documentation](./docs) • [👨‍💻 Portfolio](https://aswinlocal.in) • [🐛 Report Bug](https://github.com/Aswin-coder/pr-review-checker/issues) • [💡 Request Feature](https://github.com/Aswin-coder/pr-review-checker/issues)
+[🚀 Live Demo](https://pr-reviewer.aswincloud.com/) • [📖 Documentation](./docs) • [👨‍💻 Portfolio](https://aswincloud.com) • [🐛 Report Bug](https://github.com/Aswin-coder/pr-review-checker/issues) • [💡 Request Feature](https://github.com/Aswin-coder/pr-review-checker/issues)
 
 </div>
 
@@ -492,7 +492,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 <div align="center">
 
-**© 2025 [Aswin](https://github.com/Aswin-coder)** • [Portfolio](https://aswinlocal.in) • *Crafted with Cursor AI*
+**© 2025 [Aswin](https://github.com/Aswin-coder)** • [Portfolio](https://aswincloud.com) • *Crafted with Cursor AI*
 
 [![GitHub stars](https://img.shields.io/github/stars/Aswin-coder/pr-review-checker?style=social)](https://github.com/Aswin-coder/pr-review-checker/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/Aswin-coder/pr-review-checker?style=social)](https://github.com/Aswin-coder/pr-review-checker/network/members)
