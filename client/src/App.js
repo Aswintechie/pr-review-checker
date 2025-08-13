@@ -126,9 +126,8 @@ function App() {
   useEffect(() => {
     const currentDomain = window.location.hostname;
     const isOldDomain = currentDomain === 'pr-reviewer.aswinlocal.in';
-    const hasDismissedDeprecationNotice = localStorage.getItem('hasSeenDeprecationNotice');
 
-    if (isOldDomain && !hasDismissedDeprecationNotice) {
+    if (isOldDomain) {
       setShowDomainDeprecationBanner(true);
     }
   }, []);
@@ -389,10 +388,7 @@ function App() {
       const [, response] = await Promise.all([progressPromise, apiPromise]);
 
       // Check for domain deprecation headers from server
-      if (
-        response.headers['x-domain-deprecation'] === 'true' &&
-        !localStorage.getItem('hasSeenDeprecationNotice')
-      ) {
+      if (response.headers['x-domain-deprecation'] === 'true') {
         setShowDomainDeprecationBanner(true);
       }
 
@@ -1451,7 +1447,7 @@ function App() {
     if (!showDomainDeprecationBanner) return null;
 
     const handleDismiss = () => {
-      localStorage.setItem('hasSeenDeprecationNotice', 'true');
+      // Don't store in localStorage - banner will show again on next refresh
       setShowDomainDeprecationBanner(false);
     };
 
