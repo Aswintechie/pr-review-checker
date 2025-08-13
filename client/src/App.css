@@ -4364,3 +4364,217 @@ section h2 {
     height: 14px;
   }
 }
+
+/* Domain Deprecation Notice Modal */
+.domain-deprecation-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--overlay-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001; /* Higher than other modals for priority */
+  backdrop-filter: blur(5px);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.domain-deprecation-modal-content {
+  background: var(--modal-bg);
+  border-radius: 20px;
+  box-shadow: var(--shadow-xl);
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  border: 3px solid #f59e0b; /* Warning orange border */
+}
+
+.domain-deprecation-modal-header {
+  background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+  color: white;
+  padding: 1.5rem 2rem;
+  border-radius: 17px 17px 0 0;
+  text-align: center;
+}
+
+.domain-deprecation-modal-header h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.domain-deprecation-modal-body {
+  padding: 2rem;
+}
+
+.deprecation-section {
+  margin-bottom: 1.5rem;
+}
+
+.deprecation-section:last-of-type {
+  margin-bottom: 2rem;
+}
+
+.deprecation-section h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.deprecation-section p {
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 0.5rem;
+}
+
+.deprecation-section p strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.deprecation-section ul {
+  list-style: none;
+  padding: 0;
+  margin-top: 0.75rem;
+}
+
+.deprecation-section li {
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 0.5rem;
+  padding-left: 0.5rem;
+}
+
+.deprecation-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.redirect-btn,
+.dismiss-btn {
+  padding: 0.875rem 1.5rem;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.redirect-btn.primary {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.redirect-btn.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+}
+
+.dismiss-btn.secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-secondary);
+}
+
+.dismiss-btn.secondary:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--border-primary);
+}
+
+.domain-deprecation-modal-footer {
+  background: var(--bg-secondary);
+  padding: 1rem 2rem;
+  border-radius: 0 0 17px 17px;
+  border-top: 1px solid var(--border-primary);
+  text-align: center;
+}
+
+.domain-deprecation-modal-footer p {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.domain-deprecation-modal-footer strong {
+  color: var(--text-primary);
+}
+
+/* Responsive Design for Domain Deprecation Modal */
+@media (max-width: 768px) {
+  .domain-deprecation-modal-overlay {
+    padding: 1rem;
+  }
+
+  .domain-deprecation-modal-content {
+    width: 95%;
+    max-height: 85vh;
+  }
+
+  .domain-deprecation-modal-header {
+    padding: 1.25rem 1.5rem;
+  }
+
+  .domain-deprecation-modal-header h3 {
+    font-size: 1.25rem;
+  }
+
+  .domain-deprecation-modal-body {
+    padding: 1.5rem;
+  }
+
+  .deprecation-actions {
+    flex-direction: column;
+  }
+
+  .redirect-btn,
+  .dismiss-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .domain-deprecation-modal-overlay {
+    padding: 0.5rem;
+  }
+
+  .domain-deprecation-modal-header {
+    padding: 1rem 1.25rem;
+  }
+
+  .domain-deprecation-modal-body {
+    padding: 1.25rem;
+  }
+
+  .deprecation-section {
+    margin-bottom: 1.25rem;
+  }
+
+  .deprecation-section h4 {
+    font-size: 1rem;
+  }
+
+  .redirect-btn,
+  .dismiss-btn {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.9rem;
+  }
+}

@@ -30,6 +30,23 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+// Domain deprecation middleware
+app.use((req, res, next) => {
+  const host = req.get('host') || req.hostname;
+  const isOldDomain = host === 'pr-reviewer.aswinlocal.in';
+
+  if (isOldDomain) {
+    res.setHeader('X-Domain-Deprecation', 'true');
+    res.setHeader(
+      'X-Domain-Deprecation-Message',
+      'This domain will be inactive after November 2025. Please use pr-reviewer.aswincloud.com'
+    );
+    res.setHeader('X-New-Domain', 'pr-reviewer.aswincloud.com');
+  }
+
+  next();
+});
+
 // Serve static files from the React build folder
 app.use(express.static(path.join(__dirname, '../client/build')));
 

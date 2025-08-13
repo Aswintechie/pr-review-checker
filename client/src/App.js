@@ -35,6 +35,7 @@ function App() {
   const [generalPredictions, setGeneralPredictions] = useState(null);
   const [mlModelStats, setMlModelStats] = useState(null);
   const [isFirstTimeUser, setIsFirstTimeUser] = useState(false);
+  const [showDomainDeprecationNotice, setShowDomainDeprecationNotice] = useState(false);
 
   // Debug: Show current state
   // console.log('🔄 App render - Current state:', {
@@ -92,6 +93,12 @@ function App() {
       if (showApprovalsInfoModal && !event.target.closest('.approvals-info-modal-content')) {
         setShowApprovalsInfoModal(false);
       }
+      if (
+        showDomainDeprecationNotice &&
+        !event.target.closest('.domain-deprecation-modal-content')
+      ) {
+        setShowDomainDeprecationNotice(false);
+      }
     };
 
     if (
@@ -99,7 +106,8 @@ function App() {
       showThemeDropdown ||
       showPrivacyModal ||
       showDeveloperModal ||
-      showApprovalsInfoModal
+      showApprovalsInfoModal ||
+      showDomainDeprecationNotice
     ) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -110,6 +118,7 @@ function App() {
     showPrivacyModal,
     showDeveloperModal,
     showApprovalsInfoModal,
+    showDomainDeprecationNotice,
   ]);
 
   // Check if user is visiting for the first time
@@ -117,6 +126,17 @@ function App() {
     const hasSeenInfoModal = localStorage.getItem('hasSeenInfoModal');
     if (!hasSeenInfoModal) {
       setIsFirstTimeUser(true);
+    }
+  }, []);
+
+  // Check if user is visiting from the old domain
+  useEffect(() => {
+    const currentDomain = window.location.hostname;
+    const isOldDomain = currentDomain === 'pr-reviewer.aswinlocal.in';
+    const hasDismissedDeprecationNotice = localStorage.getItem('hasSeenDeprecationNotice');
+
+    if (isOldDomain && !hasDismissedDeprecationNotice) {
+      setShowDomainDeprecationNotice(true);
     }
   }, []);
 
@@ -374,6 +394,14 @@ function App() {
 
       // Wait for both the progress simulation and API call to complete
       const [, response] = await Promise.all([progressPromise, apiPromise]);
+
+      // Check for domain deprecation headers from server
+      if (
+        response.headers['x-domain-deprecation'] === 'true' &&
+        !localStorage.getItem('hasSeenDeprecationNotice')
+      ) {
+        setShowDomainDeprecationNotice(true);
+      }
 
       // console.log('✅ API response received:', response.data);
       setResult(response.data);
@@ -1426,6 +1454,68 @@ function App() {
     }
   }, [showDeveloperModal, showApprovalsInfoModal]);
 
+  const renderDomainDeprecationNotice = () => {
+    if (!showDomainDeprecationNotice) return null;
+
+    const handleDismiss = () => {
+      localStorage.setItem('hasSeenDeprecationNotice', 'true');
+      setShowDomainDeprecationNotice(false);
+    };
+
+    const handleRedirect = () => {
+      localStorage.setItem('hasSeenDeprecationNotice', 'true');
+      window.location.href = `https://pr-reviewer.aswincloud.com${window.location.pathname}${window.location.search}`;
+    };
+
+    return (
+      <div className='domain-deprecation-modal-overlay'>
+        <div className='domain-deprecation-modal-content'>
+          <div className='domain-deprecation-modal-header'>
+            <h3>🚨 Domain Migration Notice</h3>
+          </div>
+          <div className='domain-deprecation-modal-body'>
+            <div className='deprecation-section'>
+              <h4>📅 Important Update</h4>
+              <p>
+                The domain <strong>pr-reviewer.aswinlocal.in</strong> will be inactive after{' '}
+                <strong>November 2025</strong>.
+              </p>
+              <p>
+                Please update your bookmarks and use our new domain:{' '}
+                <strong>pr-reviewer.aswincloud.com</strong>
+              </p>
+            </div>
+
+            <div className='deprecation-section'>
+              <h4>✨ Benefits of the New Domain</h4>
+              <ul>
+                <li>✅ Improved performance and reliability</li>
+                <li>✅ Enhanced security features</li>
+                <li>✅ Better global accessibility</li>
+                <li>✅ Future-proof infrastructure</li>
+              </ul>
+            </div>
+
+            <div className='deprecation-actions'>
+              <button className='redirect-btn primary' onClick={handleRedirect} type='button'>
+                🚀 Take me to the new domain
+              </button>
+              <button className='dismiss-btn secondary' onClick={handleDismiss} type='button'>
+                Continue here for now
+              </button>
+            </div>
+          </div>
+          <div className='domain-deprecation-modal-footer'>
+            <p>
+              💡 <strong>Tip:</strong> The new domain offers the same great features with improved
+              performance!
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderDeveloperModal = () => {
     if (!showDeveloperModal) return null;
 
@@ -2375,6 +2465,7 @@ function App() {
       {renderPrivacyModal()}
       {renderCloudflareModal()}
       {renderDeveloperModal()}
+      {renderDomainDeprecationNotice()}
     </div>
   );
 }
