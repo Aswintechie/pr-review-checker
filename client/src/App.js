@@ -689,11 +689,73 @@ function App() {
     });
   };
 
+  // Constant for members without ML predictions to avoid magic numbers
+  const NO_PREDICTION_SORT_VALUE = -1;
+
+  // Build a lookup map from generalPredictions for O(1) access
+  // This achieves true O(n+m) complexity where n=members, m=predictions
+  const buildPredictionsLookup = () => {
+    if (!generalPredictions?.predictions) {
+      console.log('🔍 DEBUG: No generalPredictions available for sorting');
+      return {};
+    }
+
+    console.log('✅ DEBUG: Building predictions lookup from', generalPredictions.predictions.length, 'predictions');
+    const lookupMap = {};
+    generalPredictions.predictions.forEach(prediction => {
+      // Handle both @username and username formats
+      const cleanUsername = prediction.approver.startsWith('@')
+        ? prediction.approver.substring(1)
+        : prediction.approver;
+
+      lookupMap[cleanUsername] = prediction;
+      // Also store with @ prefix for compatibility
+      lookupMap[prediction.approver] = prediction;
+    });
+
+    return lookupMap;
+  };
+
+  // Utility function to sort team members by likelihood percentage
+  const sortTeamMembersByLikelihood = members => {
+    if (!members || members.length === 0) return [];
+
+    console.log('🔄 DEBUG: Sorting', members.length, 'team members');
+
+    // Pre-build predictions lookup map for O(1) access (true O(n+m) complexity)
+    const predictionsLookup = buildPredictionsLookup();
+
+    const sortedMembers = members
+      .map(member => {
+        // Extract actual GitHub username from member object
+        const username = member.login || member.username;
+        const prediction = predictionsLookup[username];
+
+        // Create a new object with additional properties (non-mutating approach)
+        // This enhances the original member data with sorting and approval information
+        const result = {
+          ...member, // Copy all original member properties
+          approvalResult: prediction || null, // Add ML approval prediction data
+          sortKey: prediction ? prediction.percentage : NO_PREDICTION_SORT_VALUE, // Add sort key for ordering
+        };
+
+        console.log(`📊 DEBUG: ${username} -> sortKey: ${result.sortKey}${prediction ? ` (${prediction.percentage}%)` : ' (no prediction)'}`);
+        return result;
+      })
+      .sort((a, b) => b.sortKey - a.sortKey); // Sort by likelihood percentage in descending order
+
+    console.log('✅ DEBUG: Sorted team members:', sortedMembers.map(m => `${m.login || m.username}:${m.sortKey}`));
+    return sortedMembers;
+  };
+
   const renderTeamCard = (team, isApproved = false, approvedMembers = []) => {
     const teamKey = team.slug || team.username;
     const isExpanded = expandedTeams.has(teamKey);
     const memberCount = team.members ? team.members.length : team.memberCount || 0;
     const approvedCount = approvedMembers.length;
+
+    // Sort team members by likelihood percentage for optimal display
+    const sortedTeamMembers = sortTeamMembersByLikelihood(team.members);
 
     return (
       <div
@@ -733,24 +795,21 @@ function App() {
           {isApproved && <div className='approval-badge'>✅</div>}
         </div>
 
-        {isExpanded && team.members && team.members.length > 0 && (
+        {isExpanded && sortedTeamMembers.length > 0 && (
           <div className='team-members'>
             <div className='team-members-title'>Team Members:</div>
             <div className='team-members-grid'>
-              {team.members.map(member => {
-                // Extract actual GitHub username from member object
-                const memberUsername = member.login || member.username;
-                const memberApproved = approvedMembers.includes(memberUsername);
-                // Debug: console.log('Team member:', memberUsername);
-                const approvalResult = getGeneralMLApprovalChance(memberUsername);
+              {sortedTeamMembers.map(member => {
+                // Extract username from member object (consistent with our optimization)
+                const username = member.login || member.username;
+                const { approvalResult } = member;
+                const memberApproved = approvedMembers.includes(username);
+                // Debug: console.log('Team member:', username);
                 return (
-                  <div
-                    key={memberUsername}
-                    className={`team-member ${memberApproved ? 'approved' : ''}`}
-                  >
+                  <div key={username} className={`team-member ${memberApproved ? 'approved' : ''}`}>
                     <div className='member-avatar'>
                       {member.avatar_url ? (
-                        <img src={member.avatar_url} alt={memberUsername} />
+                        <img src={member.avatar_url} alt={username} />
                       ) : (
                         <div className='avatar-placeholder'>👤</div>
                       )}
@@ -758,7 +817,7 @@ function App() {
                     <div className='member-info'>
                       <div className='member-name'>{member.name}</div>
                       <div className='member-username'>
-                        @{memberUsername}
+                        @{username}
                         {(() => {
                           if (!approvalResult) return null;
 
@@ -811,7 +870,7 @@ function App() {
           </div>
         )}
 
-        {isExpanded && (!team.members || team.members.length === 0) && (
+        {isExpanded && sortedTeamMembers.length === 0 && (
           <div className='team-members'>
             <div className='team-members-empty'>
               {result?.teamsConfigured
@@ -2026,7 +2085,26 @@ function App() {
                   <h2>👥 All Possible Reviewers</h2>
                   <div className='users-grid'>
                     {result.allUserDetails.map(user => {
-                      const isApproved = result.approvals.includes(user.username);
+                      // For teams, check if any team member has approved
+                      let isApproved = result.approvals.includes(user.username);
+
+                      if (!isApproved && user.type === 'team') {
+                        // Check if team is approved through any of its members
+                        // Look through all groups to see if this team is approved
+                        isApproved = result.minRequiredApprovals.some(group => {
+                          return (
+                            !group.needsApproval &&
+                            (group.teamName === user.username ||
+                              group.teamName?.endsWith(user.name) ||
+                              (group.allGroupApprovers &&
+                                user.members &&
+                                user.members.some(member =>
+                                  group.allGroupApprovers.includes(member.login || member.username)
+                                )))
+                          );
+                        });
+                      }
+
                       const isRequested = result.requestedReviewers.includes(user.username);
                       return (
                         <div
@@ -2044,51 +2122,7 @@ function App() {
                           </div>
                           <div className='user-info'>
                             <div className='user-name'>{user.name}</div>
-                            <div className='user-username'>
-                              @{user.username}
-                              {(() => {
-                                const approvalResult = getMLApprovalChance(user.username);
-                                if (!approvalResult) return null;
-
-                                // Get the prediction object to access group_labels
-                                const prediction = mlPredictions?.predictions?.find(
-                                  p =>
-                                    p.approver === user.username ||
-                                    p.approver === `@${user.username}`
-                                );
-
-                                const groupLabels = prediction?.group_labels || [];
-                                const labelsText =
-                                  groupLabels.length > 0 ? groupLabels.join(', ') : '';
-
-                                // In basic view, show cleaner labels; in advanced view, show percentages
-                                if (viewMode === 'basic') {
-                                  return (
-                                    <span
-                                      className='ml-approval-chance likely-label'
-                                      title={`${approvalResult.percentage}% likely to approve${labelsText ? ` (${labelsText})` : ''}`}
-                                    >
-                                      likely
-                                      {labelsText && (
-                                        <span className='group-labels-hint'>({labelsText})</span>
-                                      )}
-                                    </span>
-                                  );
-                                } else {
-                                  return (
-                                    <span
-                                      className='ml-approval-chance'
-                                      title={labelsText ? `Based on: ${labelsText}` : undefined}
-                                    >
-                                      {approvalResult.percentage}% likely
-                                      {labelsText && (
-                                        <span className='group-labels'>{labelsText}</span>
-                                      )}
-                                    </span>
-                                  );
-                                }
-                              })()}
-                            </div>
+                            <div className='user-username'>@{user.username}</div>
                             {isRequested && <div className='user-status'>Requested</div>}
                           </div>
                           {isApproved && <div className='approval-badge'>✅</div>}
